@@ -359,7 +359,7 @@ The site is hosted on **GitHub Pages** at `johnfabiomb.com` (CNAME in `docs/`). 
 **Deploy steps:**
 1. Run the build command
 2. Commit the `docs/` changes
-3. Push to `main` — GitHub Pages serves directly from `docs/`
+3. Push to **`page-final`** — that is the branch GitHub Pages actually serves (Pages source: branch `page-final`, path `/docs`, confirmed against the Pages API). **Not `main`:** `origin/main` has had no `docs/` commit since 2026-06-01, so pushing there deploys nothing while appearing to succeed.
 
 Staging (`/test/`) has `<meta name="robots" content="noindex">` in `index.staging.html` and a `[STAGING]` title prefix — it is never indexed by Google.
 
