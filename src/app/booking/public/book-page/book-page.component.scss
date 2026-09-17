@@ -516,7 +516,7 @@
 }
 
 /* Back to the invoice view from the confirmed-booking card chooser. */
-.book-back { display: block; margin: 16px auto 0; }
+.book-back { display: block; margin: 16px auto; }
 
 /* Itemised payment receipts (amount · method · date) shown under the paid total.
    Shares the 28px gutter of .deposit-paid-banner / .payment-options above and below it,
