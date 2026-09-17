@@ -31,8 +31,9 @@ export class BookingInvoiceComponent {
   @Input() backLink: string | null = null;
   @Input() backLabel = '← Back';
 
-  get typeLabel(): string {
-    // No hardcoded percentage — the deposit % varies per booking; the amount is shown alongside.
-    return this.invoice?.paymentType === 'deposit' ? 'Deposit' : 'Full payment';
-  }
+  // NOTE: there is deliberately no `typeLabel` here any more. The receipt's wording is
+  // derived from the AMOUNTS (paid vs balance due), not from `paymentType` — a €50 payment
+  // against a €100 job is a part payment whether or not a deposit was ever offered, and
+  // labelling it "Deposit paid" when none was configured is simply untrue. `paymentType`
+  // stays on the interface because callers still set it, but nothing renders from it.
 }

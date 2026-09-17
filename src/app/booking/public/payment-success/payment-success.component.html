@@ -48,7 +48,11 @@
       <div class="receipt__totals">
         <div class="receipt__row"><span>Total</span><span>{{ total | currency:currency:'symbol':'1.2-2' }}</span></div>
         <div class="receipt__row receipt__row--ok"><span>Paid</span><span>−{{ paid | currency:currency:'symbol':'1.2-2' }}</span></div>
-        <div class="receipt__row receipt__row--grand"><span>Balance due</span><span>{{ balance | currency:currency:'symbol':'1.2-2' }}</span></div>
+        <!-- Only when something is actually owed. A settled receipt printing
+             "Balance due €0.00" reads as though money is still outstanding. -->
+        @if (balance > 0) {
+          <div class="receipt__row receipt__row--grand"><span>Balance due</span><span>{{ balance | currency:currency:'symbol':'1.2-2' }}</span></div>
+        }
       </div>
 
       @if (fullyPaid) { <div class="receipt__paid">PAID</div> }

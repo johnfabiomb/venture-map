@@ -62,15 +62,19 @@
         <span>Subtotal</span>
         <span>€{{ invoice.priceTotal.toFixed(2) }}</span>
       </div>
+      <!-- Wording comes from the AMOUNTS, not from a payment-type enum: a part payment is
+           a part payment whether or not a deposit was ever offered. -->
       <div class="totals-row totals-row--paid">
-        <span>{{ typeLabel }} paid</span>
+        <span>Paid</span>
         <span>−€{{ invoice.amountPaid.toFixed(2) }}</span>
       </div>
-      <div class="invoice__divider invoice__divider--thin"></div>
-      <div class="totals-row totals-row--balance">
-        <span>Balance due</span>
-        <span>€{{ invoice.balanceDue.toFixed(2) }}</span>
-      </div>
+      @if (invoice.balanceDue > 0) {
+        <div class="invoice__divider invoice__divider--thin"></div>
+        <div class="totals-row totals-row--balance">
+          <span>Balance due</span>
+          <span>€{{ invoice.balanceDue.toFixed(2) }}</span>
+        </div>
+      }
     </div>
 
     <div class="invoice__divider"></div>

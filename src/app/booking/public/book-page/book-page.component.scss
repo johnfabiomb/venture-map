@@ -18,7 +18,10 @@
 }
 
 .paid-banner {
+  width: 100%;
   text-align: center;
+
+  .invoice-actions { width: 100%; }
 }
 
 .paid-icon {
@@ -80,8 +83,15 @@
   justify-content: center;
   text-align: center;
   padding: 60px 24px;
-  max-width: 420px;
+  /* Same column as .book-card so the page doesn't jump width when the state swaps
+     (e.g. confirmed -> "Pay by card" chooser). */
+  max-width: 480px;
   width: 100%;
+  /* box-sizing is load-bearing, not tidiness: `width: 100%` under the default content-box
+     adds the 48px of horizontal padding ON TOP of the parent's full width, so every state
+     screen of the client pay link — expired, confirmed, already-paid, error — overflowed
+     and scrolled sideways. There is no global `* { box-sizing: border-box }` in this file. */
+  box-sizing: border-box;
 
   .state-icon {
     font-size: 48px;
@@ -460,6 +470,9 @@
 }
 
 // Download / print invoice actions (confirmed / paid states) — anon, via token
+/* Inside the booking card, match the 28px gutter every sibling block uses. */
+.book-card .invoice-actions { padding: 0 28px; box-sizing: border-box; }
+
 .invoice-actions {
   display: flex;
   flex-wrap: wrap;
@@ -472,8 +485,7 @@
 // specificity than .btn / .btn--ghost so padding + sizing are unambiguous; colours
 // come from .btn--primary (orange) / .btn--ghost (grey).
 .invoice-actions .invoice-dl {
-  flex: 0 0 auto;
-  width: auto;
+  flex: 1 0 auto;          /* share the row — every action block lines up edge to edge */
   margin-top: 0;
   display: inline-flex;
   align-items: center;
@@ -487,6 +499,21 @@
 }
 /* Optional "pay online" affordance under a confirmed booking. */
 .pay-optional { margin: 20px 0 8px; font-weight: 600; color: var(--book-muted, #6b7280); }
+
+/* Confirmed / request states are a single centred column, so every block in them spans
+   the same width — the invoice buttons share the row, the delivery card is flush with
+   them, and the pay action is full width. Otherwise each element sized to its own
+   content and the stack looked ragged. */
+.book-state {
+  .invoice-actions { width: 100%; }
+
+  /* Drop the 28px gutter it needs when nested inside .book-card. */
+  .delivery { margin-left: 0; margin-right: 0; width: 100%; }
+
+  /* Direct-child buttons only (the "Pay by card" action) — not the invoice links,
+     which live inside .invoice-actions and share their row. */
+  > .btn { width: 100%; }
+}
 
 /* Back to the invoice view from the confirmed-booking card chooser. */
 .book-back { display: block; margin: 16px auto 0; }
@@ -526,6 +553,11 @@
   border-radius: var(--radius-lg);
   background: var(--color-bg);
   text-align: left;
+  /* Both nesting contexts override this to `width: 100%` (.book-state above, .paid-page
+     below), which under content-box adds the 36px padding + 2px border on top of the full
+     width. `.paid-page .delivery` already carried its own box-sizing for exactly that
+     reason; setting it on the base fixes the .book-state case too instead of a third patch. */
+  box-sizing: border-box;
 }
 .delivery__title {
   margin: 0 0 8px;

@@ -101,6 +101,12 @@
     input { flex: none; } }
   &__del { background: none; border: none; color: $text-3; font-size: 16px; line-height: 1; cursor: pointer; opacity: 0; &:hover { color: $red; } }
   &:hover &__del { opacity: 1; }
+  // Reveal-on-hover is a desktop affordance with no touch equivalent: on a phone the delete
+  // control stayed at opacity 0 permanently, so a task added by mistake could never be
+  // removed. Where the pointer can't hover, show it always and give it a real touch target.
+  @media (hover: none) {
+    &__del { opacity: 1; padding: 4px 6px; margin: -4px -6px; }
+  }
   &--done &__check span { text-decoration: line-through; color: $text-3; }
   &--empty { font-size: 12px; color: $text-3; font-style: italic; }
 }

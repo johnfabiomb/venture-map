@@ -23,7 +23,38 @@
   border: none; border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 600;
   cursor: pointer;
   &--primary { background: #F4A922; color: #111827; }
-  &:hover { filter: brightness(0.95); }
+  // The invoice's Cancel action uses --ghost; without it that button rendered unstyled.
+  &--ghost { background: #fff; color: #374151; border: 1.5px solid #e5e7eb; }
+  &:disabled { opacity: 0.55; cursor: default; filter: none; }
+  &:hover:not(:disabled) { filter: brightness(0.95); }
+}
+
+// Pay-this-invoice panel. Sits above the sheet, matches its width so the page reads as
+// one column, and is never printed — a printed invoice shouldn't show a payment form.
+.paybox {
+  max-width: 760px;
+  margin: 0 auto 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);
+  padding: 20px 22px;
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+    // `1 1 auto`, not `1 0 auto`: the buttons must be allowed to SHRINK, or a long
+    // currency label keeps them at max-content and the row overflows on a narrow phone.
+    .btn { flex: 1 1 auto; }
+  }
+
+  &__error {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: #dc2626;
+  }
 }
 
 // A4-ish sheet
@@ -77,12 +108,19 @@
 .items th.no, .items td.no { width: 36px; color: #6b7280; font-weight: 700; }
 .items td { padding: 12px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
 .item-title { font-weight: 600; font-size: 14px; }
-.item-desc { font-size: 13px; color: #374151; margin-top: 3px; white-space: pre-line; }
+// overflow-wrap because a charge description is free text the admin typed: a pasted URL or
+// a long reference has no break opportunity, and inside a table cell it would set the
+// column's minimum width and push the sheet into horizontal scroll.
+.item-desc { font-size: 13px; color: #374151; margin-top: 3px; white-space: pre-line; overflow-wrap: anywhere; }
 .item-meta { font-size: 11.5px; color: #9ca3af; margin-top: 5px; }
 
 .totals {
   margin-left: auto;
-  width: 280px;
+  // NOT a fixed 280px: the sheet's content box is only ~264px at a 400px viewport, so a
+  // fixed width over-constrains the block, margin-left:auto collapses to 0 and the Total /
+  // Balance due rows overflow past the sheet into page-level horizontal scroll — on the one
+  // number the client opened the page to read.
+  width: min(280px, 100%);
   margin-top: 8px;
 }
 .totals__row {
@@ -117,6 +155,24 @@
 }
 .paid-when { font-size: 12.5px; color: #6b7280; }
 .inv-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+
+// Phone: this file previously had NO breakpoint except @media print, so the A4 sheet kept
+// 104px of horizontal padding on a 400px screen — 26% of the viewport — and the header,
+// which never wrapped, spilled past the sheet edge. This is the page clients open to pay.
+@media (max-width: 760px) {
+  .sheet { padding: 24px 20px; }
+
+  // .inv-meta is `flex: 0 0 auto`, so it can never shrink; stacking is the only fix that
+  // doesn't crush the supplier block to an unreadable column.
+  .inv-head { flex-direction: column; gap: 16px; }
+  .inv-meta { flex: none; text-align: left; }
+  .meta { margin-left: 0; }
+  // An email has no break opportunity under the default word-break (not at @ or .), so it
+  // sets the flex item's minimum width and forces the overflow on its own.
+  .supplier p { overflow-wrap: anywhere; }
+
+  .paybox { padding: 16px; }
+}
 
 // Print: just the sheet, edge to edge
 @media print {

@@ -5,14 +5,28 @@
 .items { display: flex; flex-direction: column; gap: 8px; }
 .item {
   display: grid;
-  grid-template-columns: 1fr 120px 30px;
+  // minmax(0, …) rather than a bare `1fr`: a grid track's `1fr` floors at its content
+  // minimum, and .item__desc is a <textarea>, whose intrinsic width is ~20 columns. The row
+  // therefore stayed wider than the card on a phone and the 30px remove button was clipped
+  // off the right edge — so a charge line added by mistake could not be deleted at all.
+  grid-template-columns: minmax(0, 1fr) 120px 30px;
   gap: 8px;
   align-items: start;
+
+  // Below this the three tracks can't share a line honestly: description takes its own row,
+  // amount and remove share the next. Keeps the remove button reachable at any width.
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr) 30px;
+    .item__desc { grid-column: 1 / -1; }
+  }
 }
 .item__desc,
 .item__amount {
   font-family: $font; font-size: 14px; color: $text;
   border: 1.5px solid $border; border-radius: $radius-md; padding: 9px 12px; background: $card;
+  // min-width: 0 so the controls follow the track down instead of re-imposing their own
+  // intrinsic width on it; box-sizing so the 12px padding stays inside the track.
+  min-width: 0; box-sizing: border-box; width: 100%;
   &:focus { outline: none; border-color: $accent; }
 }
 .item__desc { resize: vertical; min-height: 40px; }

@@ -163,7 +163,8 @@
         <p class="book-error" *ngIf="errorMessage()">{{ errorMessage() }}</p>
       </ng-container>
 
-      <!-- Deposit already paid — pay remaining balance -->
+      <!-- Part-paid — settle the remaining balance. NOT necessarily a deposit: this is any
+           payment that left a balance, including cash you recorded by hand. -->
       <ng-container *ngIf="state() === 'partial'">
         <div class="book-divider"></div>
         <div class="deposit-paid-banner">

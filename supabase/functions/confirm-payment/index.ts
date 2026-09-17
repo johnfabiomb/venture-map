@@ -17,6 +17,44 @@ Deno.serve(async (req) => {
 
     const service = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
+    // An INVOICE share token settles an invoice with no booking. Probed first and returned
+    // from separately, so the booking path below is completely unchanged for the client
+    // pay links already in circulation.
+    const { data: ilink } = await service.from('invoice_links')
+      .select('invoice_id').eq('token', token).is('deleted_at', null).maybeSingle();
+    if (ilink?.invoice_id) {
+      const { data: inv } = await service.from('invoices')
+        .select('id, org_id').eq('id', ilink.invoice_id).is('deleted_at', null).maybeSingle();
+      if (!inv) return json({ error: 'invalid link' }, 400);
+
+      const orgStripeI = await resolveOrgStripe(service, inv.org_id);
+      const stripeI = platformStripe();
+      const optsI = orgStripeI.accountId ? { stripeAccount: orgStripeI.accountId } : undefined;
+      const intentI = optsI
+        ? await stripeI.paymentIntents.retrieve(paymentIntentId, optsI)
+        : await stripeI.paymentIntents.retrieve(paymentIntentId);
+
+      // The intent must belong to THIS invoice (metadata set at creation).
+      if (intentI.metadata?.invoice_id !== inv.id) return json({ error: 'intent_mismatch' }, 400);
+      if (intentI.status !== 'succeeded') return json({ recorded: false, status: intentI.status });
+
+      await recordSucceededIntent(service, intentI);
+
+      const [{ data: linesI }, { data: paysI }] = await Promise.all([
+        service.from('invoice_lines').select('amount').eq('invoice_id', inv.id).is('deleted_at', null),
+        service.from('payments').select('amount')
+          .eq('invoice_id', inv.id).eq('status', 'completed').is('deleted_at', null),
+      ]);
+      const grossI = (linesI ?? []).reduce((s: number, l: { amount: number }) => s + Number(l.amount), 0);
+      const paidI  = (paysI  ?? []).reduce((s: number, p: { amount: number }) => s + Number(p.amount), 0);
+      return json({
+        recorded: true,
+        amount: intentI.amount / 100,
+        totalPaid: paidI,
+        balanceDue: Math.max(0, Math.round((grossI - paidI) * 100) / 100),
+      });
+    }
+
     // Resolve the booking from the (anon-safe) pay-link token.
     const { data: link } = await service.from('booking_links')
       .select('booking_id, bookings(id, org_id, price_total)').eq('token', token).maybeSingle();

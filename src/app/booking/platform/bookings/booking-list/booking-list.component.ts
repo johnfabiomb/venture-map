@@ -10,6 +10,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
 import { BookingSummary, BookingTab, PaymentStatus } from '@booking/core/interfaces/booking.interface';
+import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   unpaid: 'Unpaid', partial: 'Deposit paid', paid: 'Paid', external: 'External',
@@ -231,12 +232,29 @@ export class BookingListComponent {
   readonly removeEvent = signal(true);
   readonly deleting = signal(false);
 
-  askDelete(b: BookingSummary): void {
+  /** The invoice attached to the booking being deleted (null = it has none). */
+  readonly invoiceForDelete = signal<InvoiceListRow | null>(null);
+  /** Checked = also delete the invoice. Deleting a job and writing off its money are
+   *  separate decisions, so it's asked every time rather than fixed by policy. */
+  readonly deleteInvoice = signal(false);
+
+  async askDelete(b: BookingSummary): Promise<void> {
     this.deleteTarget.set(b);
     this.removeEvent.set(true);   // default ON — deleting a booking should clear its calendar event
+    this.invoiceForDelete.set(null);
+    this.deleteInvoice.set(false);
     this.deleteOpen.set(true);
+    const inv = await this.data.getInvoiceSummary(b.id);
+    this.invoiceForDelete.set(inv);
+    // Default OFF once money has been received against it — that's a financial record
+    // you probably want to keep. With nothing paid, default to removing it.
+    this.deleteInvoice.set(!!inv && inv.amount_paid === 0);
   }
-  closeDelete(): void { this.deleteOpen.set(false); this.deleteTarget.set(null); }
+  closeDelete(): void {
+    this.deleteOpen.set(false);
+    this.deleteTarget.set(null);
+    this.invoiceForDelete.set(null);
+  }
 
   async confirmDelete(): Promise<void> {
     const b = this.deleteTarget();
@@ -246,8 +264,12 @@ export class BookingListComponent {
       // Gate only on the checkbox — cancel-booking finds the events (booking row + every
       // slot) server-side, so we must NOT also require the list row to carry google_event_id.
       const remove = this.removeEvent();
-      const res = await this.data.deleteBooking(b.id, remove);
+      const keepInvoice = !this.deleteInvoice();
+      const res = await this.data.deleteBooking(b.id, remove, keepInvoice);
       if (res.error) { this.toast.error(`Could not delete ${b.booking_ref}.`); return; }
+      if (res.keptInvoice) {
+        this.toast.info(`Invoice ${this.invoiceForDelete()?.invoice_number ?? ''} kept — it's now a standalone invoice.`);
+      }
       // Only claim "removed from Google Calendar" when Google actually accepted it — a
       // failed removal (e.g. expired calendar connection) must not read as success.
       if (remove && res.calendarCleared === false) {

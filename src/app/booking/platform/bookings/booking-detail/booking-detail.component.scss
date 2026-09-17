@@ -41,10 +41,13 @@
 // ── Facts ────────────────────────────────────────────────────────────────
 .facts { display: flex; flex-direction: column; gap: 0; }
 .fact {
-  display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; font-size: 13.5px;
+  // Wraps to a second line rather than overflowing: __v carries free text the admin typed
+  // (client name, address, a custom service) and neither side could shrink. The row-gap in
+  // the shorthand only applies once wrapped, so unwrapped rows look exactly as before.
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 9px 0; font-size: 13.5px;
   & + & { border-top: 1px solid $border; }
   &__k { color: $text-3; font-weight: 600; }
-  &__v { color: $text; text-align: right; }
+  &__v { color: $text; text-align: right; min-width: 0; overflow-wrap: anywhere; }
   &--blocks { align-items: flex-start; }
 }
 .block-line { display: block; line-height: 1.5; & + & { margin-top: 2px; } }

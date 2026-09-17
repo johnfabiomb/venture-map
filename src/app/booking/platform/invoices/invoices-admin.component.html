@@ -2,28 +2,33 @@
   <div class="page__head">
     <div>
       <h1 class="page__title">Invoices</h1>
-      <p class="page__sub">Every confirmed booking is an invoice. Click one to view or print it.</p>
+      <p class="page__sub">Your money record. An invoice can sit on a job in the calendar, or stand on its own.</p>
     </div>
-    @if (invoices().length > 0) {
-      <div class="head-tools">
+    <!-- "New invoice" sits OUTSIDE the has-rows guard: with an empty list you still
+         need a way to create your first one. -->
+    <div class="head-tools">
+      @if (invoices().length > 0) {
         <select class="year-select" [value]="year()" (change)="year.set($any($event.target).value)">
           <option value="all">All years</option>
           @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
         </select>
         <button class="btn btn--ghost" (click)="exportCsv()">Export CSV</button>
-      </div>
-    }
+      }
+      <a class="btn btn--primary" routerLink="/bookings/invoices/new">New invoice</a>
+    </div>
   </div>
 
-  @if (data.loading()) {
+  @if (loading()) {
     <p class="muted">Loading…</p>
   } @else if (invoices().length === 0) {
-    <p class="muted">No invoices yet. Confirmed bookings will appear here.</p>
+    <p class="muted">No invoices yet.</p>
   } @else {
-    <!-- Summary (whole period) -->
+    <!-- Summary (whole period). Gross and net are shown side by side and labelled:
+         they're equal until expenses are recorded, and that should be visible, not hidden. -->
     <div class="summary">
       <div class="summary__card"><span class="summary__label">Invoices</span><span class="summary__val">{{ counts().all }}</span></div>
-      <div class="summary__card"><span class="summary__label">Billed</span><span class="summary__val">{{ totalBilled() | currency:currency():'symbol':'1.0-2' }}</span></div>
+      <div class="summary__card"><span class="summary__label">Billed (gross)</span><span class="summary__val">{{ totalBilled() | currency:currency():'symbol':'1.0-2' }}</span></div>
+      <div class="summary__card"><span class="summary__label">Net of expenses</span><span class="summary__val">{{ totalNet() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Collected</span><span class="summary__val summary__val--ok">{{ totalPaid() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Outstanding</span><span class="summary__val summary__val--due">{{ outstanding() | currency:currency():'symbol':'1.0-2' }}</span></div>
     </div>
@@ -46,24 +51,26 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Date</th><th>Client</th>
+              <th>Invoice</th><th>Date</th><th>Client</th><th>Worker</th><th>Service</th>
               <th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
             </tr>
           </thead>
           <tbody>
-            @for (b of filtered(); track b.id) {
-              <tr class="row" (click)="open(b)">
-                <td class="mono" data-label="Invoice">{{ invoiceNo(b.booking_ref) }}</td>
-                <td data-label="Date">{{ b.start_at | date:'d MMM y' }}</td>
-                <td class="ellipsis" data-label="Client">{{ b.client_name ?? '—' }}</td>
-                <td class="num" data-label="Total">{{ b.price_total | currency:currency():'symbol':'1.0-2' }}</td>
-                <td class="num" data-label="Paid">{{ b.total_paid | currency:currency():'symbol':'1.0-2' }}</td>
-                <td class="num" [class.due]="balance(b) > 0" data-label="Balance">{{ balance(b) | currency:currency():'symbol':'1.0-2' }}</td>
+            @for (r of filtered(); track r.id) {
+              <tr class="row" (click)="open(r)">
+                <td class="mono" data-label="Invoice">{{ r.invoice_number ?? '—' }}</td>
+                <td data-label="Date">{{ r.service_date ? (r.service_date | date:'d MMM y') : '—' }}</td>
+                <td class="ellipsis" data-label="Client">{{ r.client_name ?? '—' }}</td>
+                <td class="ellipsis" data-label="Worker">{{ r.staff_name ?? '—' }}</td>
+                <td class="ellipsis" data-label="Service">{{ r.service_name ?? '—' }}</td>
+                <td class="num" data-label="Total">{{ r.amount_gross | currency:currency():'symbol':'1.0-2' }}</td>
+                <td class="num" data-label="Paid">{{ r.amount_paid | currency:currency():'symbol':'1.0-2' }}</td>
+                <td class="num" [class.due]="r.balance_due > 0" data-label="Balance">{{ r.balance_due | currency:currency():'symbol':'1.0-2' }}</td>
                 <td data-label="Status">
                   <span class="badge"
-                        [class.badge--paid]="invStatus(b) === 'paid'"
-                        [class.badge--partial]="invStatus(b) === 'partial'"
-                        [class.badge--unpaid]="invStatus(b) === 'unpaid'">{{ statusLabel(b) }}</span>
+                        [class.badge--paid]="r.payment_status === 'paid'"
+                        [class.badge--partial]="r.payment_status === 'partial'"
+                        [class.badge--unpaid]="r.payment_status === 'unpaid'">{{ statusLabel(r) }}</span>
                 </td>
                 <td class="actions" data-label="">
                   <button class="kebab" [cdkMenuTriggerFor]="rowMenu" (click)="$event.stopPropagation()" aria-label="Actions">
@@ -73,9 +80,11 @@
                   </button>
                   <ng-template #rowMenu>
                     <div class="menu" cdkMenu>
-                      <a class="menu__item" cdkMenuItem [routerLink]="['/bookings/invoice-edit', b.id]">Edit invoice</a>
-                      <button class="menu__item" cdkMenuItem (click)="open(b)">View / print</button>
-                      <button class="menu__item" cdkMenuItem (click)="copyShareLink(b)">Copy share link</button>
+                      <a class="menu__item" cdkMenuItem [routerLink]="editLink(r)">Edit invoice</a>
+                      <!-- Both work for a standalone invoice now: it prints via `?inv=`
+                           and shares via its own invoice token. -->
+                      <button class="menu__item" cdkMenuItem (click)="open(r)">View / print</button>
+                      <button class="menu__item" cdkMenuItem (click)="copyShareLink(r)">Copy share link</button>
                     </div>
                   </ng-template>
                 </td>

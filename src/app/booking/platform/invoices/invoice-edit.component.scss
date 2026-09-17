@@ -15,25 +15,9 @@
 .hint { font-size: 12.5px; color: $text-3; margin: 0 0 16px; }
 .opt { color: $text-3; font-weight: 400; }
 
-.item {
-  display: grid;
-  grid-template-columns: 1fr 130px 34px;
-  gap: 10px;
-  align-items: start;
-  margin-bottom: 10px;
-  textarea, input {
-    padding: 9px 11px; border: 1.5px solid $border; border-radius: $radius-md;
-    font-size: 14px; font-family: inherit; color: $text; background: $card; width: 100%; box-sizing: border-box;
-    &:focus { outline: none; border-color: $accent; }
-  }
-  &__desc { resize: vertical; }
-  &__amt { text-align: right; }
-  &__del {
-    background: none; border: none; color: $text-3; cursor: pointer; font-size: 15px; padding: 9px 4px;
-    &:hover:not(:disabled) { color: $red; }
-    &:disabled { opacity: 0.3; cursor: default; }
-  }
-}
+// (The former `.item` grid lived here but this template renders none — the line rows come
+// from <app-line-items-editor>, which owns its own styles. Removed so nobody "fixes" the
+// responsive bug here and wonders why nothing changes.)
 
 .total-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -44,12 +28,27 @@
 .field {
   display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px;
   span { font-size: 12px; font-weight: 600; color: $text-2; }
-  input, textarea {
+  // `select` included so the job/client/worker/service pickers match the inputs
+  // exactly — same height, border and focus ring — instead of falling back to the
+  // browser's native control next to styled fields.
+  input, textarea, select {
     padding: 10px 12px; border: 1.5px solid $border; border-radius: $radius-md; font-size: 14px;
     font-family: inherit; color: $text; background: $card; width: 100%; box-sizing: border-box;
     &:focus { outline: none; border-color: $accent; }
   }
   textarea { resize: vertical; }
+  select { cursor: pointer; }
+}
+
+// Two fields per row on desktop, stacking on narrow screens — keeps the pickers
+// evenly aligned rather than a long ragged column.
+.field-row {
+  // minmax(0, 1fr), not 1fr: a bare `1fr` floors at the track's content minimum, and these
+  // cells hold <select>s whose longest option (a client company, a service name) then
+  // forces the row wider than the card between 560px and the desktop layout.
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 14px;
+  .field { min-width: 0; }
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
 }
 
 .actions { display: flex; align-items: center; gap: 10px; }

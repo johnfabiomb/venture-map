@@ -101,7 +101,19 @@ export const bookingRoutes: Routes = [
             loadComponent: () => import('@booking/platform/invoices/invoices-admin.component').then(m => m.InvoicesAdminComponent),
           },
           {
-            // literal segment, so it precedes the catch-all ':id' below
+            // Standalone invoice — no booking, no time slot. Must precede 'invoices/edit/:invoiceId'
+            // so 'new' isn't captured as an id.
+            path: 'invoices/new',
+            loadComponent: () => import('@booking/platform/invoices/invoice-edit.component').then(m => m.InvoiceEditComponent),
+          },
+          {
+            // Keyed on the INVOICE id — the only way to open an invoice that has no booking.
+            path: 'invoices/edit/:invoiceId',
+            loadComponent: () => import('@booking/platform/invoices/invoice-edit.component').then(m => m.InvoiceEditComponent),
+          },
+          {
+            // Keyed on the BOOKING id (kept: the booking detail page links here).
+            // Literal segment, so it precedes the catch-all ':id' below.
             path: 'invoice-edit/:id',
             loadComponent: () => import('@booking/platform/invoices/invoice-edit.component').then(m => m.InvoiceEditComponent),
           },

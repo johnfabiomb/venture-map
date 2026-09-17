@@ -20,11 +20,17 @@ Deno.serve(async (req) => {
 
     const { data: link } = await supabase
       .from('booking_links')
-      .select('is_active, expires_at, booking_id, bookings(id, org_id, booking_ref, title, start_at, price_total, allow_card, deposit_percent, deposit_allowed)')
+      .select('is_active, expires_at, deleted_at, booking_id, bookings(id, org_id, booking_ref, title, start_at, price_total, allow_card, deposit_percent, deposit_allowed, status, deleted_at)')
       .eq('token', token)
       .single();
 
-    if (!link?.is_active) {
+    // `deleted_at` must be checked on BOTH sides. This client is service_role, which
+    // bypasses the `hide_deleted` RESTRICTIVE policy, and the booking soft-delete cascade
+    // stamps booking_links.deleted_at WITHOUT clearing is_active — so `is_active` alone is
+    // not a validity test. Checking only that left five live tokens for cancelled-and-
+    // deleted bookings (BK-2026-042/084/088/113, €781 in total) still fully chargeable.
+    // check-availability already filtered both flags; this function was the odd one out.
+    if (!link?.is_active || link.deleted_at) {
       return new Response(JSON.stringify({ error: 'Invalid or expired link' }), { status: 400, headers: corsHeaders });
     }
 
@@ -35,7 +41,25 @@ Deno.serve(async (req) => {
     const booking = link.bookings as {
       id: string; org_id: string; booking_ref: string; title: string; start_at: string; price_total: number;
       allow_card: boolean; deposit_percent: number | null; deposit_allowed: boolean | null;
+      status: string; deleted_at: string | null;
     };
+
+    if (!booking || booking.deleted_at) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired link' }), { status: 400, headers: corsHeaders });
+    }
+
+    // A cancelled or declined booking keeps its pay link: `cancel-booking` and
+    // `declineRequest` both set the status without revoking the token, and cancel-booking
+    // additionally removes the calendar events — so the slot reads free and the pay page
+    // renders live Pay buttons. Nothing downstream would catch the mistake either:
+    // record-payment's confirm is scoped `.in('status', ['hold','pending'])`, so it updates
+    // zero rows without raising, and ensureBookingEvent returns early for a non-blocking
+    // status. The client would be charged for a job that is not happening, with no error
+    // logged anywhere. `accept-inperson` — the sibling action on the same page — already
+    // carries exactly this guard; this function was missing it.
+    if (['cancelled', 'expired', 'draft'].includes(booking.status)) {
+      return new Response(JSON.stringify({ error: 'This booking has been cancelled.' }), { status: 400, headers: corsHeaders });
+    }
 
     if (!booking.allow_card) {
       return new Response(JSON.stringify({ error: 'Card payment is not enabled for this booking' }), { status: 400, headers: corsHeaders });
@@ -50,26 +74,40 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: isPast ? 'Past bookings require full payment' : 'This booking requires full payment' }), { status: 400, headers: corsHeaders });
     }
 
+    // What's already been paid — needed for EVERY payment type, not just 'remainder'.
+    // The pay page computes its state once on load and never refreshes, so the client can
+    // hold a stale view: browser Back out of /pay/success (bfcache), a second tab, or a
+    // cash payment you record while they sit on the page. Pricing 'full' or 'deposit' off
+    // price_total alone therefore charged ON TOP of money already taken — a deposit
+    // followed by "Pay in full" collected 130% of the job.
+    //
+    // `.is('deleted_at', null)` is REQUIRED: this client is service_role, which bypasses
+    // the `hide_deleted` RESTRICTIVE policy. Without it a payment the admin removed still
+    // counts toward totalPaid and the remainder is charged SHORT.
+    const { data: priorPayments } = await supabase
+      .from('payments')
+      .select('amount')
+      .eq('booking_id', booking.id)
+      .eq('status', 'completed')
+      .is('deleted_at', null);
+    const totalPaid = (priorPayments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    const balance = Math.round((booking.price_total - totalPaid) * 100) / 100;
+
+    // Settled already — reject whichever button was pressed, not just 'remainder'.
+    if (balance <= 0) {
+      return new Response(JSON.stringify({ error: 'Booking is already fully paid' }), { status: 400, headers: corsHeaders });
+    }
+
     let amount: number;
     if (paymentType === 'remainder') {
-      // `.is('deleted_at', null)` is REQUIRED: this client is service_role, which bypasses
-      // the `hide_deleted` RESTRICTIVE policy. Without it a payment the admin removed still
-      // counts toward totalPaid and the remainder is charged SHORT.
-      const { data: priorPayments } = await supabase
-        .from('payments')
-        .select('amount')
-        .eq('booking_id', booking.id)
-        .eq('status', 'completed')
-        .is('deleted_at', null);
-      const totalPaid = (priorPayments ?? []).reduce((sum, p) => sum + p.amount, 0);
-      amount = Math.round((booking.price_total - totalPaid) * 100) / 100;
-      if (amount <= 0) {
-        return new Response(JSON.stringify({ error: 'Booking is already fully paid' }), { status: 400, headers: corsHeaders });
-      }
+      amount = balance;
     } else {
       const depositAmount = Math.round(booking.price_total * depositPct) / 100;
       amount = paymentType === 'deposit' ? depositAmount : booking.price_total;
     }
+    // Never charge more than is actually outstanding. This is the guard that makes a
+    // stale client page safe, regardless of which amount it asked for.
+    amount = Math.min(amount, balance);
     const amountCents = Math.round(amount * 100);
 
     // Route to the org's connected account (direct charge + platform fee) or fall back

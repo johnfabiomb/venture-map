@@ -181,6 +181,22 @@
         <input type="checkbox" [ngModel]="removeEvent()" (ngModelChange)="removeEvent.set($event)" name="removeEvent" />
         <span>Also remove the event from Google Calendar</span>
       </label>
+
+      <!-- Deleting the job and writing off its money are separate decisions, so the
+           invoice is asked about here rather than deleted by policy. Defaults to OFF
+           once anything has been paid against it. -->
+      @if (invoiceForDelete(); as inv) {
+        <label class="del-check">
+          <input type="checkbox" [ngModel]="deleteInvoice()" (ngModelChange)="deleteInvoice.set($event)" name="deleteInvoice" />
+          <span>
+            Also delete invoice {{ inv.invoice_number }}
+            ({{ inv.amount_gross | currency:'EUR':'symbol':'1.0-2' }}@if (inv.amount_paid > 0) { · {{ inv.amount_paid | currency:'EUR':'symbol':'1.0-2' }} paid })
+          </span>
+        </label>
+        @if (!deleteInvoice()) {
+          <p class="del-text">The invoice is kept as a standalone invoice — its number, lines and payments stay intact.</p>
+        }
+      }
       <div class="del-actions">
         <button type="button" class="btn btn--ghost" (click)="closeDelete()">Cancel</button>
         <button type="button" class="btn btn--danger" [disabled]="deleting()" (click)="confirmDelete()">

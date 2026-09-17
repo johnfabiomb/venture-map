@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/booking/core/config/stripe.ts"],
+  "sourcesContent": ["/**\n * Stripe publishable key for the booking platform.\n *\n * Publishable keys are safe in client code by design — they can only create payment\n * intents the server has already authorised. It lives here rather than inline in a\n * component so the two pay surfaces (the booking pay link and the invoice share link)\n * cannot drift onto different keys.\n */\nexport const STRIPE_PK =\n  'pk_live_51ShRJTAXI0tdCXi3HuEvh9PuIVMFTjqRlMQwsg8pqMlhACOXGKAiATxj9MzW268hs9RV6RvCb5FP1bIFHuNlZkBG007LHcSnOB';\n"],
+  "mappings": ";AAQO,IAAM,YACX;",
+  "names": []
+}

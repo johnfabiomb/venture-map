@@ -5,7 +5,15 @@
 .hint-em { font-style: normal; font-weight: 400; color: $text-3; font-size: 11px; }
 .editor { display: flex; flex-direction: column; gap: 14px; }
 .editor__actions { display: flex; gap: 10px; margin-top: 6px; }
-.row { display: flex; gap: 12px; .field { flex: 1; } }
+// `flex: 1` sets flex-basis to 0, but min-width still resolves to `auto`, which floors each
+// field at an <input>'s default intrinsic width (~170px). Two of those plus the gap exceed a
+// phone's content box, and the overflow falls on the SECOND field — the extra-hour rate,
+// which decides what an overrun costs. min-width: 0 lets them shrink; below 560px they stack.
+.row {
+  display: flex; gap: 12px;
+  .field { flex: 1; min-width: 0; }
+  @media (max-width: 560px) { flex-direction: column; }
+}
 
 .tiers { display: flex; flex-direction: column; gap: 8px; }
 .tiers__label { font-size: 12px; font-weight: 600; color: $text-2; span { font-weight: 400; color: $text-3; } }

@@ -146,10 +146,21 @@ Deno.serve(async (req) => {
       if (error || !created) { pullErrors.push(`${e.summary ?? e.id}: ${error?.message ?? 'insert failed'}`); continue; }
       // A booking blocks availability through its slots, so the import needs one too
       // (carries the same Google event id). Without it the event wouldn't show as busy.
-      await supabase.from('booking_slots').insert({
+      //
+      // The error MUST be checked. This insert can legitimately fail with 23P01 when the
+      // imported event overlaps a booking that already reserves the worker, and discarding
+      // that left a booking with NO slot — invisible to both the availability picker and
+      // the no-overlap constraint, while the sync still reported "imported". Roll the
+      // parent back instead: an overlap is real information the owner needs, not noise.
+      const { error: slotErr } = await supabase.from('booking_slots').insert({
         org_id: calendarOrg, booking_id: created.id, staff_id: calendarStaffId,
         start_at: startAt, end_at: endAt, google_event_id: e.id,
       });
+      if (slotErr) {
+        await supabase.from('bookings').delete().eq('id', created.id);
+        pullErrors.push(`${e.summary ?? e.id}: overlaps an existing booking (${slotErr.message})`);
+        continue;
+      }
       pulled++;
     }
 

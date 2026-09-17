@@ -69,6 +69,41 @@
       </div>
     }
 
+    <!-- Invoices raised against this job. Usually one; a second appears when a deposit
+         and a final are issued separately, or when scope grew after the first was sent. -->
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Invoices</h2>
+        <button type="button" class="link-btn" [disabled]="addingInvoice()" (click)="addInvoice()">
+          {{ addingInvoice() ? 'Adding…' : '+ Add another invoice' }}
+        </button>
+      </div>
+
+      @if (invoices().length === 0) {
+        <p class="empty-line">No invoice raised yet.</p>
+      } @else {
+        <ul class="items">
+          @for (inv of invoices(); track inv.id) {
+            <li class="items__row">
+              <span class="items__desc">
+                <a [routerLink]="invoiceEditLink(inv)">{{ inv.invoice_number ?? 'Draft' }}</a>
+                <span class="muted"> · {{ inv.amount_paid | currency:'EUR':'symbol':'1.0-2' }} paid</span>
+                @if (inv.status !== 'issued') { <span class="tag">{{ inv.status }}</span> }
+                @if (inv.payment_status === 'paid') { <span class="tag tag--live">paid</span> }
+              </span>
+              <span class="items__amt">{{ inv.amount_gross | currency:'EUR':'symbol':'1.2-2' }}</span>
+            </li>
+          }
+        </ul>
+        @if (invoices().length > 1) {
+          <p class="empty-line">
+            An issued invoice is a document your client already holds — when the price changes,
+            raise another rather than editing the original.
+          </p>
+        }
+      }
+    </div>
+
     <!-- Booking facts -->
     <div class="card facts">
       @if (slots().length > 1) {
@@ -86,6 +121,20 @@
       <div class="fact"><span class="fact__k">Service</span><span class="fact__v">{{ b.service_name ?? '—' }}</span></div>
       <div class="fact"><span class="fact__k">Worker</span><span class="fact__v">{{ b.staff_name ?? '—' }}</span></div>
       <div class="fact"><span class="fact__k">Status</span><span class="fact__v">{{ b.status }}</span></div>
+      <!-- Production is no longer a create-time-only decision: a job can join the Work
+           board at any point after it was booked. -->
+      <div class="fact">
+        <span class="fact__k">Production</span>
+        <span class="fact__v">
+          @if (workItem(); as w) {
+            <a routerLink="/bookings/work">On the Work board · {{ w.production_status }}</a>
+          } @else {
+            <button type="button" class="link-btn" [disabled]="addingCard()" (click)="addToWorkBoard()">
+              {{ addingCard() ? 'Adding…' : '+ Add to Work board' }}
+            </button>
+          }
+        </span>
+      </div>
       @if (b.client_email) {
         <div class="fact"><span class="fact__k">Email</span><span class="fact__v">{{ b.client_email }}</span></div>
       }

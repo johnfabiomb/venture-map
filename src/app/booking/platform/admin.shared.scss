@@ -29,6 +29,8 @@
 }
 .link-btn {
   background: none; border: none; font-size: 12.5px; font-weight: 600; color: $accent; cursor: pointer;
+  // ~23px tall was below a usable touch target, and these sit 8px apart in .item__actions.
+  display: inline-flex; align-items: center; min-height: 40px;
   padding: 4px 8px; border-radius: $radius-sm; font-family: inherit;
   &:hover { background: $accent-dim; } &:disabled { opacity: 0.5; }
   &--danger { color: $red; } &--danger:hover { background: rgba(239, 68, 68, 0.1); }
@@ -54,11 +56,18 @@
 
 .list { display: flex; flex-direction: column; gap: 10px; }
 .item {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  // flex-wrap is load-bearing: neither side of this row can shrink — __actions is nowrap,
+  // so its minimum is the full width of every button — and __main had NO rule at all, so
+  // its floor was its longest unbreakable word. On a phone the Staff row's three buttons
+  // (~228px) left ~92px for the name, and the meta line clipped.
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
   background: $card; border: 1px solid $border; border-radius: $radius-lg; padding: 14px 16px;
   &--off { opacity: 0.6; }
+  // Every consumer renders class="item__main" but nothing styled it. It takes the row and
+  // may shrink; below its basis the actions wrap to their own line instead of overflowing.
+  &__main { flex: 1 1 200px; min-width: 0; }
   &__name { font-size: 15px; font-weight: 700; color: $text; }
-  &__meta { font-size: 12.5px; color: $text-2; margin-top: 2px; }
-  &__actions { display: flex; gap: 4px; white-space: nowrap; }
+  &__meta { font-size: 12.5px; color: $text-2; margin-top: 2px; overflow-wrap: anywhere; }
+  &__actions { display: flex; gap: 8px; white-space: nowrap; }
 }
 .tag { font-size: 10.5px; font-weight: 700; background: #eef2f6; color: $text-2; padding: 2px 7px; border-radius: 10px; vertical-align: middle; }

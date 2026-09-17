@@ -18,6 +18,38 @@
         <button class="btn btn--ghost" (click)="print()">🖨 Print</button>
       </div>
 
+      <!-- Pay this invoice. Share-link recipients only — the owner's own preview routes
+           (/:id and ?inv=) never offer it. The amount comes from the server, never here. -->
+      @if (canPay) {
+        <div class="paybox no-print">
+          @if (payState() === 'idle') {
+            <button class="btn btn--primary" (click)="startPayment()">
+              Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
+            </button>
+          } @else {
+            <div id="invoice-payment-element"></div>
+            <div class="paybox__actions">
+              <button class="btn btn--primary" [disabled]="payState() === 'processing'" (click)="submitPayment()">
+                {{ payState() === 'processing' ? 'Processing…' : 'Pay ' + (balance | currency:currency:'symbol':'1.2-2') }}
+              </button>
+              <button class="btn btn--ghost" [disabled]="payState() === 'processing'" (click)="cancelPayment()">Cancel</button>
+            </div>
+          }
+          @if (payError()) { <p class="paybox__error">{{ payError() }}</p> }
+        </div>
+      }
+
+      <!-- Booking-linked invoice: pay on the booking's own pay page. The token here belongs
+           to booking_links, which the invoice payment function cannot resolve, so a direct
+           button would always fail — and the pay page additionally offers deposit vs full. -->
+      @if (canPayViaBooking) {
+        <div class="paybox no-print">
+          <a class="btn btn--primary" [href]="payPageLink">
+            Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
+          </a>
+        </div>
+      }
+
       <!-- A4 sheet -->
       <div class="sheet" #sheet>
         <header class="inv-head">
@@ -35,8 +67,15 @@
             <table class="meta">
               <tr><td>Invoice no.</td><td>{{ invoiceNumber }}</td></tr>
               <tr><td>Issue date</td><td>{{ issueDate | date:'d MMM yyyy' }}</td></tr>
-              <tr><td>Service date</td><td>{{ d.booking.start_at | date:'d MMM yyyy' }}</td></tr>
-              <tr><td>Booking</td><td>{{ d.booking.booking_ref }}</td></tr>
+              <!-- Both rows are booking-derived. A standalone invoice still has its own
+                   service date; it simply has no job reference, so that row is omitted
+                   rather than printed blank. -->
+              @if (serviceDate) {
+                <tr><td>Service date</td><td>{{ serviceDate | date:'d MMM yyyy' }}</td></tr>
+              }
+              @if (bookingRef) {
+                <tr><td>Booking</td><td>{{ bookingRef }}</td></tr>
+              }
             </table>
           </div>
         </header>

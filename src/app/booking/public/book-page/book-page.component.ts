@@ -10,7 +10,7 @@ import { PublicDelivery } from '@booking/core/interfaces/delivery.interface';
 type PageState = 'loading' | 'invalid' | 'unavailable' | 'paid' | 'partial' | 'ready' | 'choose' | 'paying' | 'requested' | 'confirmed' | 'error';
 type PaymentType = 'deposit' | 'full' | 'remainder';
 
-const STRIPE_PK = 'pk_live_51ShRJTAXI0tdCXi3HuEvh9PuIVMFTjqRlMQwsg8pqMlhACOXGKAiATxj9MzW268hs9RV6RvCb5FP1bIFHuNlZkBG007LHcSnOB';
+import { STRIPE_PK } from '@booking/core/config/stripe';
 
 interface BookingDetails {
   title: string;
@@ -256,7 +256,12 @@ export class BookPageComponent implements OnInit {
         this.paymentElement.mount('#payment-element');
       }, 50);
     } catch (err: any) {
-      this.errorMessage.set(err.message ?? 'Something went wrong.');
+      // supabase-js replaces a non-2xx function body with "Edge Function returned a
+      // non-2xx status code", so the server's real reason — "Booking is already fully
+      // paid", "This booking has been cancelled.", "Card payment is not enabled for this
+      // booking" — never reached the client. The payload is on err.context.
+      const body = await err?.context?.json?.().catch(() => null);
+      this.errorMessage.set(body?.error ?? err?.message ?? 'Something went wrong.');
       this.cardLoading.set(false);
       this.state.set(this.returnState);
     }

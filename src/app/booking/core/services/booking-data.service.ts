@@ -2,8 +2,9 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
-import { LineItem } from '@booking/core/interfaces/invoice.interface';
+import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
+import { Earnings } from '@booking/core/interfaces/earnings.interface';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
 
 // Scoped to PlatformShellComponent — provided there, not root.
@@ -210,6 +211,28 @@ export class BookingDataService implements OnDestroy {
     return token ? `${window.location.origin}/book/invoice?token=${token}` : null;
   }
 
+  /**
+   * Shareable link for an INVOICE — the only way to send one that has no booking.
+   *
+   * Deliberately a different token namespace from `invoiceShareLink`: that one mints a
+   * `booking_links` PAY token, which also unlocks card payment and the delivery paywall.
+   * An `invoice_links` token grants exactly one capability — view this invoice — so
+   * sending someone a bill doesn't hand them the pay page and the deliverables too.
+   * The RPC reuses an existing active token rather than accumulating a new one per click.
+   */
+  async invoiceShareLinkById(invoiceId: string): Promise<string | null> {
+    const { data, error } = await bookingsDb.rpc('create_invoice_link', { p_invoice: invoiceId });
+    if (error) { console.error('[BookingData] invoiceShareLinkById:', error.message); return null; }
+    return data ? `${window.location.origin}/book/invoice?token=${data as string}` : null;
+  }
+
+  /** Revoke every share link for an invoice (a leaked link, or work withdrawn). */
+  async revokeInvoiceLinks(invoiceId: string): Promise<number> {
+    const { data, error } = await bookingsDb.rpc('revoke_invoice_links', { p_invoice: invoiceId });
+    if (error) { console.error('[BookingData] revokeInvoiceLinks:', error.message); return 0; }
+    return (data as number) ?? 0;
+  }
+
   async syncCalendar(): Promise<void> {
     this.syncing.set(true);
     this.syncResult.set(null);
@@ -307,15 +330,148 @@ export class BookingDataService implements OnDestroy {
     await this.fetchBookings();
   }
 
+  // ── Invoices (invoice-rooted read model) ─────────────────────────────────
+  /**
+   * Rows for the Invoices page, from the `invoice_list` view.
+   *
+   * The view drives FROM invoices and LEFT JOINs outward, so an invoice with no
+   * booking still returns a row — which is the entire point, and impossible with
+   * the old booking-rooted list. It is also the single definition of gross / net /
+   * paid / balance / payment status, all computed in SQL.
+   *
+   * Only `issued` invoices are listed: a draft has no number and isn't revenue yet.
+   */
+  async queryInvoices(): Promise<InvoiceListRow[]> {
+    const org = this.auth.orgId();
+    if (!org) return [];
+    const { data, error } = await bookingsDb
+      .from('invoice_list')
+      .select('*')
+      .eq('org_id', org)
+      .eq('status', 'issued')
+      .order('number_seq', { ascending: false, nullsFirst: false });
+    if (error) { console.error('[BookingData] queryInvoices:', error); return []; }
+    return (data ?? []) as InvoiceListRow[];
+  }
+
+  /**
+   * One invoice's editable columns, keyed on the INVOICE id.
+   * Read straight from the table rather than through an RPC: org admins already have
+   * RLS-scoped SELECT on `invoices`, so a `get_invoice_by_id` function would add a
+   * SECURITY DEFINER surface for no gain. `get_invoice` can't serve this — it's keyed
+   * on a booking, which a standalone invoice doesn't have.
+   */
+  async getInvoiceById(id: string): Promise<EditableInvoice | null> {
+    // NB: the column list must be ONE string literal — supabase-js parses it at compile
+    // time to type the result, and a concatenated expression degrades to GenericStringError.
+    const { data, error } = await bookingsDb
+      .from('invoices')
+      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, notes, line_items, status, number_year, number_seq, amount_expenses')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) { console.error('[BookingData] getInvoiceById:', error); return null; }
+    return (data as EditableInvoice) ?? null;
+  }
+
+  /** The invoice attached to a booking, or null if it has none yet. Used by the editor
+   *  when it's opened from a booking, to load the invoice's OWN fields — `get_invoice`
+   *  returns the printable bundle, not the invoice's client/worker/service columns. */
+  async getInvoiceByBooking(bookingId: string): Promise<EditableInvoice | null> {
+    const { data, error } = await bookingsDb
+      .from('invoices')
+      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, notes, line_items, status, number_year, number_seq, amount_expenses')
+      .eq('booking_id', bookingId)
+      // A booking can carry several invoices (deposit + final, or a supplementary one
+      // when scope grows). "The booking's invoice" is always the OLDEST — the original
+      // document — so existing links and booking-form saves never jump to a later one.
+      // `.limit(1)` is load-bearing: `.maybeSingle()` alone THROWS on two rows.
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) { console.error('[BookingData] getInvoiceByBooking:', error); return null; }
+    return (data as EditableInvoice) ?? null;
+  }
+
+  /** Every invoice on a booking, original first. The per-booking half of "list the
+   *  invoices for a job, and the job for an invoice". */
+  async listInvoicesForBooking(bookingId: string): Promise<InvoiceListRow[]> {
+    const { data, error } = await bookingsDb
+      .from('invoice_list')
+      .select('*')
+      .eq('booking_id', bookingId)
+      // invoice_list carries no created_at; number_seq orders the issued ones in the
+      // sequence they were raised and puts unnumbered drafts last, which is the order wanted.
+      .order('number_seq', { ascending: true, nullsFirst: false });
+    if (error) { console.error('[BookingData] listInvoicesForBooking:', error); return []; }
+    return (data ?? []) as InvoiceListRow[];
+  }
+
+  /**
+   * Raise an ADDITIONAL invoice against a booking that already has one — the
+   * supplementary/variation invoice you issue when scope grows after the first is
+   * already sent. Returns the new invoice's id so the caller can open its editor.
+   * Without `new_invoice`, save_invoice updates the booking's existing invoice.
+   */
+  async addInvoiceToBooking(orgId: string, bookingId: string): Promise<{ id?: string; error?: string }> {
+    const { data, error } = await bookingsDb.rpc('save_invoice', {
+      p_org: orgId,
+      p_invoice: { booking_id: bookingId, new_invoice: true, status: 'draft' },
+      p_lines: [],
+    });
+    if (error) return { error: error.message };
+    return { id: data as string };
+  }
+
+  /**
+   * Create or update a full invoice — standalone (no `booking_id`) or booking-linked.
+   * Returns the invoice id, which a freshly created invoice needs in order to route to
+   * its own edit page. `lines` of `null` means "leave the lines alone".
+   */
+  async saveInvoiceRecord(orgId: string, invoice: InvoiceInput, lines: LineItem[] | null): Promise<{ id?: string; error?: string }> {
+    const { data, error } = await bookingsDb.rpc('save_invoice', {
+      p_org: orgId, p_invoice: invoice, p_lines: lines,
+    });
+    if (error) return { error: error.message };
+    return { id: data as string };
+  }
+
+  /** Populate `clients()` on its own — the invoice editor needs the client picker,
+   *  not the org-wide bookings list that `load()` also fetches. */
+  async loadClients(): Promise<void> { await this.fetchClients(); }
+
+  /**
+   * Earnings for the dashboard, computed entirely in SQL.
+   * `staffId` null = the whole organization; pass one to see a single worker.
+   * Deliberately has no service filter: a payment settles an invoice, not a line, so
+   * a service filter could only apply honestly to the work-done half. Per-service
+   * comes back as a breakdown (`by_service`) instead.
+   */
+  async getEarnings(orgId: string, staffId: string | null = null,
+                    from: string | null = null, to: string | null = null): Promise<Earnings | null> {
+    const { data, error } = await bookingsDb.rpc('get_earnings', {
+      p_org: orgId, p_from: from, p_to: to, p_staff: staffId,
+    });
+    if (error) { console.error('[BookingData] getEarnings:', error); return null; }
+    return (data as Earnings) ?? null;
+  }
+
   // ── Invoice overrides (edit an invoice WITHOUT touching the booking) ─────
-  /** Persist a customised invoice for a booking (line items / notes / date). */
+  /**
+   * Persist a customised invoice for a booking (line items / notes / date).
+   * Goes through the `save_invoice` RPC rather than a PostgREST upsert: an invoice
+   * now carries its own client/worker/service/date and may have no booking at all,
+   * and its lines must land in `invoice_lines` in the same transaction.
+   * The RPC PATCHES — only the keys passed here are written, so a caller that sends
+   * just the line items can never blank out the invoice's own client/worker/date.
+   */
   async saveInvoice(orgId: string, bookingId: string, input: {
     lineItems: LineItem[]; notes: string | null; issueDate: string | null;
   }): Promise<{ ok?: boolean; error?: string }> {
-    const { error } = await bookingsDb.from('invoices').upsert({
-      org_id: orgId, booking_id: bookingId,
-      line_items: input.lineItems, notes: input.notes, issue_date: input.issueDate,
-    }, { onConflict: 'booking_id' });
+    const { error } = await bookingsDb.rpc('save_invoice', {
+      p_org: orgId,
+      p_invoice: { booking_id: bookingId, notes: input.notes, issue_date: input.issueDate },
+      p_lines: input.lineItems,
+    });
     if (error) return { error: error.message };
     return { ok: true };
   }
@@ -333,9 +489,15 @@ export class BookingDataService implements OnDestroy {
 
   /** Discard the customised invoice — revert to one derived live from the booking. Clears the
    *  override in place (keeps the 1:1 row, so re-editing just updates it; a soft delete would
-   *  collide with UNIQUE(booking_id)). */
-  async resetInvoice(bookingId: string): Promise<void> {
-    await bookingsDb.from('invoices').update({ line_items: [], notes: null, issue_date: null }).eq('booking_id', bookingId);
+   *  collide with UNIQUE(booking_id)). Routed through `save_invoice` so the `invoice_lines`
+   *  rows are cleared with the `line_items` JSONB — a direct table update would empty one
+   *  representation and leave the other behind. */
+  async resetInvoice(orgId: string, bookingId: string): Promise<void> {
+    await bookingsDb.rpc('save_invoice', {
+      p_org: orgId,
+      p_invoice: { booking_id: bookingId, notes: null, issue_date: null },
+      p_lines: [],
+    });
   }
 
   // ── Delivery (what the client receives once paid) ─────────────────────────
@@ -412,20 +574,39 @@ export class BookingDataService implements OnDestroy {
    * gone from the platform but its event still sits on the calendar (e.g. expired Google
    * token), so the caller can warn instead of falsely claiming success.
    */
-  async deleteBooking(bookingId: string, removeCalendarEvent: boolean): Promise<{ ok?: boolean; error?: string; calendarCleared?: boolean }> {
+  async deleteBooking(bookingId: string, removeCalendarEvent: boolean, keepInvoice = true): Promise<{ ok?: boolean; error?: string; calendarCleared?: boolean; keptInvoice?: boolean }> {
     let calendarCleared = true;
     if (removeCalendarEvent) {
       const { data, error } = await bookingsDb.functions.invoke('cancel-booking', { body: { bookingId, refund: false } });
       if (error) return { error: error.message };
       calendarCleared = (data as { calendar_cleared?: boolean } | null)?.calendar_cleared !== false;
     }
-    // Soft delete via SECURITY DEFINER RPC — a direct UPDATE would be rejected by the
-    // restrictive hide_deleted SELECT policy (the new row becomes invisible). The DB
-    // cascade-soft-deletes its slots/payments/invoices/links/tasks/cards.
-    const { error } = await bookingsDb.rpc('soft_delete', { p_table: 'bookings', p_id: bookingId });
+    // `delete_booking` rather than the generic `soft_delete`: deleting the job and
+    // discarding its invoice are separate decisions. When the invoice is kept it's
+    // DETACHED first (along with its payments), so the booking's cascade can't hide
+    // it — it simply becomes a standalone invoice, number and payments intact.
+    const { data, error } = await bookingsDb.rpc('delete_booking', {
+      p_booking: bookingId, p_keep_invoice: keepInvoice,
+    });
     if (error) return { error: error.message };
     await this.fetchBookings();
-    return { ok: true, calendarCleared };
+    return { ok: true, calendarCleared, keptInvoice: (data as { kept_invoice?: boolean } | null)?.kept_invoice === true };
+  }
+
+  /** The invoice attached to a booking, with its money resolved — so the delete prompt
+   *  can name it and show what's at stake before anything is removed. */
+  async getInvoiceSummary(bookingId: string): Promise<InvoiceListRow | null> {
+    const { data, error } = await bookingsDb
+      .from('invoice_list')
+      .select('*')
+      .eq('booking_id', bookingId)
+      // `.limit(1)` is load-bearing: with two invoices on the booking `.maybeSingle()`
+      // THROWS, which would break the delete prompt outright.
+      .order('number_seq', { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) { console.error('[BookingData] getInvoiceSummary:', error); return null; }
+    return (data as InvoiceListRow) ?? null;
   }
 
   /** Cancel a booking (frees the slot + removes the calendar event); optional Stripe refund. */

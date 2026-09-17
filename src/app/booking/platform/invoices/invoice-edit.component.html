@@ -8,35 +8,114 @@
     <div class="page__head">
       <div>
         <button type="button" class="back" (click)="leave()">{{ backLabel }}</button>
-        <h1 class="page__title">Edit invoice {{ invoiceNumber }}</h1>
+        <h1 class="page__title">
+          @if (isNew()) { New invoice } @else { Edit invoice {{ invoiceNumber }} }
+        </h1>
         <p class="page__sub">
-          {{ clientName }}
-          @if (customized()) { · <span class="tag">edited</span> } @else { · <span class="muted">from booking</span> }
+          {{ billsTo }}
+          @if (isStandalone) { · <span class="tag">no job</span> }
         </p>
       </div>
-      <button class="btn btn--ghost" (click)="preview()">Preview</button>
+      <!-- Preview works for a standalone invoice too (it prints via ?inv=). Only an
+           unsaved new invoice has no id to address yet. -->
+      @if (!isNew()) {
+        <button class="btn btn--ghost" (click)="preview()">Preview</button>
+      }
+    </div>
+
+    <div class="card">
+      <h2 class="card__h">What this invoice is for</h2>
+      <p class="hint">
+        Leave the job empty to bill work that never had a time slot. Picking a job links
+        the invoice to it and keeps that booking's total in step.
+      </p>
+
+      <label class="field">
+        <span>Job <span class="opt">(optional)</span></span>
+        <select [(ngModel)]="jobId" (ngModelChange)="onJobChange()">
+          <option value="">No job — invoice only</option>
+          @for (o of jobOptions(); track o.id) {
+            <option [value]="o.id">{{ o.title }}{{ o.clientName ? ' · ' + o.clientName : '' }} ({{ o.start_at | date:'d MMM y' }})</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Title</span>
+        <input type="text" [(ngModel)]="title" placeholder="e.g. Drone filming — Valletta" />
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Client <span class="opt">(optional)</span></span>
+          <select [(ngModel)]="clientId">
+            <option value="">No saved client</option>
+            @for (c of data.clients(); track c.id) {
+              <option [value]="c.id">{{ c.company || c.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span>…or a one-off name</span>
+          <input type="text" [(ngModel)]="contactName" placeholder="Billed to this name only" />
+        </label>
+      </div>
+      <button type="button" class="back" (click)="openClientEditor()">+ New client</button>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Worker <span class="opt">(who earned it)</span></span>
+          <select [(ngModel)]="staffId">
+            <option value="">Unassigned</option>
+            @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+          </select>
+        </label>
+        <label class="field">
+          <span>Service <span class="opt">(for reporting)</span></span>
+          <select [(ngModel)]="serviceId">
+            <option value="">Unattributed</option>
+            @for (s of services(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Work done on</span>
+          <input type="date" [(ngModel)]="serviceDate" />
+        </label>
+        <label class="field">
+          <span>Issue date <span class="opt">(sets the number's year)</span></span>
+          <input type="date" [(ngModel)]="issueDate" />
+        </label>
+      </div>
     </div>
 
     <div class="card">
       <h2 class="card__h">Line items</h2>
-      <p class="hint">These are the source of truth for what the client is charged. Saving updates the booking's total (and its calendar event) to match.</p>
-
+      <p class="hint">
+        These are the source of truth for what the client is charged.
+        @if (!isStandalone) { Saving updates the booking's total (and its calendar event) to match. }
+      </p>
       <app-line-items-editor [(items)]="items" [currency]="currency" [services]="services()" />
     </div>
 
     <div class="card">
-      <label class="field"><span>Issue date</span><input type="date" [(ngModel)]="issueDate" /></label>
       <label class="field"><span>Invoice note <span class="opt">(optional, printed on this invoice)</span></span>
         <textarea rows="2" [(ngModel)]="notes" placeholder="Anything specific the client asked for on this invoice"></textarea>
       </label>
     </div>
 
     <div class="actions">
-      <button class="btn btn--primary" [disabled]="!canSave" (click)="save()">{{ saving() ? 'Saving…' : 'Save invoice' }}</button>
-      @if (customized()) {
+      <button class="btn btn--primary" [disabled]="!canSave" (click)="save()">
+        {{ saving() ? 'Saving…' : (isNew() ? 'Create invoice' : 'Save invoice') }}
+      </button>
+      @if (!isStandalone && !isNew()) {
         <button class="btn btn--ghost" [disabled]="saving()" (click)="resetToBooking()">Reset to booking</button>
       }
       <button type="button" class="btn btn--ghost" (click)="leave()">Cancel</button>
     </div>
+
+    <app-client-editor [(open)]="clientEditorOpen" (saved)="onClientCreated($event)" />
   }
 </div>

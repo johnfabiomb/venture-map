@@ -21,6 +21,8 @@
 -- ── 0. RESET (comment out to keep data) ────────────────────────────────────
 DROP VIEW  IF EXISTS public.booking_summary CASCADE;
 DROP TABLE IF EXISTS public.deliveries      CASCADE;
+DROP TABLE IF EXISTS public.invoice_lines   CASCADE;   -- before invoices (FK)
+DROP TABLE IF EXISTS public.invoice_counters CASCADE;
 DROP TABLE IF EXISTS public.invoices        CASCADE;
 DROP TABLE IF EXISTS public.work_items      CASCADE;
 DROP TABLE IF EXISTS public.tasks           CASCADE;
@@ -331,7 +333,12 @@ GRANT EXECUTE ON FUNCTION public.update_booking(uuid,jsonb,jsonb) TO authenticat
 CREATE TABLE public.payments (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id                   UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  booking_id               UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  -- Nullable since §15: a payment may settle a standalone invoice with no booking.
+  -- `invoice_id` + the payments_has_parent CHECK are added in §15c (invoices is
+  -- defined later). Every Edge Function still inserts booking_id only — the
+  -- set_payment_invoice trigger fills invoice_id in, which is precisely why none
+  -- of the Stripe/webhook/calendar functions needed changing.
+  booking_id               UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
   amount                   NUMERIC(10,2) NOT NULL,
   type                     payment_type   NOT NULL,
   status                   payment_status NOT NULL DEFAULT 'pending',
@@ -620,8 +627,18 @@ CREATE POLICY bk_client_i ON public.bookings FOR INSERT
 -- payments: org admin all; client reads payments on their own bookings
 CREATE POLICY pay_admin  ON public.payments FOR ALL
   USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+-- Two arms, because a payment can belong to a booking, an invoice, or both. The invoice
+-- arm is load-bearing: delete_booking(keep) and any future detach set payments.booking_id
+-- to NULL, and `NULL IN (…)` is NULL → false, so a booking-only policy silently locked a
+-- client out of reading their OWN payment (their /pay/success receipt went blank).
+-- Names are qualified — the unqualified form is the tautology class documented at §15.
 CREATE POLICY pay_client_r ON public.payments FOR SELECT
-  USING (booking_id IN (SELECT id FROM bookings WHERE client_id = public.current_client_id(org_id)));
+  USING (
+    booking_id IN (SELECT b.id FROM public.bookings b
+                    WHERE b.client_id = public.current_client_id(b.org_id))
+    OR invoice_id IN (SELECT i.id FROM public.invoices i
+                       WHERE i.client_id = public.current_client_id(i.org_id))
+  );
 
 -- booking_links: org admin only. No token policy — see the note above bookings; the
 -- public pay flow resolves tokens inside SECURITY DEFINER functions instead.
@@ -855,94 +872,833 @@ GRANT  UPDATE (name, timezone, currency, booking_params, features, invoice_detai
 --   shows. Admins may edit invoice_details (§14 grant); stripe_* stays service-role-only.
 
 
--- ── 15. Editable invoices ──────────────────────────────────────────────────
--- An invoice is generated live from its booking by default; the moment the admin
--- EDITS it (line items / notes / issue date), the edits are persisted here, keyed
--- 1:1 to the booking. Editing an invoice NEVER touches the booking/calendar/work
--- data — full decoupling. Absent row ⇒ the invoice is derived from the booking.
--- `line_items` shape: [{ "description": text, "amount": number }, …].
+-- ── 15. Invoices — the money record ────────────────────────────────────────
+-- An invoice is the unit of MONEY; a booking is the unit of WORK IN THE CALENDAR.
+-- An invoice MAY link to a booking (the common case, still 1:1) or stand alone —
+-- work billed with no time slot, which is how a self-employed owner actually
+-- works. It carries its own client / worker / service / date so it survives its
+-- booking being deleted, and so earnings can be reported per worker and per
+-- service. `booking_id` is therefore NULLABLE.
+--
+-- `line_items` JSONB is the LEGACY representation and is still dual-written by
+-- save_invoice, because _invoice_bundle, the public invoice page and
+-- payment-success all read it. `invoice_lines` (§15b) is the normalised truth
+-- used for per-service reporting. Don't drop the JSONB until every reader moves.
 CREATE TABLE public.invoices (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  booking_id  UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
-  line_items  JSONB NOT NULL DEFAULT '[]'::jsonb,
+  booking_id  UUID REFERENCES public.bookings(id) ON DELETE CASCADE,   -- NULL = standalone
+  -- The invoice's own identity, denormalised so it outlives the booking.
+  client_id   UUID REFERENCES public.clients(id)  ON DELETE SET NULL,
+  staff_id    UUID REFERENCES public.staff(id)    ON DELETE SET NULL,  -- money survives a worker row going away
+  service_id  UUID REFERENCES public.services(id) ON DELETE SET NULL,  -- header-level attribution (reporting groups by LINE)
+  contact_name TEXT,                                -- one-off customer, mirrors bookings.contact_name
+  title        TEXT,
+  service_date DATE,                                -- when the work happened (drives "work done" earnings)
+  line_items  JSONB NOT NULL DEFAULT '[]'::jsonb,   -- legacy mirror of invoice_lines
   notes       TEXT,
   issue_date  DATE,
+  amount_expenses NUMERIC(10,2) NOT NULL DEFAULT 0, -- the seam a future expenses/VAT module plugs into
+  -- One continuous series per org+year (INV-YYYY-NNN), assigned by save_invoice.
+  -- NULL until issued, so drafts never consume a number.
+  number_year INT,
+  number_seq  INT,
+  status      TEXT CHECK (status IS NULL OR status IN ('draft','issued','void')),
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now(),
-  deleted_at  TIMESTAMPTZ,
-  UNIQUE (booking_id)
+  -- NOTE: deliberately NO unique constraint on booking_id. A booking can carry SEVERAL
+  -- invoices — a deposit and a final, or a supplementary one raised when scope grows
+  -- after the first was already sent (an issued invoice is a document the client holds;
+  -- you don't edit it, you issue another). Dropping it was only safe once the PostgREST
+  -- .upsert({onConflict:'booking_id'}) that relied on it as an arbiter had been replaced
+  -- by the save_invoice RPC. Everything resolving "the booking's invoice" takes the
+  -- OLDEST, so existing links keep pointing at the original document.
+  -- (One invoice still belongs to at most one booking; consolidated billing across
+  -- several jobs would need a join table and is deliberately not built.)
+  deleted_at  TIMESTAMPTZ
 );
-CREATE INDEX invoices_org_idx ON public.invoices(org_id);
+CREATE INDEX invoices_org_idx     ON public.invoices(org_id);
+CREATE INDEX invoices_booking_idx ON public.invoices(booking_id);
+CREATE INDEX invoices_client_idx  ON public.invoices(client_id);
+CREATE INDEX invoices_staff_idx   ON public.invoices(staff_id);
+CREATE INDEX invoices_service_idx ON public.invoices(service_id);
+CREATE UNIQUE INDEX invoices_number_key ON public.invoices(org_id, number_year, number_seq)
+  WHERE number_seq IS NOT NULL AND deleted_at IS NULL;
+
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 -- WITH CHECK also verifies the booking belongs to org_id, so an admin of org A
--- can't attach an invoice override to org B's booking (cross-tenant integrity).
+-- can't attach an invoice to org B's booking (cross-tenant integrity).
+-- ⚠️ Both halves of this matter:
+--   * Names are QUALIFIED. The previous version compared `b.org_id = org_id`, and
+--     inside the subquery both names bound to `bookings` → `b.org_id = b.org_id`,
+--     a tautology: the cross-tenant guard never actually ran.
+--   * `booking_id IS NULL OR …` — without it a standalone invoice evaluates
+--     `b.id = NULL` → no rows → EXISTS false → every insert rejected.
 CREATE POLICY inv_admin ON public.invoices FOR ALL
   USING (public.is_org_admin(org_id))
   WITH CHECK (public.is_org_admin(org_id)
-              AND EXISTS (SELECT 1 FROM public.bookings b WHERE b.id = booking_id AND b.org_id = org_id));
+              AND (booking_id IS NULL
+                   OR EXISTS (SELECT 1 FROM public.bookings b
+                               WHERE b.id = invoices.booking_id
+                                 AND b.org_id = invoices.org_id)));
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoices TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoices TO service_role;  -- created after the blanket service_role grant, so grant explicitly
 CREATE TRIGGER invoices_updated BEFORE UPDATE ON public.invoices
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- `_invoice_bundle(booking)` assembles the full invoice JSON (org company details,
--- client, line items [override or derived], totals, payments) with NO authorization —
--- it's internal and only reachable through the two SECURITY DEFINER wrappers below, so
--- it's NOT granted to anon/authenticated. Returns only invoice-safe fields (never
--- price_revenue or other bookings).
-CREATE OR REPLACE FUNCTION public._invoice_bundle(p_booking UUID)
+
+-- ── 15b. invoice_lines — normalised charges (per-service reporting) ────────
+-- Per-service earnings must group by LINE: one invoice can mix services, so an
+-- invoice-level service_id would mis-attribute it. `amount` is frozen at pick
+-- time; `service_id` is attribution only and NEVER re-prices the line.
+CREATE TABLE public.invoice_lines (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  invoice_id  UUID NOT NULL REFERENCES public.invoices(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  amount      NUMERIC(10,2) NOT NULL DEFAULT 0,
+  service_id  UUID REFERENCES public.services(id) ON DELETE SET NULL,
+  hours       NUMERIC(6,2),
+  sort        INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  deleted_at  TIMESTAMPTZ
+);
+CREATE INDEX invoice_lines_invoice_idx ON public.invoice_lines(invoice_id);
+CREATE INDEX invoice_lines_org_idx     ON public.invoice_lines(org_id);
+CREATE INDEX invoice_lines_service_idx ON public.invoice_lines(service_id);
+ALTER TABLE public.invoice_lines ENABLE ROW LEVEL SECURITY;
+CREATE POLICY il_admin ON public.invoice_lines FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.invoice_lines TO authenticated;
+GRANT ALL ON public.invoice_lines TO service_role;
+
+
+-- ── 15c. payments → invoices (added here: invoices must exist first) ───────
+-- This is the single change that keeps EVERY Edge Function byte-identical: they
+-- all insert a payment with booking_id only, and the trigger below fills in
+-- invoice_id. Do not "improve" the Stripe functions to write invoice_id.
+ALTER TABLE public.payments
+  ADD COLUMN invoice_id UUID REFERENCES public.invoices(id) ON DELETE SET NULL;
+CREATE INDEX payments_invoice_idx ON public.payments(invoice_id);
+ALTER TABLE public.payments ADD CONSTRAINT payments_has_parent
+  CHECK (booking_id IS NOT NULL OR invoice_id IS NOT NULL);
+
+-- A payment inserted with only booking_id adopts that booking's invoice.
+-- The ordering is DELIBERATE, not incidental: with a deposit invoice and a final
+-- invoice on one booking, a bare `LIMIT 1` would attach money to whichever the planner
+-- happened to return first. Rule: the OLDEST invoice that still has something
+-- outstanding; if all are settled, the oldest. (A client paying a specific invoice link
+-- already carries its invoice_id, so this only governs the booking-keyed fallback that
+-- every Edge Function uses.)
+CREATE OR REPLACE FUNCTION public.set_payment_invoice() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+BEGIN
+  IF NEW.invoice_id IS NULL AND NEW.booking_id IS NOT NULL THEN
+    SELECT i.id INTO NEW.invoice_id
+      FROM invoices i
+     WHERE i.booking_id = NEW.booking_id AND i.deleted_at IS NULL
+     ORDER BY
+       (COALESCE((SELECT SUM(l.amount) FROM invoice_lines l
+                   WHERE l.invoice_id = i.id AND l.deleted_at IS NULL), 0)
+        - COALESCE((SELECT SUM(p.amount) FROM payments p
+                     WHERE p.invoice_id = i.id AND p.status = 'completed'
+                       AND p.deleted_at IS NULL), 0)) > 0 DESC,   -- unsettled first
+       i.created_at ASC                                            -- then oldest
+     LIMIT 1;
+  END IF;
+  RETURN NEW;
+END $f$;
+DROP TRIGGER IF EXISTS payments_set_invoice ON public.payments;
+CREATE TRIGGER payments_set_invoice BEFORE INSERT ON public.payments
+  FOR EACH ROW EXECUTE FUNCTION public.set_payment_invoice();
+
+-- The reverse race: payments recorded BEFORE the booking's invoice row existed.
+-- Restricted to the case it was written for — the booking's ONLY invoice. Without that
+-- guard, raising a supplementary invoice on a booking would sweep up and STEAL payments
+-- that belong to the original.
+CREATE OR REPLACE FUNCTION public.adopt_booking_payments() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+BEGIN
+  IF NEW.booking_id IS NOT NULL
+     AND (SELECT count(*) FROM invoices i
+           WHERE i.booking_id = NEW.booking_id AND i.deleted_at IS NULL) = 1 THEN
+    UPDATE payments SET invoice_id = NEW.id
+     WHERE booking_id = NEW.booking_id AND invoice_id IS NULL;
+  END IF;
+  RETURN NEW;
+END $f$;
+DROP TRIGGER IF EXISTS invoices_adopt_payments ON public.invoices;
+CREATE TRIGGER invoices_adopt_payments AFTER INSERT ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.adopt_booking_payments();
+
+
+-- ── 15d. Invoice numbering ─────────────────────────────────────────────────
+-- UPDATE … RETURNING takes a row lock, so two concurrent issues can't collide.
+-- (set_booking_ref's MAX()+1 still has that race; this deliberately doesn't
+-- repeat it.) Reachable ONLY through next_invoice_seq — no grants on the table.
+CREATE TABLE public.invoice_counters (
+  org_id   UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  year     INT  NOT NULL,
+  last_seq INT  NOT NULL DEFAULT 0,
+  PRIMARY KEY (org_id, year)
+);
+ALTER TABLE public.invoice_counters ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.next_invoice_seq(p_org UUID, p_year INT)
+RETURNS INT
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_seq INT;
+BEGIN
+  INSERT INTO invoice_counters (org_id, year, last_seq)
+  VALUES (p_org, p_year, 0) ON CONFLICT (org_id, year) DO NOTHING;
+  UPDATE invoice_counters SET last_seq = last_seq + 1
+   WHERE org_id = p_org AND year = p_year
+  RETURNING last_seq INTO v_seq;
+  RETURN v_seq;
+END $$;
+REVOKE ALL ON FUNCTION public.next_invoice_seq(UUID,INT) FROM PUBLIC;
+
+
+-- ── 15e. save_invoice — the ONLY write path for invoices ───────────────────
+-- Replaces the old PostgREST .upsert({onConflict:'booking_id'}), which could only
+-- write line_items/notes/issue_date keyed on a booking. An invoice now has its own
+-- identity, may have no booking, and its lines must land in invoice_lines in the
+-- SAME transaction.
+--
+-- PATCH SEMANTICS: on update, only keys PRESENT in p_invoice are written. An absent
+-- key leaves its column alone; a key present with null clears it. This is load-
+-- bearing — booking-form.component.ts sends only line items/notes/issue date, and
+-- without it every booking edit would wipe client_id/staff_id/title/service_date.
+-- Likewise p_lines = null means "don't touch the lines".
+--
+-- p_invoice: { id?, booking_id?, new_invoice?, client_id?, staff_id?, service_id?,
+--              contact_name?, title?, service_date?, notes?, issue_date?,
+--              amount_expenses?, status? }
+-- p_lines:   [ { description, amount, serviceId?, hours? }, … ]   (array order = sort)
+--
+-- `new_invoice: true` raises an ADDITIONAL invoice against a booking that already has
+-- one (the supplementary/variation invoice). Without it, a call carrying a booking_id
+-- updates that booking's OLDEST invoice — which is what keeps booking-form's
+-- every-edit save writing to the original document rather than a later one.
+CREATE OR REPLACE FUNCTION public.save_invoice(p_org uuid, p_invoice jsonb, p_lines jsonb)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_id uuid; v_booking uuid; v_status text; v_year int; v_seq int; v_new boolean;
+BEGIN
+  IF NOT public.is_org_admin(p_org) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  v_id      := NULLIF(p_invoice->>'id','')::uuid;
+  v_booking := NULLIF(p_invoice->>'booking_id','')::uuid;
+  v_new     := COALESCE((p_invoice->>'new_invoice')::boolean, false);
+
+  -- Cross-tenant integrity (the guard the old RLS tautology never enforced).
+  IF v_booking IS NOT NULL AND NOT EXISTS (
+       SELECT 1 FROM bookings b
+        WHERE b.id = v_booking AND b.org_id = p_org AND b.deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'booking not in org' USING errcode = '42501';
+  END IF;
+
+  -- Resolve which invoice to write: the booking's OLDEST. Never the newest, or editing
+  -- a booking would start silently overwriting a supplementary invoice.
+  IF v_id IS NULL AND v_booking IS NOT NULL AND NOT v_new THEN
+    SELECT id INTO v_id FROM invoices
+     WHERE booking_id = v_booking AND deleted_at IS NULL
+     ORDER BY created_at ASC LIMIT 1;
+  END IF;
+
+  IF v_id IS NULL THEN
+    INSERT INTO invoices (org_id, booking_id, client_id, staff_id, service_id, contact_name,
+                          title, service_date, line_items, notes, issue_date,
+                          amount_expenses, status)
+    VALUES (p_org, v_booking,
+            -- A new invoice INHERITS the booking's identity when the caller doesn't
+            -- supply one. booking-form sends only line items, so without this every
+            -- invoice it creates would have no client, title or date of its own — and
+            -- those are exactly the fields that must outlive the booking if it is ever
+            -- detached (delete_booking with "keep the invoice").
+            COALESCE(NULLIF(p_invoice->>'client_id','')::uuid,
+                     (SELECT b.client_id FROM bookings b WHERE b.id = v_booking)),
+            COALESCE(NULLIF(p_invoice->>'staff_id','')::uuid,
+                     (SELECT b.staff_id FROM bookings b WHERE b.id = v_booking)),
+            NULLIF(p_invoice->>'service_id','')::uuid,
+            COALESCE(NULLIF(p_invoice->>'contact_name',''),
+                     (SELECT b.contact_name FROM bookings b WHERE b.id = v_booking)),
+            COALESCE(NULLIF(p_invoice->>'title',''),
+                     (SELECT b.title FROM bookings b WHERE b.id = v_booking)),
+            COALESCE(NULLIF(p_invoice->>'service_date','')::date,
+                     (SELECT (b.start_at AT TIME ZONE o.timezone)::date
+                        FROM bookings b JOIN organizations o ON o.id = b.org_id
+                       WHERE b.id = v_booking)),
+            COALESCE(p_lines,'[]'::jsonb),
+            NULLIF(p_invoice->>'notes',''),
+            NULLIF(p_invoice->>'issue_date','')::date,
+            COALESCE(NULLIF(p_invoice->>'amount_expenses','')::numeric, 0),
+            COALESCE(NULLIF(p_invoice->>'status',''), 'issued'))
+    RETURNING id INTO v_id;
+  ELSE
+    UPDATE invoices SET
+      booking_id      = COALESCE(v_booking, booking_id),
+      client_id       = CASE WHEN p_invoice ? 'client_id'
+                             THEN NULLIF(p_invoice->>'client_id','')::uuid ELSE client_id END,
+      staff_id        = CASE WHEN p_invoice ? 'staff_id'
+                             THEN NULLIF(p_invoice->>'staff_id','')::uuid ELSE staff_id END,
+      service_id      = CASE WHEN p_invoice ? 'service_id'
+                             THEN NULLIF(p_invoice->>'service_id','')::uuid ELSE service_id END,
+      contact_name    = CASE WHEN p_invoice ? 'contact_name'
+                             THEN NULLIF(p_invoice->>'contact_name','') ELSE contact_name END,
+      title           = CASE WHEN p_invoice ? 'title'
+                             THEN NULLIF(p_invoice->>'title','') ELSE title END,
+      service_date    = CASE WHEN p_invoice ? 'service_date'
+                             THEN NULLIF(p_invoice->>'service_date','')::date ELSE service_date END,
+      notes           = CASE WHEN p_invoice ? 'notes'
+                             THEN NULLIF(p_invoice->>'notes','') ELSE notes END,
+      issue_date      = CASE WHEN p_invoice ? 'issue_date'
+                             THEN NULLIF(p_invoice->>'issue_date','')::date ELSE issue_date END,
+      amount_expenses = CASE WHEN p_invoice ? 'amount_expenses'
+                             THEN COALESCE(NULLIF(p_invoice->>'amount_expenses','')::numeric, 0)
+                             ELSE amount_expenses END,
+      status          = CASE WHEN p_invoice ? 'status'
+                             THEN COALESCE(NULLIF(p_invoice->>'status',''), status) ELSE status END,
+      line_items      = CASE WHEN p_lines IS NOT NULL THEN p_lines ELSE line_items END
+    WHERE id = v_id AND org_id = p_org;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'invoice not found in org' USING errcode = '42501';
+    END IF;
+  END IF;
+
+  -- NOTE: invoice_lines is NOT written here. The invoices_sync_lines trigger (§15f)
+  -- projects line_items -> invoice_lines on every write, so there is exactly ONE
+  -- writer and the two representations cannot drift apart.
+
+  -- Read the stored status back, so numbering reflects what was actually persisted.
+  SELECT status INTO v_status FROM invoices WHERE id = v_id;
+
+  -- Numbering stays DORMANT until invoice_counters is seeded (the Phase 2 backfill).
+  -- Before that, invoice numbers are still derived from the booking ref, so issuing
+  -- one here must not consume a sequence value and collide with a derived number.
+  IF v_status = 'issued'
+     AND EXISTS (SELECT 1 FROM invoice_counters WHERE org_id = p_org) THEN
+    SELECT number_seq INTO v_seq FROM invoices WHERE id = v_id;
+    IF v_seq IS NULL THEN
+      -- Year comes from the ISSUE date (falling back to today), NOT the service date.
+      -- The series must stay continuous: every historical number was formed from the
+      -- year the record was created, and job dates span 2025-2027 while all refs read
+      -- 2026. Numbering by service date would hand a 2027 shoot booked today a
+      -- JFMB-2027-001 sitting next to JFMB-2026-125 — a second, parallel series.
+      v_year := EXTRACT(YEAR FROM COALESCE(
+                  NULLIF(p_invoice->>'issue_date','')::date, current_date))::int;
+      v_seq  := public.next_invoice_seq(p_org, v_year);
+      UPDATE invoices SET number_year = v_year, number_seq = v_seq WHERE id = v_id;
+    END IF;
+  END IF;
+
+  RETURN v_id;
+END $$;
+GRANT EXECUTE ON FUNCTION public.save_invoice(uuid, jsonb, jsonb) TO authenticated;
+
+
+-- ── 15f. invoice_lines is a PROJECTION of line_items ───────────────────────
+-- `line_items` JSONB stays the write target (every existing caller writes it, and
+-- _invoice_bundle / the public invoice page / payment-success all still read it).
+-- This trigger keeps the normalised `invoice_lines` in lockstep, which means the two
+-- representations CANNOT drift no matter who writes — save_invoice, a plain table
+-- upsert from an older deployed frontend, or a manual fix in SQL. That's why
+-- save_invoice deliberately does not write invoice_lines itself.
+-- service_id is resolved via a lookup rather than a cast, so a serviceId pointing at
+-- a service that no longer exists degrades to NULL instead of failing the FK.
+CREATE OR REPLACE FUNCTION public.sync_invoice_lines() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+BEGIN
+  IF NEW.deleted_at IS NOT NULL THEN RETURN NULL; END IF;   -- don't revive a deleted invoice's lines
+  DELETE FROM invoice_lines WHERE invoice_id = NEW.id;
+  INSERT INTO invoice_lines (org_id, invoice_id, description, amount, service_id, hours, sort)
+  SELECT NEW.org_id, NEW.id,
+         COALESCE(e.value->>'description',''),
+         COALESCE((e.value->>'amount')::numeric, 0),
+         (SELECT s.id FROM services s WHERE s.id = NULLIF(e.value->>'serviceId','')::uuid),
+         NULLIF(e.value->>'hours','')::numeric,
+         e.ordinality - 1
+    FROM jsonb_array_elements(COALESCE(NEW.line_items,'[]'::jsonb)) WITH ORDINALITY AS e(value, ordinality);
+  RETURN NULL;
+END $f$;
+DROP TRIGGER IF EXISTS invoices_sync_lines ON public.invoices;
+CREATE TRIGGER invoices_sync_lines AFTER INSERT OR UPDATE OF line_items ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.sync_invoice_lines();
+
+
+-- ── 15g. invoice_list — the invoice-rooted read model ──────────────────────
+-- Mirrors work_board's shape deliberately: drives FROM the entity (invoices) and
+-- LEFT JOINs outward, so a standalone invoice keeps its row and the booking-derived
+-- columns degrade to NULL. Driving from bookings — as the old Invoices page did —
+-- is precisely what made a bookingless invoice impossible to display.
+-- A VIEW BYPASSES RLS, so per §18 this carries BOTH the authorization check and
+-- every deleted_at filter in its own WHERE/JOINs.
+CREATE OR REPLACE VIEW public.invoice_list AS
+SELECT
+  i.id, i.org_id, i.booking_id,
+  (i.booking_id IS NOT NULL AND b.id IS NOT NULL)        AS has_booking,
+  i.status, i.title, i.service_date, i.issue_date, i.notes,
+  i.number_year, i.number_seq,
+  -- Formatted ONCE here rather than in three frontend places. The prefix is per-org
+  -- config (organizations.invoice_details.invoice_prefix), NOT a hardcoded 'INV'.
+  CASE WHEN i.number_seq IS NULL THEN NULL
+       ELSE COALESCE(UPPER(NULLIF(o.invoice_details->>'invoice_prefix','')), 'INV')
+            || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0')
+  END                                                    AS invoice_number,
+  -- Identity: the invoice's OWN fields win, falling back to the booking's — this is
+  -- what lets an invoice outlive the booking it came from.
+  i.client_id, i.staff_id, i.service_id,
+  COALESCE(cl.name, i.contact_name, bcl.name, b.contact_name) AS client_name,
+  st.name AS staff_name,
+  sv.name AS service_name,
+  -- Booking-derived; NULL for a standalone invoice.
+  b.booking_ref, b.start_at AS booking_start_at, b.status AS booking_status,
+  -- Gross is the sum of the LINES — never a stored total, which would be the second
+  -- source of truth this restructure exists to remove.
+  gross.amount_gross,
+  gross.amount_gross - COALESCE(i.amount_expenses, 0)    AS amount_net,
+  i.amount_expenses,
+  paid.amount_paid,
+  -- Floored at zero PER INVOICE: one client's overpayment must never cancel out
+  -- another client's debt.
+  GREATEST(0, gross.amount_gross - paid.amount_paid)     AS balance_due,
+  CASE
+    WHEN gross.amount_gross > 0
+     AND paid.amount_paid >= gross.amount_gross - 0.005 THEN 'paid'
+    WHEN paid.amount_paid > 0                           THEN 'partial'
+    ELSE 'unpaid'
+  END                                                    AS payment_status
+FROM public.invoices i
+LEFT JOIN LATERAL (
+  SELECT COALESCE(SUM(l.amount), 0) AS amount_gross FROM public.invoice_lines l
+   WHERE l.invoice_id = i.id AND l.deleted_at IS NULL) gross ON true
+LEFT JOIN LATERAL (
+  SELECT COALESCE(SUM(p.amount), 0) AS amount_paid FROM public.payments p
+   WHERE p.invoice_id = i.id AND p.status = 'completed' AND p.deleted_at IS NULL) paid ON true
+LEFT JOIN public.organizations o   ON o.id   = i.org_id
+LEFT JOIN public.bookings      b   ON b.id   = i.booking_id AND b.deleted_at IS NULL
+LEFT JOIN public.clients       cl  ON cl.id  = i.client_id  AND cl.deleted_at IS NULL
+LEFT JOIN public.clients       bcl ON bcl.id = b.client_id  AND bcl.deleted_at IS NULL
+LEFT JOIN public.staff         st  ON st.id  = i.staff_id   AND st.deleted_at IS NULL
+LEFT JOIN public.services      sv  ON sv.id  = i.service_id AND sv.deleted_at IS NULL
+WHERE (public.is_org_admin(i.org_id) OR public.is_platform_admin())
+  AND i.deleted_at IS NULL;
+GRANT SELECT ON public.invoice_list TO authenticated;
+
+
+-- ── 15h. get_earnings — ONE definition of the money ────────────────────────
+-- The dashboard reads these numbers rather than deriving its own. There are already
+-- four divergent payment_status implementations in this codebase; a fifth money
+-- calculation in the client would repeat exactly that mistake.
+--
+-- Two bases, deliberately BOTH returned (the owner asked to see each):
+--   * work_done — issued invoices bucketed by SERVICE DATE (when the work happened)
+--   * cash      — completed payments bucketed by PAYMENT DATE (when money arrived)
+-- The old dashboard chart said "Collected · last 6 months" but bucketed by booking
+-- start_at: its total was right while every bar sat in the wrong month.
+--
+-- There is deliberately NO p_service filter. A payment settles an invoice, not a line,
+-- so a service filter could only apply honestly to the work-done half — and a filter
+-- that silently doesn't affect one of the numbers on screen is worse than none.
+-- Per-service is returned as a BREAKDOWN, grouped by LINE (an invoice can mix services).
+CREATE OR REPLACE FUNCTION public.get_earnings(
+  p_org   uuid,
+  p_from  date DEFAULT NULL,
+  p_to    date DEFAULT NULL,
+  p_staff uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_tz text; v_result jsonb;
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  SELECT timezone INTO v_tz FROM organizations WHERE id = p_org;
+  v_tz := COALESCE(v_tz, 'UTC');
+
+  WITH inv AS (
+    SELECT i.id, i.staff_id, i.service_date, i.amount_expenses,
+           COALESCE((SELECT SUM(l.amount) FROM invoice_lines l
+                      WHERE l.invoice_id = i.id AND l.deleted_at IS NULL), 0) AS gross,
+           COALESCE((SELECT SUM(p.amount) FROM payments p
+                      WHERE p.invoice_id = i.id
+                        AND p.status = 'completed' AND p.deleted_at IS NULL), 0) AS paid
+      FROM invoices i
+     WHERE i.org_id = p_org
+       AND i.deleted_at IS NULL
+       AND i.status = 'issued'
+       AND (p_staff IS NULL OR i.staff_id = p_staff)
+       AND (p_from  IS NULL OR i.service_date >= p_from)
+       AND (p_to    IS NULL OR i.service_date <= p_to)
+  ),
+  pay AS (
+    -- Joined through the invoice so the worker filter and org scoping apply;
+    -- payments carry no worker of their own.
+    SELECT p.amount,
+           ((COALESCE(p.paid_at, p.created_at) AT TIME ZONE v_tz))::date AS cash_date,
+           i.staff_id
+      FROM payments p
+      JOIN invoices i ON i.id = p.invoice_id
+     WHERE i.org_id = p_org
+       AND p.status = 'completed'
+       AND p.deleted_at IS NULL
+       AND i.deleted_at IS NULL
+       AND i.status = 'issued'
+       AND (p_staff IS NULL OR i.staff_id = p_staff)
+  ),
+  pay_scoped AS (
+    SELECT * FROM pay
+     WHERE (p_from IS NULL OR cash_date >= p_from)
+       AND (p_to   IS NULL OR cash_date <= p_to)
+  )
+  SELECT jsonb_build_object(
+    'totals', jsonb_build_object(
+      'work_done_gross', COALESCE((SELECT SUM(gross) FROM inv), 0),
+      'work_done_net',   COALESCE((SELECT SUM(gross - COALESCE(amount_expenses,0)) FROM inv), 0),
+      'cash',            COALESCE((SELECT SUM(amount) FROM pay_scoped), 0),
+      -- Floored PER INVOICE: one client's overpayment must never cancel out another's debt.
+      'outstanding',     COALESCE((SELECT SUM(GREATEST(0, gross - paid)) FROM inv), 0),
+      'invoices',        (SELECT count(*) FROM inv)
+    ),
+    'work_done_by_month', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('month', m, 'amount', amt) ORDER BY m)
+        FROM (SELECT to_char(date_trunc('month', service_date), 'YYYY-MM') AS m, SUM(gross) AS amt
+                FROM inv WHERE service_date IS NOT NULL GROUP BY 1) t), '[]'::jsonb),
+    'cash_by_month', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('month', m, 'amount', amt) ORDER BY m)
+        FROM (SELECT to_char(date_trunc('month', cash_date), 'YYYY-MM') AS m, SUM(amount) AS amt
+                FROM pay_scoped GROUP BY 1) t), '[]'::jsonb),
+    -- Grouped by LINE, never by invoice. Lines with no service land in a single
+    -- "unattributed" bucket (service_id null) rather than being hidden.
+    'by_service', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'service_id', sid, 'service_name', sname, 'amount', amt) ORDER BY amt DESC)
+        FROM (SELECT l.service_id AS sid, s.name AS sname, SUM(l.amount) AS amt
+                FROM invoice_lines l
+                JOIN inv ON inv.id = l.invoice_id
+                LEFT JOIN services s ON s.id = l.service_id
+               WHERE l.deleted_at IS NULL
+               GROUP BY l.service_id, s.name) t), '[]'::jsonb),
+    'by_worker', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'staff_id', wid, 'staff_name', wname, 'gross', wgross, 'cash', wcash) ORDER BY wgross DESC)
+        FROM (SELECT inv.staff_id AS wid, st.name AS wname, SUM(inv.gross) AS wgross,
+                     COALESCE((SELECT SUM(ps.amount) FROM pay_scoped ps
+                                WHERE ps.staff_id IS NOT DISTINCT FROM inv.staff_id), 0) AS wcash
+                FROM inv
+                LEFT JOIN staff st ON st.id = inv.staff_id
+               GROUP BY inv.staff_id, st.name) t), '[]'::jsonb)
+  ) INTO v_result;
+
+  RETURN v_result;
+END $$;
+GRANT EXECUTE ON FUNCTION public.get_earnings(uuid, date, date, uuid) TO authenticated;
+
+
+-- ── 15i. delete_booking — deleting a job ≠ writing off the money ───────────
+-- Removing a job from the calendar and discarding its invoice are different
+-- decisions, so the app ASKS at the moment of the action rather than applying a
+-- fixed policy.
+--
+-- HOW KEEPING WORKS (and why it needs no session variable / GUC):
+-- cascade_soft_delete_booking hides children by `booking_id`, so an invoice that has
+-- already been DETACHED (booking_id = NULL) is simply not seen by it.
+--
+-- The subtlety: that same cascade also hides PAYMENTS by booking_id. Detaching only
+-- the invoice would leave its payments to be soft-deleted, and the kept invoice would
+-- silently read as UNPAID — its balance jumping back to the full amount. So the
+-- payments are detached too; `payments_has_parent` permits a null booking_id
+-- precisely because invoice_id is set.
+--
+-- A kept invoice becomes standalone: same number, status, lines and payments, and it
+-- still displays because §15's denormalised client/worker/title/service_date outlive
+-- the booking. That is why this must never ship before the backfill has run.
+CREATE OR REPLACE FUNCTION public.delete_booking(
+  p_booking      uuid,
+  p_keep_invoice boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+-- Handles N invoices: a booking may carry a deposit invoice, a final one, and a
+-- supplementary one. Keeping detaches EVERY one of them.
+DECLARE v_org uuid; v_ids uuid[]; v_kept int := 0;
+BEGIN
+  SELECT org_id INTO v_org FROM bookings WHERE id = p_booking AND deleted_at IS NULL;
+  IF v_org IS NULL THEN                                   -- already gone → no-op
+    RETURN jsonb_build_object('ok', true, 'kept_invoice', false, 'kept_count', 0);
+  END IF;
+
+  IF NOT (public.is_org_admin(v_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  SELECT array_agg(id) INTO v_ids
+    FROM invoices WHERE booking_id = p_booking AND deleted_at IS NULL;
+
+  IF p_keep_invoice AND v_ids IS NOT NULL THEN
+    -- Order matters: detach BEFORE deleted_at fires the cascade. The payments must be
+    -- detached too — the cascade hides them by booking_id, and a "kept" invoice whose
+    -- payments were hidden reads as UNPAID with its full balance owing.
+    UPDATE payments SET booking_id = NULL
+     WHERE invoice_id = ANY(v_ids) AND booking_id = p_booking AND deleted_at IS NULL;
+    UPDATE invoices SET booking_id = NULL WHERE id = ANY(v_ids);
+    v_kept := array_length(v_ids, 1);
+  END IF;
+
+  -- SECURITY DEFINER bypasses the restrictive hide_deleted policy, which would
+  -- otherwise reject this UPDATE (the row becomes invisible to the writer → 42501).
+  UPDATE bookings SET deleted_at = now() WHERE id = p_booking AND deleted_at IS NULL;
+
+  RETURN jsonb_build_object('ok', true, 'kept_invoice', v_kept > 0, 'kept_count', v_kept,
+                            'invoice_ids', to_jsonb(COALESCE(v_ids, '{}')));
+END $$;
+GRANT EXECUTE ON FUNCTION public.delete_booking(uuid, boolean) TO authenticated;
+
+-- ── 15j. Invoice-rooted bundle + share links that address an INVOICE ───────
+-- An invoice can be printed and shared on its own, with no booking.
+--
+-- THREE DELIBERATE SAFETY CHOICES — do not "simplify" any of them:
+--
+-- 1. The bundle lives in a `private` schema that PostgREST does NOT expose. It is the
+--    one function here with no internal authorization, and it was reachable only
+--    because of a single REVOKE line. Any future edit that re-created it would restore
+--    EXECUTE to PUBLIC and hand anon the org's bank details, every client's address and
+--    VAT number, and the full payment history. Schema-level unreachability survives a
+--    forgotten grant; a REVOKE does not. (This DB has no ALTER DEFAULT PRIVILEGES, so
+--    every new function starts with EXECUTE to PUBLIC — hence the explicit REVOKEs.)
+-- 2. public._invoice_bundle(UUID) is KEPT as a thin wrapper. Changing its signature
+--    would mean DROP + CREATE, which resets privileges — the hazard above. Wrapping
+--    leaves get_invoice and get_invoice_by_token untouched, so every pay link already
+--    in a customer's hands keeps working byte for byte.
+-- 3. Every RECORD is assigned by an UNCONDITIONAL `SELECT INTO`. In PL/pgSQL a record
+--    never assigned raises 55000 on first field access — it is NOT implicitly NULL.
+--    Assigning `b` inside `IF p_booking IS NOT NULL` would throw on every standalone
+--    invoice: a 100% failure on exactly the case this exists for.
+CREATE SCHEMA IF NOT EXISTS private;
+REVOKE ALL ON SCHEMA private FROM PUBLIC, anon, authenticated;
+
+-- A SEPARATE table from booking_links, not a widening of it: a booking_links token is a
+-- PAY link (it unlocks card payment and the delivery paywall), so reusing it to share an
+-- invoice would hand the recipient more capability than "look at this invoice". Separate
+-- tables keep the capability sets disjoint by construction, and mean create-payment-intent
+-- and accept-inperson — which read `link.bookings` with no null check — need no edits.
+CREATE TABLE public.invoice_links (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id     UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  invoice_id UUID NOT NULL REFERENCES public.invoices(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(16), 'hex'),
+  expires_at TIMESTAMPTZ,
+  is_active  BOOLEAN NOT NULL DEFAULT true,
+  opened_at  TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX invoice_links_invoice_idx ON public.invoice_links(invoice_id);
+-- No separate token index: UNIQUE(token) already provides one.
+ALTER TABLE public.invoice_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ilink_admin ON public.invoice_links FOR ALL
+  USING (public.is_org_admin(org_id))
+  WITH CHECK (public.is_org_admin(org_id)
+              AND EXISTS (SELECT 1 FROM public.invoices i
+                           WHERE i.id = invoice_links.invoice_id
+                             AND i.org_id = invoice_links.org_id));
+-- SELECT ONLY to authenticated. `token` has a DEFAULT, not a constraint: with INSERT
+-- granted a client could CHOOSE its value and plant a token matching another org's live
+-- pay link, hijacking that org's circulated URL (UNIQUE is per-table, so no violation
+-- would fire). It also removes the ability to UPDATE deleted_at back to NULL and
+-- un-revoke a revoked link. Every write goes through the SECURITY DEFINER RPCs below.
+GRANT SELECT ON public.invoice_links TO authenticated;
+GRANT ALL    ON public.invoice_links TO service_role;  -- created after the blanket grant
+
+CREATE OR REPLACE FUNCTION private._invoice_bundle(p_invoice UUID, p_booking UUID)
 RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE b RECORD; org RECORD; cl RECORD; ov RECORD; items JSONB; total NUMERIC; paid NUMERIC; pays JSONB;
+DECLARE
+  i RECORD; b RECORD; org RECORD; cl RECORD;
+  v_booking UUID; v_org UUID; v_prefix TEXT;
+  items JSONB; total NUMERIC; paid NUMERIC; pays JSONB;
 BEGIN
-  SELECT id, org_id, client_id, contact_name, booking_ref, title, description, location, start_at, end_at, price_total, price_expenses, status, deposit_percent
-    INTO b FROM bookings WHERE id = p_booking AND deleted_at IS NULL;
-  IF NOT FOUND THEN RETURN NULL; END IF;
+  SELECT id, org_id, booking_id, client_id, staff_id, contact_name, title,
+         service_date, issue_date, notes, line_items, status, number_year, number_seq,
+         amount_expenses
+    INTO i FROM invoices
+   WHERE deleted_at IS NULL
+     AND ((p_invoice IS NOT NULL AND id = p_invoice)
+       OR (p_invoice IS NULL AND p_booking IS NOT NULL AND booking_id = p_booking))
+   ORDER BY created_at
+   LIMIT 1;
 
-  SELECT name, currency, invoice_details INTO org FROM organizations WHERE id = b.org_id;
-  SELECT name, company, vat_number, billing_address, email, phone INTO cl FROM clients WHERE id = b.client_id AND deleted_at IS NULL;
-  SELECT line_items, notes, issue_date INTO ov FROM invoices WHERE booking_id = p_booking AND deleted_at IS NULL;
+  v_booking := COALESCE(i.booking_id, p_booking);
 
-  IF ov.line_items IS NOT NULL AND jsonb_array_length(ov.line_items) > 0 THEN
-    items := ov.line_items;
-  ELSE
+  SELECT id, org_id, client_id, contact_name, booking_ref, title, description, location,
+         start_at, end_at, price_total, price_expenses, status, deposit_percent
+    INTO b FROM bookings WHERE id = v_booking AND deleted_at IS NULL;
+
+  v_org := COALESCE(i.org_id, b.org_id);
+  IF v_org IS NULL THEN RETURN NULL; END IF;   -- neither an invoice nor a live booking
+
+  SELECT name, currency, invoice_details INTO org FROM organizations WHERE id = v_org;
+  v_prefix := COALESCE(UPPER(NULLIF(org.invoice_details->>'invoice_prefix','')), 'INV');
+
+  -- The invoice's OWN client wins, falling back to the booking's — this is what lets a
+  -- detached invoice still name who it bills.
+  SELECT name, company, vat_number, billing_address, email, phone
+    INTO cl FROM clients
+   WHERE id = COALESCE(i.client_id, b.client_id) AND deleted_at IS NULL;
+
+  IF i.line_items IS NOT NULL AND jsonb_array_length(i.line_items) > 0 THEN
+    items := i.line_items;
+  ELSIF b.id IS NOT NULL THEN
     items := jsonb_build_array(jsonb_build_object(
       'description', COALESCE(NULLIF(b.description, ''), b.title),
       'amount', GREATEST(0, b.price_total - COALESCE(b.price_expenses, 0))));
     IF COALESCE(b.price_expenses, 0) > 0 THEN
       items := items || jsonb_build_object('description', 'Travel & expenses', 'amount', b.price_expenses);
     END IF;
+  ELSE
+    items := '[]'::jsonb;
   END IF;
 
   SELECT COALESCE(SUM((e->>'amount')::numeric), 0) INTO total FROM jsonb_array_elements(items) e;
-  SELECT COALESCE(SUM(amount), 0) INTO paid FROM payments WHERE booking_id = p_booking AND status = 'completed' AND deleted_at IS NULL;
-  SELECT COALESCE(jsonb_agg(jsonb_build_object('amount', amount, 'method', method, 'paid_at', paid_at)
-            ORDER BY COALESCE(paid_at, created_at)), '[]'::jsonb)
-    INTO pays FROM payments WHERE booking_id = p_booking AND status = 'completed' AND deleted_at IS NULL;
+  -- Money keyed on the INVOICE when one exists, else the booking. invoice_list (§15g) and
+  -- get_earnings (§15h) key on invoice_id; keying this on booking_id made the printable
+  -- receipt disagree with the admin list the moment delete_booking(keep) detached a
+  -- payment. The arms are mutually exclusive, so nothing is counted twice.
+  SELECT COALESCE(SUM(p.amount), 0) INTO paid FROM payments p
+   WHERE p.status = 'completed' AND p.deleted_at IS NULL
+     AND ((i.id IS NOT NULL AND p.invoice_id = i.id)
+       OR (i.id IS NULL     AND p.booking_id = v_booking));
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('amount', p.amount, 'method', p.method, 'paid_at', p.paid_at)
+            ORDER BY COALESCE(p.paid_at, p.created_at)), '[]'::jsonb)
+    INTO pays FROM payments p
+   WHERE p.status = 'completed' AND p.deleted_at IS NULL
+     AND ((i.id IS NOT NULL AND p.invoice_id = i.id)
+       OR (i.id IS NULL     AND p.booking_id = v_booking));
 
   RETURN jsonb_build_object(
-    'org', jsonb_build_object('name', org.name, 'currency', org.currency, 'invoice_details', org.invoice_details),
-    -- A real client bills with full details; a quick (contact_name-only) booking bills
-    -- to the bare name with no company/VAT/address.
+    'org', jsonb_build_object('name', org.name, 'currency', org.currency,
+                              'invoice_details', org.invoice_details),
     'client', CASE
         WHEN cl.name IS NOT NULL THEN jsonb_build_object(
           'name', cl.name, 'company', cl.company, 'vat_number', cl.vat_number,
           'billing_address', cl.billing_address, 'email', cl.email, 'phone', cl.phone)
-        WHEN b.contact_name IS NOT NULL THEN jsonb_build_object(
-          'name', b.contact_name, 'company', NULL, 'vat_number', NULL,
+        WHEN COALESCE(i.contact_name, b.contact_name) IS NOT NULL THEN jsonb_build_object(
+          'name', COALESCE(i.contact_name, b.contact_name), 'company', NULL, 'vat_number', NULL,
           'billing_address', NULL, 'email', NULL, 'phone', NULL)
         ELSE NULL END,
-    'booking', jsonb_build_object('id', b.id, 'booking_ref', b.booking_ref, 'location', b.location,
-        'start_at', b.start_at, 'end_at', b.end_at, 'status', b.status, 'price_total', b.price_total,
-        'deposit_percent', b.deposit_percent),
-    'invoice', jsonb_build_object('line_items', items, 'notes', ov.notes, 'issue_date', ov.issue_date,
-        'customized', (ov.line_items IS NOT NULL AND jsonb_array_length(ov.line_items) > 0), 'total', total),
+    -- NULL for a standalone invoice. Every consumer must null-check this.
+    'booking', CASE WHEN b.id IS NULL THEN NULL ELSE jsonb_build_object(
+        'id', b.id, 'booking_ref', b.booking_ref, 'location', b.location,
+        'start_at', b.start_at, 'end_at', b.end_at, 'status', b.status,
+        'price_total', b.price_total, 'deposit_percent', b.deposit_percent) END,
+    'invoice', jsonb_build_object(
+        'id',          i.id,
+        'line_items',  items,
+        'notes',       i.notes,
+        'issue_date',  i.issue_date,
+        'customized',  (i.line_items IS NOT NULL AND jsonb_array_length(i.line_items) > 0),
+        'total',       total,
+        -- Formatted once, server-side, from the org's prefix. The booking-ref fallback
+        -- keeps every pre-existing invoice rendering exactly as it does today.
+        'number',      CASE
+                         WHEN i.number_seq IS NOT NULL
+                           THEN v_prefix || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0')
+                         WHEN b.booking_ref IS NOT NULL
+                           THEN v_prefix || '-' || SUBSTRING(b.booking_ref FROM POSITION('-' IN b.booking_ref) + 1)
+                         ELSE NULL END,
+        'service_date', COALESCE(i.service_date, b.start_at::date),
+        'status',       i.status),
     'total_paid', paid, 'payments', pays);
-END;
-$$;
+END $$;
+REVOKE ALL ON FUNCTION private._invoice_bundle(UUID, UUID) FROM PUBLIC;
+
+-- Thin wrapper: same signature as before, so no DROP and no privilege reset.
+CREATE OR REPLACE FUNCTION public._invoice_bundle(p_booking UUID)
+RETURNS JSONB
+LANGUAGE sql SECURITY DEFINER SET search_path = public
+AS $$ SELECT private._invoice_bundle(NULL, p_booking); $$;
 REVOKE ALL ON FUNCTION public._invoice_bundle(UUID) FROM PUBLIC;
+
+-- Authed accessor keyed on the INVOICE: org admin of its org, OR the invoice's own
+-- client (by the invoice's client_id, or its booking's — a detached invoice keeps the
+-- first, which is why §15's denormalised identity matters).
+CREATE OR REPLACE FUNCTION public.get_invoice_by_id(p_invoice UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org UUID; v_client UUID; v_booking_client UUID; v_booking UUID;
+BEGIN
+  SELECT org_id, client_id, booking_id INTO v_org, v_client, v_booking
+    FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RETURN NULL; END IF;
+
+  SELECT client_id INTO v_booking_client FROM bookings
+   WHERE id = v_booking AND deleted_at IS NULL;
+
+  IF NOT (public.is_org_admin(v_org)
+          OR (COALESCE(v_client, v_booking_client) IS NOT NULL
+              AND COALESCE(v_client, v_booking_client) = public.current_client_id(v_org))) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  RETURN private._invoice_bundle(p_invoice, NULL);
+END $$;
+-- The REVOKE is NOT optional: this database has no ALTER DEFAULT PRIVILEGES, so a newly
+-- created function starts with EXECUTE granted to PUBLIC and the GRANT below would
+-- restrict nothing. Same for the two functions after this one.
+REVOKE ALL ON FUNCTION public.get_invoice_by_id(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_invoice_by_id(UUID) TO authenticated;
+
+-- Mint (or reuse) a share token for an invoice. Reuse-or-mint so pressing "Copy link"
+-- repeatedly doesn't accumulate live tokens for the same invoice.
+CREATE OR REPLACE FUNCTION public.create_invoice_link(p_invoice UUID)
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org UUID; v_token TEXT;
+BEGIN
+  SELECT org_id INTO v_org FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RAISE EXCEPTION 'invoice not found' USING errcode = '42501'; END IF;
+  IF NOT public.is_org_admin(v_org) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  SELECT token INTO v_token FROM invoice_links
+   WHERE invoice_id = p_invoice AND is_active AND deleted_at IS NULL
+     AND (expires_at IS NULL OR expires_at > now())
+   ORDER BY created_at DESC LIMIT 1;
+  IF v_token IS NOT NULL THEN RETURN v_token; END IF;
+
+  INSERT INTO invoice_links (org_id, invoice_id) VALUES (v_org, p_invoice)
+  RETURNING token INTO v_token;
+  RETURN v_token;
+END $$;
+REVOKE ALL ON FUNCTION public.create_invoice_link(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_invoice_link(UUID) TO authenticated;
+
+-- Revoke every share link for an invoice (a leaked link, or work withdrawn).
+CREATE OR REPLACE FUNCTION public.revoke_invoice_links(p_invoice UUID)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org UUID; v_n INT;
+BEGIN
+  SELECT org_id INTO v_org FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RETURN 0; END IF;
+  IF NOT public.is_org_admin(v_org) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  UPDATE invoice_links SET is_active = false, deleted_at = now()
+   WHERE invoice_id = p_invoice AND deleted_at IS NULL;
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  RETURN v_n;
+END $$;
+REVOKE ALL ON FUNCTION public.revoke_invoice_links(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.revoke_invoice_links(UUID) TO authenticated;
 
 -- Authed accessor: org admin of the booking's org OR the booking's own client.
 CREATE OR REPLACE FUNCTION public.get_invoice(p_booking UUID)
@@ -966,12 +1722,30 @@ GRANT EXECUTE ON FUNCTION public.get_invoice(UUID) TO authenticated;
 CREATE OR REPLACE FUNCTION public.get_invoice_by_token(p_token TEXT)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_booking UUID;
+DECLARE v_invoice UUID; v_booking UUID;
 BEGIN
+  -- Probe invoice_links FIRST (a share link addresses the invoice), then fall back to
+  -- booking_links so every pay link already in a customer's hands is unaffected. A token
+  -- cannot collide across the two tables because neither is client-writable.
+  SELECT il.invoice_id INTO v_invoice
+    FROM invoice_links il
+    JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
+                   AND i.org_id = il.org_id
+   WHERE il.token = p_token AND il.is_active AND il.deleted_at IS NULL
+     AND (il.expires_at IS NULL OR il.expires_at > now());
+  IF v_invoice IS NOT NULL THEN
+    RETURN private._invoice_bundle(v_invoice, NULL);
+  END IF;
+
+  -- `deleted_at IS NULL` matters: this is SECURITY DEFINER, so it bypasses the
+  -- restrictive hide_deleted policy (§18). Without it a soft-deleted pay link
+  -- still resolved and served its invoice.
   SELECT booking_id INTO v_booking FROM booking_links
-   WHERE token = p_token AND is_active AND (expires_at IS NULL OR expires_at > now());
+   WHERE token = p_token AND is_active
+     AND deleted_at IS NULL
+     AND (expires_at IS NULL OR expires_at > now());
   IF v_booking IS NULL THEN RETURN NULL; END IF;
-  RETURN public._invoice_bundle(v_booking);
+  RETURN private._invoice_bundle(NULL, v_booking);
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_invoice_by_token(TEXT) TO anon, authenticated;
@@ -1097,10 +1871,15 @@ CREATE INDEX deliveries_org_idx ON public.deliveries(org_id);
 ALTER TABLE public.deliveries ENABLE ROW LEVEL SECURITY;
 -- WITH CHECK also verifies the booking belongs to org_id, so an admin of org A can't
 -- attach a delivery to org B's booking (cross-tenant integrity) — mirrors inv_admin.
+-- Names QUALIFIED — the previous version's `b.org_id = org_id` bound both sides to
+-- `bookings` inside the subquery (`b.org_id = b.org_id`), so the cross-tenant guard
+-- never ran. Same bug as the old inv_admin (§15).
 CREATE POLICY del_admin ON public.deliveries FOR ALL
   USING (public.is_org_admin(org_id))
   WITH CHECK (public.is_org_admin(org_id)
-              AND EXISTS (SELECT 1 FROM public.bookings b WHERE b.id = booking_id AND b.org_id = org_id));
+              AND EXISTS (SELECT 1 FROM public.bookings b
+                           WHERE b.id = deliveries.booking_id
+                             AND b.org_id = deliveries.org_id));
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.deliveries TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.deliveries TO service_role;  -- created after the blanket service_role grant
@@ -1175,8 +1954,9 @@ GRANT EXECUTE ON FUNCTION public.get_delivery_by_token(TEXT) TO anon, authentica
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['bookings','booking_slots','booking_links','payments','invoices','deliveries',
-                           'clients','services','staff','staff_services','tasks','work_items'] LOOP
+  FOREACH t IN ARRAY ARRAY['bookings','booking_slots','booking_links','payments','invoices','invoice_lines',
+                           'invoice_links','deliveries','clients','services','staff','staff_services',
+                           'tasks','work_items'] LOOP
     EXECUTE format('DROP POLICY IF EXISTS hide_deleted ON public.%I', t);
     EXECUTE format('CREATE POLICY hide_deleted ON public.%I AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL)', t);
   END LOOP;
@@ -1201,6 +1981,24 @@ END $f$;
 DROP TRIGGER IF EXISTS bookings_cascade_soft_delete ON public.bookings;
 CREATE TRIGGER bookings_cascade_soft_delete AFTER UPDATE OF deleted_at ON public.bookings
   FOR EACH ROW EXECUTE FUNCTION public.cascade_soft_delete_booking();
+
+-- Soft-deleting an invoice hides its lines AND kills its share links. Without the
+-- second UPDATE a revoked invoice's token keeps resolving — the exact bug already
+-- recorded once for booking links.
+CREATE OR REPLACE FUNCTION public.cascade_soft_delete_invoice() RETURNS TRIGGER
+LANGUAGE plpgsql AS $f$
+BEGIN
+  IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+    UPDATE public.invoice_lines SET deleted_at = NEW.deleted_at
+     WHERE invoice_id = NEW.id AND deleted_at IS NULL;
+    UPDATE public.invoice_links SET deleted_at = NEW.deleted_at, is_active = false
+     WHERE invoice_id = NEW.id AND deleted_at IS NULL;
+  END IF;
+  RETURN NEW;
+END $f$;
+DROP TRIGGER IF EXISTS invoices_cascade_soft_delete ON public.invoices;
+CREATE TRIGGER invoices_cascade_soft_delete AFTER UPDATE OF deleted_at ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.cascade_soft_delete_invoice();
 
 -- Soft-deleting a work_item (board card) hides its checklist tasks too.
 CREATE OR REPLACE FUNCTION public.cascade_soft_delete_work_item() RETURNS TRIGGER
@@ -1232,7 +2030,8 @@ BEGIN
   -- NOTE re 'deliveries': allowed here for completeness/manual use, but the app must NOT
   -- wire a delete button to it — an upsert(onConflict:booking_id) can't resolve its conflict
   -- target against a soft-deleted row (hide_deleted hides it), so "Remove" clears in place.
-  IF p_table NOT IN ('bookings','payments','services','staff','work_items','tasks','deliveries') THEN
+  IF p_table NOT IN ('bookings','payments','services','staff','work_items','tasks',
+                     'deliveries','invoices','invoice_lines') THEN
     RAISE EXCEPTION 'soft_delete: table % not allowed', p_table USING errcode = '42501';
   END IF;
   EXECUTE format('SELECT org_id FROM public.%I WHERE id = $1 AND deleted_at IS NULL', p_table)

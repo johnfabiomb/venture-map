@@ -3,7 +3,7 @@
 :host { display: block; min-height: 100dvh; background: $bg; font-family: $font; color: $text; }
 
 .co {
-  max-width: 460px;
+  max-width: 560px;   // match the rest of the self-serve flow (picker / calendar / my-bookings)
   margin: 0 auto;
   padding: 24px 20px 80px;
 

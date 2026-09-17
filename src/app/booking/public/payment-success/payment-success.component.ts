@@ -7,8 +7,9 @@ import { InvoiceDetails } from '@booking/core/services/booking-admin.service';
 interface InvoiceBundle {
   org: { name: string; currency: string; invoice_details: InvoiceDetails };
   client: { name: string; company: string | null } | null;
-  booking: { id: string; booking_ref: string; start_at: string; end_at: string; status: string; price_total: number };
-  invoice: { line_items: { description: string; amount: number }[]; total: number };
+  // NULL when the payment settled an invoice that has no booking behind it.
+  booking: { id: string; booking_ref: string; start_at: string; end_at: string; status: string; price_total: number } | null;
+  invoice: { id: string | null; line_items: { description: string; amount: number }[]; total: number; number: string | null };
   total_paid: number;
 }
 
@@ -31,6 +32,7 @@ export class PaymentSuccessComponent implements OnInit {
   readonly issueDate = new Date();
   private tok = '';
   private bookingId = '';
+  private invoiceId = '';
 
   async ngOnInit(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -60,8 +62,12 @@ export class PaymentSuccessComponent implements OnInit {
     }
 
     if (data) {
-      this.bundle.set(data as InvoiceBundle);
-      this.bookingId = (data as InvoiceBundle).booking.id;
+      const bundle = data as InvoiceBundle;
+      this.bundle.set(bundle);
+      // `booking` is null for an invoice with no job behind it — reading `.id`
+      // unguarded threw and blanked the whole receipt.
+      this.bookingId = bundle.booking?.id ?? '';
+      this.invoiceId = bundle.invoice?.id ?? '';
     }
     this.loading.set(false);
   }
@@ -76,9 +82,12 @@ export class PaymentSuccessComponent implements OnInit {
   get balance(): number { return Math.max(0, this.total - this.paid); }
   get fullyPaid(): boolean { return this.total > 0 && this.paid >= this.total - 0.005; }
 
-  /** Invoice number = booking ref with the org's prefix swapped (BK-2026-007 → JFMB-2026-007). */
+  /** Formatted server-side from the org's prefix; the booking-ref fallback remains
+   *  only for a booking that has no invoice row at all. */
   get invoiceNumber(): string {
-    const ref = this.bundle()?.booking.booking_ref ?? '';
+    const fromBundle = this.bundle()?.invoice.number;
+    if (fromBundle) return fromBundle;
+    const ref = this.bundle()?.booking?.booking_ref ?? '';
     const prefix = (this.inv.invoice_prefix || 'INV').toUpperCase();
     const dash = ref.indexOf('-');
     return dash >= 0 ? `${prefix}-${ref.slice(dash + 1)}` : `${prefix}-${ref}`;
@@ -89,15 +98,25 @@ export class PaymentSuccessComponent implements OnInit {
    *  is nothing to do with someone who just paid for a shoot. */
   get backLink(): string { return this.tok ? `/book/${this.tok}` : '/book/mine'; }
 
-  /** Full printable invoice — by token for anon customers, by id for signed-in. */
+  /** Full printable invoice — by token for anon customers, else by invoice id, falling
+   *  back to the booking. The invoice arm matters when the payment settled an invoice
+   *  that has no booking: `/book/invoice/` with an empty id was a dead link. */
   get invoiceLink(): string {
-    return this.tok ? `/book/invoice?token=${this.tok}` : `/book/invoice/${this.bookingId}`;
+    if (this.tok) return `/book/invoice?token=${this.tok}`;
+    if (this.invoiceId) return `/book/invoice?inv=${this.invoiceId}`;
+    return `/book/invoice/${this.bookingId}`;
   }
 
+  /**
+   * Driven by the AMOUNTS, never by the payment type. A €50 payment against a €100 job is
+   * "partly paid" whether or not a deposit was ever offered — and calling it a deposit when
+   * none was configured is simply wrong. "due on the day" is also dropped: an invoice with
+   * no booking has no day.
+   */
   get headline(): string {
-    return this.fullyPaid
-      ? "Full payment confirmed. You're all set — see you soon!"
-      : `Deposit received. The remaining balance of ${this.fmt(this.balance)} is due on the day.`;
+    if (this.total <= 0) return 'Thank you — there was nothing left to pay.';
+    if (this.fullyPaid) return "That settles it in full. You're all set — thank you!";
+    return `Thank you. ${this.fmt(this.balance)} is still outstanding.`;
   }
   private fmt(n: number): string { return `${this.currency === 'EUR' ? '€' : ''}${n.toFixed(2)}`; }
 }

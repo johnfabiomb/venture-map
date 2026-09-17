@@ -5,6 +5,13 @@
       <p class="page__sub">{{ now | date:'EEEE, d MMMM y' }}</p>
     </div>
     <div class="head-actions">
+      <!-- Who the figures are for. One worker or the whole organization. -->
+      @if (staff().length > 1) {
+        <select class="who-select" [value]="who()" (change)="onWhoChange($any($event.target).value)">
+          <option value="">Everyone</option>
+          @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+        </select>
+      }
       <a class="btn btn--ghost" routerLink="/bookings/list">All bookings</a>
       <a class="btn btn--primary" routerLink="/bookings/new">+ New booking</a>
     </div>
@@ -40,11 +47,25 @@
       }
     </div>
 
-    <!-- Revenue trend -->
+    <!-- Earnings trend — two readings of the same period, so one control, not two cards. -->
     <section class="card chart">
       <div class="card__head">
-        <h2 class="card__title">Collected · last 6 months</h2>
+        <h2 class="card__title">{{ chartTitle() }}</h2>
+        <div class="seg">
+          <button class="seg__btn" [class.seg__btn--active]="basis() === 'cash'" (click)="basis.set('cash')">Cash received</button>
+          <button class="seg__btn" [class.seg__btn--active]="basis() === 'work'" (click)="basis.set('work')">Work done</button>
+        </div>
       </div>
+
+      <p class="empty-line">
+        @if (basis() === 'cash') {
+          {{ whoLabel() }} · {{ collected() | currency:'EUR':'symbol':'1.0-0' }} received, by the date each payment arrived.
+        } @else {
+          {{ whoLabel() }} · {{ workGross() | currency:'EUR':'symbol':'1.0-0' }} billed (gross)
+          · {{ workNet() | currency:'EUR':'symbol':'1.0-0' }} net of expenses, by the date the work happened.
+        }
+      </p>
+
       <div class="chart__bars">
         @for (m of revenueByMonth(); track m.label) {
           <div class="chart__col">
@@ -120,10 +141,25 @@
         }
 
         @if (outstanding() > 0) {
-          <a class="attn-line" routerLink="/bookings/list">
-            <span>{{ outstanding() | currency:'EUR':'symbol':'1.0-0' }} outstanding across confirmed jobs</span>
+          <a class="attn-line" routerLink="/bookings/invoices">
+            <span>{{ outstanding() | currency:'EUR':'symbol':'1.0-0' }} outstanding across issued invoices</span>
             <span class="attn-line__cta">Review →</span>
           </a>
+        }
+
+        <!-- Only worth showing when there's more than one worker to compare. -->
+        @if (showWorkerSplit()) {
+          <div class="attn">
+            <div class="attn__head">Earnings by worker</div>
+            @for (w of byWorker(); track w.staff_id) {
+              <div class="req">
+                <div class="req__main">
+                  <div class="req__who">{{ w.staff_name ?? 'Unassigned' }}</div>
+                  <div class="req__meta">{{ w.cash | currency:'EUR':'symbol':'1.0-0' }} received · {{ w.gross | currency:'EUR':'symbol':'1.0-0' }} billed</div>
+                </div>
+              </div>
+            }
+          </div>
         }
 
         @if (workEnabled() && inProduction() > 0) {

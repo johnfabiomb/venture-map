@@ -196,6 +196,36 @@ export class BookingAdminService {
   async addWorkItem(orgId: string, bookingId: string | null, title: string): Promise<void> {
     await bookingsDb.rpc('create_work_item', { p_org: orgId, p_booking: bookingId, p_title: title });
   }
+
+  /**
+   * The Work-board card for a booking, or null if it has none.
+   * Lets the booking-detail page offer "add to the Work board" AFTER creation — until now
+   * `needs_production` could only be chosen on the booking form, so a job you didn't flag
+   * up front could never be put on the board.
+   */
+  async workItemForBooking(bookingId: string): Promise<WorkJob | null> {
+    const { data } = await bookingsDb.from('work_board')
+      .select('id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active, assignee_id, assignee_name, due_at, client_name, service_name')
+      .eq('booking_id', bookingId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    const w = data as Record<string, unknown>;
+    return {
+      id: w['id'] as string, bookingId: (w['booking_id'] as string | null) ?? null,
+      title: w['title'] as string,
+      start_at: (w['booking_start_at'] as string | null) ?? null,
+      bookingEndAt: (w['booking_end_at'] as string | null) ?? null,
+      production_status: w['production_status'] as ProductionStage,
+      isActive: !!w['is_active'],
+      assigneeId: (w['assignee_id'] as string | null) ?? null,
+      assigneeName: (w['assignee_name'] as string | null) ?? null,
+      dueAt: (w['due_at'] as string | null) ?? null,
+      clientName: (w['client_name'] as string | null) ?? null,
+      serviceName: (w['service_name'] as string | null) ?? null,
+    };
+  }
   /** Remove a card from the board (soft delete via RPC). Never touches the booking — only
    *  unflags it. The work_items → tasks cascade trigger hides its checklist automatically. */
   async deleteWorkItem(id: string, bookingId: string | null): Promise<void> {

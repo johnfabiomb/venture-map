@@ -29,7 +29,17 @@ yarn-error.log
 .history/*
 
 # Secrets — never commit
+# `.secrets` alone left .env and key files fully committable: a single `git add -A`
+# would have swept in a Supabase service-role key or a Stripe secret key with no warning.
 .secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+service-account*.json
+secrets.json
 
 # Miscellaneous
 /.angular/cache

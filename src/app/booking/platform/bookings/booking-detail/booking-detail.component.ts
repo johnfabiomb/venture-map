@@ -3,12 +3,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
+import { BookingAdminService, WorkJob } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { LinksEditorComponent } from '@booking/ui/links-editor/links-editor.component';
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
-import { LineItem } from '@booking/core/interfaces/invoice.interface';
+import { LineItem, InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink, isDeliveryUrl } from '@booking/core/interfaces/delivery.interface';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -28,14 +29,19 @@ export class BookingDetailComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(BookingsAuthService);   // deliveries are org-scoped → need orgId()
+  private readonly admin = inject(BookingAdminService);
   readonly data = inject(BookingDataService);
 
   id = '';  // booking id (used by the template for the Invoice link)
   readonly payments = signal<Payment[]>([]);
   readonly slots = signal<BookingSlot[]>([]);    // the booking's time blocks (one or more)
   readonly lineItems = signal<LineItem[]>([]);   // invoice breakdown (source of truth for the total)
+  readonly invoices = signal<InvoiceListRow[]>([]);  // every invoice raised against this job
   readonly copied = signal(false);
   readonly adding = signal(false);
+  readonly addingInvoice = signal(false);
+  readonly workItem = signal<WorkJob | null>(null);   // this job's Work-board card, if any
+  readonly addingCard = signal(false);
 
   // Delivery (what the client receives once paid)
   readonly delivery = signal<Delivery | null>(null);
@@ -73,15 +79,19 @@ export class BookingDetailComponent implements OnInit {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.id) {
       await this.auth.initialize();   // idempotent; needed for orgId() when saving a delivery
-      const [payments, slots, items, delivery] = await Promise.all([
+      const [payments, slots, items, delivery, invoices, card] = await Promise.all([
         this.data.getPayments(this.id),
         this.data.getBookingSlots(this.id),
         this.data.getInvoiceItems(this.id),
         this.data.getDelivery(this.id),
+        this.data.listInvoicesForBooking(this.id),
+        this.admin.workItemForBooking(this.id),
       ]);
       this.payments.set(payments);
       this.slots.set(slots);
       this.lineItems.set(items);
+      this.invoices.set(invoices);
+      this.workItem.set(card);
       this.applyDelivery(delivery);
     }
   }
@@ -196,6 +206,51 @@ export class BookingDetailComponent implements OnInit {
     if (!url) { this.toast.error('Could not create the invoice link.'); return; }
     await navigator.clipboard.writeText(url);
     this.toast.success('Invoice link copied — share it with your client');
+  }
+
+  /**
+   * Put an already-created booking on the Work board. Previously `needs_production` was a
+   * create-time-only choice on the booking form, so a job you didn't flag up front could
+   * never reach the board — you had to delete and recreate it. Creating the card also
+   * seeds the service's task checklist, exactly as it does from the form.
+   */
+  async addToWorkBoard(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org || this.addingCard() || this.workItem()) return;
+    this.addingCard.set(true);
+    try {
+      await this.admin.addWorkItem(org, this.id, '');
+      this.workItem.set(await this.admin.workItemForBooking(this.id));
+      this.toast.success('Added to the Work board');
+    } catch {
+      this.toast.error('Could not add this job to the Work board.');
+    } finally { this.addingCard.set(false); }
+  }
+
+  /** Open an invoice's editor — by booking for the original (keeps existing links and
+   *  the "from=booking" return behaviour), by invoice id for any later one. */
+  invoiceEditLink(inv: InvoiceListRow): unknown[] {
+    return this.invoices()[0]?.id === inv.id
+      ? ['/bookings/invoice-edit', this.id]
+      : ['/bookings/invoices/edit', inv.id];
+  }
+
+  /**
+   * Raise an additional invoice against this job. This is the correct move when the
+   * scope grows after the first invoice is already sent: an issued invoice is a
+   * document the client holds, so you don't edit it — you issue a second one.
+   * Created as a draft so it takes no invoice number until you actually issue it.
+   */
+  async addInvoice(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org || this.addingInvoice()) return;
+    this.addingInvoice.set(true);
+    try {
+      const res = await this.data.addInvoiceToBooking(org, this.id);
+      if (res.error || !res.id) { this.toast.error('Could not add another invoice.'); return; }
+      this.toast.success('Draft invoice added');
+      this.router.navigate(['/bookings/invoices/edit', res.id]);
+    } finally { this.addingInvoice.set(false); }
   }
 
   goEdit(): void { this.router.navigate(['/bookings', this.id, 'edit']); }

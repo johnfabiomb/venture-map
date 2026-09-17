@@ -34,11 +34,38 @@
   margin-bottom: 24px;
 }
 .card__head {
-  display: flex; align-items: center; justify-content: space-between;
+  // Wraps because the chart card's header now holds the Cash received / Work done control,
+  // whose two buttons are both nowrap and cannot shrink beside the title.
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
   margin-bottom: 16px;
 }
 .card__title { font-size: 14px; font-weight: 700; color: $text; margin: 0; }
 .card__link  { font-size: 12.5px; font-weight: 600; color: $accent; text-decoration: none; &:hover { text-decoration: underline; } }
+
+// ── Filters (who + earnings basis) ──────────────────────────────────────
+// The dashboard had no <select> styling at all, so an unstyled native dropdown
+// would sit next to the styled buttons in .head-actions.
+.who-select {
+  padding: 9px 14px; border: 1.5px solid $border; border-radius: $radius-md;
+  font-size: 13.5px; font-weight: 600; font-family: $font;
+  color: $text-2; background: $card; cursor: pointer;
+  &:hover { border-color: $muted; }
+  &:focus { outline: none; border-color: $accent; }
+}
+
+// Segmented control for Cash received / Work done — two readings of the same
+// period, so they belong in one control rather than as two separate cards.
+.seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: $bg; border: 1px solid $border; border-radius: $radius-md;
+}
+.seg__btn {
+  padding: 5px 11px; border: none; background: none; cursor: pointer;
+  font-family: $font; font-size: 12px; font-weight: 600; color: $text-3;
+  border-radius: $radius-sm; transition: all $transition; white-space: nowrap;
+  &:hover { color: $text; }
+  &--active { background: $card; color: $text; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+}
 
 // ── Revenue chart ───────────────────────────────────────────────────────
 .chart__bars {
@@ -48,7 +75,9 @@
   height: 160px;
 }
 .chart__col {
-  flex: 1;
+  // min-width: 0 — six fixed columns with a currency label each would otherwise floor at
+  // their text width and push the chart past the card on a small phone.
+  flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: center;
   height: 100%;
 }
