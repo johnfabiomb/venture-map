@@ -175,6 +175,10 @@ export class InvoiceComponent implements OnInit {
   get canPayViaBooking(): boolean { return this.payable && this.hasBooking; }
   get payPageLink(): string { return `/book/${this.token}`; }
 
+  /** Whether either pay route is on offer. The toolbar demotes Download to secondary when
+   *  it is, so the row never shows two competing primary buttons. */
+  get hasPayAction(): boolean { return this.canPay || this.canPayViaBooking; }
+
   private loadStripeJs(): Promise<void> {
     return new Promise((resolve, reject) => {
       if ((window as any).Stripe) { resolve(); return; }

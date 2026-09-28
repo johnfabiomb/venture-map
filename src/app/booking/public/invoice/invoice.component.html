@@ -10,44 +10,49 @@
   }
   @case ('ready') {
     @if (data(); as d) {
-      <!-- Toolbar (not printed) -->
+      <!-- Toolbar (not printed). All three actions sit in ONE row: the pay action is a
+           peer of Download/Print, not a card of its own, so they align with each other and
+           with the sheet below. Exactly one of them is primary. -->
       <div class="toolbar no-print">
-        <button class="btn btn--primary" [disabled]="downloading()" (click)="download()">
+        <button class="btn" [class.btn--primary]="!hasPayAction" [class.btn--ghost]="hasPayAction"
+                [disabled]="downloading()" (click)="download()">
           {{ downloading() ? 'Preparing…' : '⬇ Download PDF' }}
         </button>
         <button class="btn btn--ghost" (click)="print()">🖨 Print</button>
+
+        <!-- A booking-linked invoice pays on the booking's own pay page: its token belongs to
+             booking_links, which the invoice payment function cannot resolve, and that page
+             additionally offers deposit vs full. A standalone invoice pays inline. -->
+        @if (canPayViaBooking) {
+          <a class="btn btn--primary" [href]="payPageLink">
+            Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
+          </a>
+        } @else if (canPay && payState() === 'idle') {
+          <button class="btn btn--primary" (click)="startPayment()">
+            Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
+          </button>
+        }
       </div>
 
-      <!-- Pay this invoice. Share-link recipients only — the owner's own preview routes
-           (/:id and ?inv=) never offer it. The amount comes from the server, never here. -->
-      @if (canPay) {
+      <!-- Stripe's card form, for a standalone invoice only, and only once payment has
+           started — the trigger lives in the toolbar above. The card is warranted here
+           because a payment form actually goes inside it. -->
+      @if (canPay && payState() !== 'idle') {
         <div class="paybox no-print">
-          @if (payState() === 'idle') {
-            <button class="btn btn--primary" (click)="startPayment()">
-              Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
+          <div id="invoice-payment-element"></div>
+          <div class="paybox__actions">
+            <button class="btn btn--primary" [disabled]="payState() === 'processing'" (click)="submitPayment()">
+              {{ payState() === 'processing' ? 'Processing…' : 'Pay ' + (balance | currency:currency:'symbol':'1.2-2') }}
             </button>
-          } @else {
-            <div id="invoice-payment-element"></div>
-            <div class="paybox__actions">
-              <button class="btn btn--primary" [disabled]="payState() === 'processing'" (click)="submitPayment()">
-                {{ payState() === 'processing' ? 'Processing…' : 'Pay ' + (balance | currency:currency:'symbol':'1.2-2') }}
-              </button>
-              <button class="btn btn--ghost" [disabled]="payState() === 'processing'" (click)="cancelPayment()">Cancel</button>
-            </div>
-          }
+            <button class="btn btn--ghost" [disabled]="payState() === 'processing'" (click)="cancelPayment()">Cancel</button>
+          </div>
           @if (payError()) { <p class="paybox__error">{{ payError() }}</p> }
         </div>
       }
 
-      <!-- Booking-linked invoice: pay on the booking's own pay page. The token here belongs
-           to booking_links, which the invoice payment function cannot resolve, so a direct
-           button would always fail — and the pay page additionally offers deposit vs full. -->
-      @if (canPayViaBooking) {
-        <div class="paybox no-print">
-          <a class="btn btn--primary" [href]="payPageLink">
-            Pay {{ balance | currency:currency:'symbol':'1.2-2' }} by card
-          </a>
-        </div>
+      <!-- A failure in startPayment returns to idle, so its message has no form to live in. -->
+      @if (payError() && payState() === 'idle') {
+        <p class="toolbar-error no-print">{{ payError() }}</p>
       }
 
       <!-- A4 sheet -->

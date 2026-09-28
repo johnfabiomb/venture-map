@@ -19,6 +19,7 @@ import {
   viewChild,
   ɵsetClassDebugInfo,
   ɵɵadvance,
+  ɵɵclassProp,
   ɵɵconditional,
   ɵɵdefineComponent,
   ɵɵelement,
@@ -106,13 +107,27 @@ function InvoiceComponent_Case_1_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_1_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "a", 6);
+    \u0275\u0275text(1);
+    \u0275\u0275pipe(2, "currency");
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275property("href", ctx_r1.payPageLink, \u0275\u0275sanitizeUrl);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" Pay ", \u0275\u0275pipeBind4(2, 2, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"), " by card ");
+  }
+}
+function InvoiceComponent_Case_2_Conditional_0_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 30);
-    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_1_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 31);
+    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_6_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext(4);
+      const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.startPayment());
     });
     \u0275\u0275text(1);
@@ -120,46 +135,14 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_1_Templ
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(4);
+    const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate1(" Pay ", \u0275\u0275pipeBind4(2, 1, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"), " by card ");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_2_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_7_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275element(0, "div", 31);
-    \u0275\u0275elementStart(1, "div", 32)(2, "button", 4);
-    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_2_Template_button_click_2_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.submitPayment());
-    });
-    \u0275\u0275text(3);
-    \u0275\u0275pipe(4, "currency");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 33);
-    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_2_Template_button_click_5_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.cancelPayment());
-    });
-    \u0275\u0275text(6, "Cancel");
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.payState() === "processing");
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r1.payState() === "processing" ? "Processing\u2026" : "Pay " + \u0275\u0275pipeBind4(4, 3, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"), " ");
-    \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", ctx_r1.payState() === "processing");
-  }
-}
-function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_3_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 29);
+    \u0275\u0275elementStart(0, "p", 36);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -169,38 +152,58 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_3_Templ
     \u0275\u0275textInterpolate(ctx_r1.payError());
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_5_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 6);
-    \u0275\u0275template(1, InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_1_Template, 3, 6, "button", 28)(2, InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_2_Template, 7, 8)(3, InvoiceComponent_Case_2_Conditional_0_Conditional_5_Conditional_3_Template, 2, 1, "p", 29);
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 8);
+    \u0275\u0275element(1, "div", 32);
+    \u0275\u0275elementStart(2, "div", 33)(3, "button", 34);
+    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_7_Template_button_click_3_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.submitPayment());
+    });
+    \u0275\u0275text(4);
+    \u0275\u0275pipe(5, "currency");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(6, "button", 35);
+    \u0275\u0275listener("click", function InvoiceComponent_Case_2_Conditional_0_Conditional_7_Template_button_click_6_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.cancelPayment());
+    });
+    \u0275\u0275text(7, "Cancel");
+    \u0275\u0275elementEnd()();
+    \u0275\u0275template(8, InvoiceComponent_Case_2_Conditional_0_Conditional_7_Conditional_8_Template, 2, 1, "p", 36);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance(3);
+    \u0275\u0275property("disabled", ctx_r1.payState() === "processing");
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" ", ctx_r1.payState() === "processing" ? "Processing\u2026" : "Pay " + \u0275\u0275pipeBind4(5, 4, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"), " ");
+    \u0275\u0275advance(2);
+    \u0275\u0275property("disabled", ctx_r1.payState() === "processing");
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.payError() ? 8 : -1);
+  }
+}
+function InvoiceComponent_Case_2_Conditional_0_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "p", 9);
+    \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.payState() === "idle" ? 1 : 2);
-    \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.payError() ? 3 : -1);
+    \u0275\u0275textInterpolate(ctx_r1.payError());
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_6_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 6)(1, "a", 34);
-    \u0275\u0275text(2);
-    \u0275\u0275pipe(3, "currency");
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275advance();
-    \u0275\u0275property("href", ctx_r1.payPageLink, \u0275\u0275sanitizeUrl);
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" Pay ", \u0275\u0275pipeBind4(3, 2, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"), " by card ");
-  }
-}
-function InvoiceComponent_Case_2_Conditional_0_Conditional_13_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 11);
+    \u0275\u0275elementStart(0, "p", 14);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -210,7 +213,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_13_Template(rf, ctx) 
     \u0275\u0275textInterpolate(ctx_r1.inv.address);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_15_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span");
     \u0275\u0275text(1);
@@ -222,7 +225,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_15_Template(rf, ctx) 
     \u0275\u0275textInterpolate(ctx_r1.inv.phone);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_16_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span");
     \u0275\u0275text(1);
@@ -234,7 +237,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_16_Template(rf, ctx) 
     \u0275\u0275textInterpolate1(" \xB7 ", ctx_r1.inv.email, "");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_17_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "p", 2);
     \u0275\u0275text(1);
@@ -246,7 +249,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_17_Template(rf, ctx) 
     \u0275\u0275textInterpolate1("VAT(CIF): ", ctx_r1.inv.vat_number, "");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_33_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td");
     \u0275\u0275text(2, "Service date");
@@ -262,7 +265,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_33_Template(rf, ctx) 
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(5, 1, ctx_r1.serviceDate, "d MMM yyyy"));
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_34_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_36_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "tr")(1, "td");
     \u0275\u0275text(2, "Booking");
@@ -277,9 +280,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_34_Template(rf, ctx) 
     \u0275\u0275textInterpolate(ctx_r1.bookingRef);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_2_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 11);
+    \u0275\u0275elementStart(0, "p", 14);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -289,7 +292,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_2_Temp
     \u0275\u0275textInterpolate(c_r5.billing_address);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_3_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "p", 2);
     \u0275\u0275text(1);
@@ -301,7 +304,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_3_Temp
     \u0275\u0275textInterpolate1("VAT No: ", c_r5.vat_number, "");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_4_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "p", 2);
     \u0275\u0275text(1);
@@ -313,12 +316,12 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_4_Temp
     \u0275\u0275textInterpolate(c_r5.email);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_40_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 35);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(2, InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_2_Template, 2, 1, "p", 11)(3, InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_3_Template, 2, 1, "p", 2)(4, InvoiceComponent_Case_2_Conditional_0_Conditional_38_Conditional_4_Template, 2, 1, "p", 2);
+    \u0275\u0275template(2, InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_2_Template, 2, 1, "p", 14)(3, InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_3_Template, 2, 1, "p", 2)(4, InvoiceComponent_Case_2_Conditional_0_Conditional_40_Conditional_4_Template, 2, 1, "p", 2);
   }
   if (rf & 2) {
     const c_r5 = ctx;
@@ -332,22 +335,22 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_38_Template(rf, ctx) 
     \u0275\u0275conditional(c_r5.email ? 4 : -1);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_39_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_41_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "p", 2);
     \u0275\u0275text(1, "\u2014");
     \u0275\u0275elementEnd();
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_For_51_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_For_53_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "tr")(1, "td", 18);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 21);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td")(4, "div", 36);
+    \u0275\u0275elementStart(3, "td")(4, "div", 38);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "td", 19);
+    \u0275\u0275elementStart(6, "td", 22);
     \u0275\u0275text(7);
     \u0275\u0275pipe(8, "currency");
     \u0275\u0275elementEnd()();
@@ -364,16 +367,16 @@ function InvoiceComponent_Case_2_Conditional_0_For_51_Template(rf, ctx) {
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(8, 3, item_r6.amount, ctx_r1.currency, "symbol", "1.2-2"));
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_53_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_55_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 22)(1, "span");
+    \u0275\u0275elementStart(0, "div", 25)(1, "span");
     \u0275\u0275text(2, "Subtotal (net)");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "span");
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 22)(7, "span");
+    \u0275\u0275elementStart(6, "div", 25)(7, "span");
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "span");
@@ -391,9 +394,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_53_Template(rf, ctx) 
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(11, 8, ctx_r1.vat, ctx_r1.currency, "symbol", "1.2-2"));
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_60_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 22)(1, "span");
+    \u0275\u0275elementStart(0, "div", 25)(1, "span");
     \u0275\u0275text(2, "Paid");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "span");
@@ -407,9 +410,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_60_Template(rf, ctx) 
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(5, 1, ctx_r1.paid, ctx_r1.currency, "symbol", "1.2-2"));
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_61_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_63_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 23)(1, "span");
+    \u0275\u0275elementStart(0, "div", 26)(1, "span");
     \u0275\u0275text(2, "Balance due");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "span");
@@ -423,7 +426,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_61_Template(rf, ctx) 
     \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(5, 1, ctx_r1.balance, ctx_r1.currency, "symbol", "1.2-2"));
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_5_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_64_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
   }
@@ -432,7 +435,7 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_5_Temp
     \u0275\u0275textInterpolate1(" by ", ctx_r1.paidMethods, "");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_6_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_64_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "date");
@@ -442,14 +445,14 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_6_Temp
     \u0275\u0275textInterpolate1(" \xB7 ", \u0275\u0275pipeBind2(1, 1, ctx_r1.lastPaidAt, "d MMM yyyy"), "");
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_64_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 24)(1, "span", 37);
+    \u0275\u0275elementStart(0, "div", 27)(1, "span", 39);
     \u0275\u0275text(2, "PAID");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 38);
+    \u0275\u0275elementStart(3, "span", 40);
     \u0275\u0275text(4, " Paid in full");
-    \u0275\u0275template(5, InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_5_Template, 1, 1)(6, InvoiceComponent_Case_2_Conditional_0_Conditional_62_Conditional_6_Template, 2, 4);
+    \u0275\u0275template(5, InvoiceComponent_Case_2_Conditional_0_Conditional_64_Conditional_5_Template, 1, 1)(6, InvoiceComponent_Case_2_Conditional_0_Conditional_64_Conditional_6_Template, 2, 4);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -460,9 +463,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_62_Template(rf, ctx) 
     \u0275\u0275conditional(ctx_r1.lastPaidAt ? 6 : -1);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_63_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_65_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 25);
+    \u0275\u0275elementStart(0, "p", 28);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -472,9 +475,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_63_Template(rf, ctx) 
     \u0275\u0275textInterpolate(ctx_r1.notes);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_64_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_66_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 26);
+    \u0275\u0275elementStart(0, "p", 29);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -484,9 +487,9 @@ function InvoiceComponent_Case_2_Conditional_0_Conditional_64_Template(rf, ctx) 
     \u0275\u0275textInterpolate(ctx_r1.inv.vat_note);
   }
 }
-function InvoiceComponent_Case_2_Conditional_0_Conditional_65_Template(rf, ctx) {
+function InvoiceComponent_Case_2_Conditional_0_Conditional_67_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "footer", 27);
+    \u0275\u0275elementStart(0, "footer", 30);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -514,120 +517,125 @@ function InvoiceComponent_Case_2_Conditional_0_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.print());
     });
     \u0275\u0275text(4, "\u{1F5A8} Print");
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(5, InvoiceComponent_Case_2_Conditional_0_Conditional_5_Template, 3, 7, "a", 6)(6, InvoiceComponent_Case_2_Conditional_0_Conditional_6_Template, 3, 6, "button", 7);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(7, InvoiceComponent_Case_2_Conditional_0_Conditional_7_Template, 9, 9, "div", 8)(8, InvoiceComponent_Case_2_Conditional_0_Conditional_8_Template, 2, 1, "p", 9);
+    \u0275\u0275elementStart(9, "div", 10, 0)(11, "header", 11)(12, "div", 12)(13, "h1", 13);
+    \u0275\u0275text(14);
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(15, InvoiceComponent_Case_2_Conditional_0_Conditional_15_Template, 2, 1, "p", 14);
+    \u0275\u0275elementStart(16, "p", 2);
+    \u0275\u0275template(17, InvoiceComponent_Case_2_Conditional_0_Conditional_17_Template, 2, 1, "span")(18, InvoiceComponent_Case_2_Conditional_0_Conditional_18_Template, 2, 1, "span");
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(19, InvoiceComponent_Case_2_Conditional_0_Conditional_19_Template, 2, 1, "p", 2);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(20, "div", 15)(21, "div", 16);
+    \u0275\u0275text(22, "INVOICE");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "table", 17)(24, "tr")(25, "td");
+    \u0275\u0275text(26, "Invoice no.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(27, "td");
+    \u0275\u0275text(28);
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(5, InvoiceComponent_Case_2_Conditional_0_Conditional_5_Template, 4, 2, "div", 6)(6, InvoiceComponent_Case_2_Conditional_0_Conditional_6_Template, 4, 7, "div", 6);
-    \u0275\u0275elementStart(7, "div", 7, 0)(9, "header", 8)(10, "div", 9)(11, "h1", 10);
-    \u0275\u0275text(12);
+    \u0275\u0275elementStart(29, "tr")(30, "td");
+    \u0275\u0275text(31, "Issue date");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(13, InvoiceComponent_Case_2_Conditional_0_Conditional_13_Template, 2, 1, "p", 11);
-    \u0275\u0275elementStart(14, "p", 2);
-    \u0275\u0275template(15, InvoiceComponent_Case_2_Conditional_0_Conditional_15_Template, 2, 1, "span")(16, InvoiceComponent_Case_2_Conditional_0_Conditional_16_Template, 2, 1, "span");
-    \u0275\u0275elementEnd();
-    \u0275\u0275template(17, InvoiceComponent_Case_2_Conditional_0_Conditional_17_Template, 2, 1, "p", 2);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "div", 12)(19, "div", 13);
-    \u0275\u0275text(20, "INVOICE");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "table", 14)(22, "tr")(23, "td");
-    \u0275\u0275text(24, "Invoice no.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(25, "td");
-    \u0275\u0275text(26);
+    \u0275\u0275elementStart(32, "td");
+    \u0275\u0275text(33);
+    \u0275\u0275pipe(34, "date");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(27, "tr")(28, "td");
-    \u0275\u0275text(29, "Issue date");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "td");
-    \u0275\u0275text(31);
-    \u0275\u0275pipe(32, "date");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(33, InvoiceComponent_Case_2_Conditional_0_Conditional_33_Template, 6, 4, "tr")(34, InvoiceComponent_Case_2_Conditional_0_Conditional_34_Template, 5, 1, "tr");
+    \u0275\u0275template(35, InvoiceComponent_Case_2_Conditional_0_Conditional_35_Template, 6, 4, "tr")(36, InvoiceComponent_Case_2_Conditional_0_Conditional_36_Template, 5, 1, "tr");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(35, "section", 15)(36, "div", 16);
-    \u0275\u0275text(37, "Bill to");
+    \u0275\u0275elementStart(37, "section", 18)(38, "div", 19);
+    \u0275\u0275text(39, "Bill to");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(38, InvoiceComponent_Case_2_Conditional_0_Conditional_38_Template, 5, 4)(39, InvoiceComponent_Case_2_Conditional_0_Conditional_39_Template, 2, 0, "p", 2);
+    \u0275\u0275template(40, InvoiceComponent_Case_2_Conditional_0_Conditional_40_Template, 5, 4)(41, InvoiceComponent_Case_2_Conditional_0_Conditional_41_Template, 2, 0, "p", 2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(40, "table", 17)(41, "thead")(42, "tr")(43, "th", 18);
-    \u0275\u0275text(44, "No.");
+    \u0275\u0275elementStart(42, "table", 20)(43, "thead")(44, "tr")(45, "th", 21);
+    \u0275\u0275text(46, "No.");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(45, "th");
-    \u0275\u0275text(46, "Description");
+    \u0275\u0275elementStart(47, "th");
+    \u0275\u0275text(48, "Description");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(47, "th", 19);
-    \u0275\u0275text(48, "Total amount");
+    \u0275\u0275elementStart(49, "th", 22);
+    \u0275\u0275text(50, "Total amount");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(49, "tbody");
-    \u0275\u0275repeaterCreate(50, InvoiceComponent_Case_2_Conditional_0_For_51_Template, 9, 8, "tr", null, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(51, "tbody");
+    \u0275\u0275repeaterCreate(52, InvoiceComponent_Case_2_Conditional_0_For_53_Template, 9, 8, "tr", null, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(52, "div", 20);
-    \u0275\u0275template(53, InvoiceComponent_Case_2_Conditional_0_Conditional_53_Template, 12, 13);
-    \u0275\u0275elementStart(54, "div", 21)(55, "span");
-    \u0275\u0275text(56, "Total");
+    \u0275\u0275elementStart(54, "div", 23);
+    \u0275\u0275template(55, InvoiceComponent_Case_2_Conditional_0_Conditional_55_Template, 12, 13);
+    \u0275\u0275elementStart(56, "div", 24)(57, "span");
+    \u0275\u0275text(58, "Total");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(57, "span");
-    \u0275\u0275text(58);
-    \u0275\u0275pipe(59, "currency");
+    \u0275\u0275elementStart(59, "span");
+    \u0275\u0275text(60);
+    \u0275\u0275pipe(61, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(60, InvoiceComponent_Case_2_Conditional_0_Conditional_60_Template, 6, 6, "div", 22)(61, InvoiceComponent_Case_2_Conditional_0_Conditional_61_Template, 6, 6, "div", 23);
+    \u0275\u0275template(62, InvoiceComponent_Case_2_Conditional_0_Conditional_62_Template, 6, 6, "div", 25)(63, InvoiceComponent_Case_2_Conditional_0_Conditional_63_Template, 6, 6, "div", 26);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(62, InvoiceComponent_Case_2_Conditional_0_Conditional_62_Template, 7, 2, "div", 24)(63, InvoiceComponent_Case_2_Conditional_0_Conditional_63_Template, 2, 1, "p", 25)(64, InvoiceComponent_Case_2_Conditional_0_Conditional_64_Template, 2, 1, "p", 26)(65, InvoiceComponent_Case_2_Conditional_0_Conditional_65_Template, 2, 1, "footer", 27);
+    \u0275\u0275template(64, InvoiceComponent_Case_2_Conditional_0_Conditional_64_Template, 7, 2, "div", 27)(65, InvoiceComponent_Case_2_Conditional_0_Conditional_65_Template, 2, 1, "p", 28)(66, InvoiceComponent_Case_2_Conditional_0_Conditional_66_Template, 2, 1, "p", 29)(67, InvoiceComponent_Case_2_Conditional_0_Conditional_67_Template, 2, 1, "footer", 30);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    let tmp_17_0;
+    let tmp_20_0;
     const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance();
+    \u0275\u0275classProp("btn--primary", !ctx_r1.hasPayAction)("btn--ghost", ctx_r1.hasPayAction);
     \u0275\u0275property("disabled", ctx_r1.downloading());
     \u0275\u0275advance();
     \u0275\u0275textInterpolate1(" ", ctx_r1.downloading() ? "Preparing\u2026" : "\u2B07 Download PDF", " ");
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r1.canPay ? 5 : -1);
+    \u0275\u0275conditional(ctx_r1.canPayViaBooking ? 5 : ctx_r1.canPay && ctx_r1.payState() === "idle" ? 6 : -1);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional(ctx_r1.canPay && ctx_r1.payState() !== "idle" ? 7 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.canPayViaBooking ? 6 : -1);
+    \u0275\u0275conditional(ctx_r1.payError() && ctx_r1.payState() === "idle" ? 8 : -1);
     \u0275\u0275advance(6);
     \u0275\u0275textInterpolate(ctx_r1.supplierName);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.inv.address ? 13 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.address ? 15 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.inv.phone ? 15 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.phone ? 17 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.inv.email ? 16 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.email ? 18 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.inv.vat_number ? 17 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.vat_number ? 19 : -1);
     \u0275\u0275advance(9);
     \u0275\u0275textInterpolate(ctx_r1.invoiceNumber);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(32, 22, ctx_r1.issueDate, "d MMM yyyy"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(34, 27, ctx_r1.issueDate, "d MMM yyyy"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.serviceDate ? 33 : -1);
+    \u0275\u0275conditional(ctx_r1.serviceDate ? 35 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.bookingRef ? 34 : -1);
+    \u0275\u0275conditional(ctx_r1.bookingRef ? 36 : -1);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional((tmp_17_0 = ctx.client) ? 38 : 39, tmp_17_0);
+    \u0275\u0275conditional((tmp_20_0 = ctx.client) ? 40 : 41, tmp_20_0);
     \u0275\u0275advance(12);
     \u0275\u0275repeater(ctx_r1.lineItems);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(ctx_r1.vatRegistered ? 53 : -1);
+    \u0275\u0275conditional(ctx_r1.vatRegistered ? 55 : -1);
     \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(59, 25, ctx_r1.total, ctx_r1.currency, "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(61, 30, ctx_r1.total, ctx_r1.currency, "symbol", "1.2-2"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.paid > 0 ? 60 : -1);
+    \u0275\u0275conditional(ctx_r1.paid > 0 ? 62 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.balance > 0 ? 61 : -1);
+    \u0275\u0275conditional(ctx_r1.balance > 0 ? 63 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.fullyPaid ? 62 : -1);
+    \u0275\u0275conditional(ctx_r1.fullyPaid ? 64 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.notes ? 63 : -1);
+    \u0275\u0275conditional(ctx_r1.notes ? 65 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.inv.vat_note ? 64 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.vat_note ? 66 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.inv.invoice_footer && !ctx_r1.fullyPaid ? 65 : -1);
+    \u0275\u0275conditional(ctx_r1.inv.invoice_footer && !ctx_r1.fullyPaid ? 67 : -1);
   }
 }
 function InvoiceComponent_Case_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, InvoiceComponent_Case_2_Conditional_0_Template, 66, 30);
+    \u0275\u0275template(0, InvoiceComponent_Case_2_Conditional_0_Template, 68, 35);
   }
   if (rf & 2) {
     let tmp_1_0;
@@ -795,6 +803,11 @@ var InvoiceComponent = class _InvoiceComponent {
   get payPageLink() {
     return `/book/${this.token}`;
   }
+  /** Whether either pay route is on offer. The toolbar demotes Download to secondary when
+   *  it is, so the row never shows two competing primary buttons. */
+  get hasPayAction() {
+    return this.canPay || this.canPayViaBooking;
+  }
   loadStripeJs() {
     return new Promise((resolve, reject) => {
       if (window.Stripe) {
@@ -900,7 +913,7 @@ var InvoiceComponent = class _InvoiceComponent {
       if (rf & 2) {
         \u0275\u0275queryAdvance();
       }
-    }, decls: 3, vars: 1, consts: [["sheet", ""], [1, "screen"], [1, "muted"], [1, "toolbar", "no-print"], [1, "btn", "btn--primary", 3, "click", "disabled"], [1, "btn", "btn--ghost", 3, "click"], [1, "paybox", "no-print"], [1, "sheet"], [1, "inv-head"], [1, "supplier"], [1, "supplier__name"], [1, "muted", "pre"], [1, "inv-meta"], [1, "inv-title"], [1, "meta"], [1, "bill-to"], [1, "block-label"], [1, "items"], [1, "no"], [1, "num"], [1, "totals"], [1, "totals__row", "totals__row--grand"], [1, "totals__row"], [1, "totals__row", "totals__row--bal"], [1, "paid-banner"], [1, "inv-notes", "pre"], [1, "vat-note", "pre"], [1, "inv-footer", "pre"], [1, "btn", "btn--primary"], [1, "paybox__error"], [1, "btn", "btn--primary", 3, "click"], ["id", "invoice-payment-element"], [1, "paybox__actions"], [1, "btn", "btn--ghost", 3, "click", "disabled"], [1, "btn", "btn--primary", 3, "href"], [1, "bill-to__name"], [1, "item-desc", "pre"], [1, "paid-badge"], [1, "paid-when"]], template: function InvoiceComponent_Template(rf, ctx) {
+    }, decls: 3, vars: 1, consts: [["sheet", ""], [1, "screen"], [1, "muted"], [1, "toolbar", "no-print"], [1, "btn", 3, "click", "disabled"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "href"], [1, "btn", "btn--primary"], [1, "paybox", "no-print"], [1, "toolbar-error", "no-print"], [1, "sheet"], [1, "inv-head"], [1, "supplier"], [1, "supplier__name"], [1, "muted", "pre"], [1, "inv-meta"], [1, "inv-title"], [1, "meta"], [1, "bill-to"], [1, "block-label"], [1, "items"], [1, "no"], [1, "num"], [1, "totals"], [1, "totals__row", "totals__row--grand"], [1, "totals__row"], [1, "totals__row", "totals__row--bal"], [1, "paid-banner"], [1, "inv-notes", "pre"], [1, "vat-note", "pre"], [1, "inv-footer", "pre"], [1, "btn", "btn--primary", 3, "click"], ["id", "invoice-payment-element"], [1, "paybox__actions"], [1, "btn", "btn--primary", 3, "click", "disabled"], [1, "btn", "btn--ghost", 3, "click", "disabled"], [1, "paybox__error"], [1, "bill-to__name"], [1, "item-desc", "pre"], [1, "paid-badge"], [1, "paid-when"]], template: function InvoiceComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275template(0, InvoiceComponent_Case_0_Template, 3, 0, "div", 1)(1, InvoiceComponent_Case_1_Template, 5, 0, "div", 1)(2, InvoiceComponent_Case_2_Template, 1, 1);
       }
@@ -908,7 +921,7 @@ var InvoiceComponent = class _InvoiceComponent {
         let tmp_0_0;
         \u0275\u0275conditional((tmp_0_0 = ctx.state()) === "loading" ? 0 : tmp_0_0 === "error" ? 1 : tmp_0_0 === "ready" ? 2 : -1);
       }
-    }, dependencies: [CurrencyPipe, DatePipe], styles: ['\n\n[_nghost-%COMP%] {\n  display: block;\n  background: #f3f4f6;\n  min-height: 100vh;\n  padding: 24px 16px 64px;\n  font-family:\n    system-ui,\n    -apple-system,\n    "Segoe UI",\n    Roboto,\n    sans-serif;\n  color: #111827;\n}\n.screen[_ngcontent-%COMP%] {\n  max-width: 640px;\n  margin: 80px auto;\n  text-align: center;\n}\n.muted[_ngcontent-%COMP%] {\n  color: #6b7280;\n}\n.pre[_ngcontent-%COMP%] {\n  white-space: pre-line;\n}\n.toolbar[_ngcontent-%COMP%] {\n  max-width: 800px;\n  margin: 0 auto 16px;\n  display: flex;\n  justify-content: flex-end;\n  gap: 10px;\n}\n.btn[_ngcontent-%COMP%] {\n  border: none;\n  border-radius: 8px;\n  padding: 11px 18px;\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn--primary[_ngcontent-%COMP%] {\n  background: #F4A922;\n  color: #111827;\n}\n.btn--ghost[_ngcontent-%COMP%] {\n  background: #fff;\n  color: #374151;\n  border: 1.5px solid #e5e7eb;\n}\n.btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.55;\n  cursor: default;\n  filter: none;\n}\n.btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  filter: brightness(0.95);\n}\n.paybox[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: 0 auto 16px;\n  background: #fff;\n  border: 1px solid #e5e7eb;\n  border-radius: 10px;\n  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);\n  padding: 20px 22px;\n}\n.paybox__actions[_ngcontent-%COMP%] {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 10px;\n  margin-top: 16px;\n}\n.paybox__actions[_ngcontent-%COMP%]   .btn[_ngcontent-%COMP%] {\n  flex: 1 1 auto;\n}\n.paybox__error[_ngcontent-%COMP%] {\n  margin: 12px 0 0;\n  font-size: 13px;\n  color: #dc2626;\n}\n.sheet[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: 0 auto;\n  background: #fff;\n  border-radius: 10px;\n  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);\n  padding: 48px 52px;\n}\n.inv-head[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  gap: 24px;\n  border-bottom: 2px solid #111827;\n  padding-bottom: 20px;\n  margin-bottom: 24px;\n}\n.supplier__name[_ngcontent-%COMP%] {\n  font-size: 20px;\n  font-weight: 800;\n  margin: 0 0 6px;\n}\n.supplier[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 2px 0;\n  font-size: 12.5px;\n}\n.inv-meta[_ngcontent-%COMP%] {\n  text-align: right;\n  flex: 0 0 auto;\n}\n.inv-title[_ngcontent-%COMP%] {\n  font-size: 26px;\n  font-weight: 800;\n  letter-spacing: 0.08em;\n  color: #F4A922;\n  margin-bottom: 8px;\n}\n.meta[_ngcontent-%COMP%] {\n  font-size: 12.5px;\n  margin-left: auto;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%] {\n  padding: 2px 0;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%]:first-child {\n  color: #6b7280;\n  padding-right: 16px;\n  text-align: left;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%]:last-child {\n  font-weight: 600;\n  text-align: right;\n}\n.block-label[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 700;\n  text-transform: uppercase;\n  letter-spacing: 0.06em;\n  color: #9ca3af;\n  margin-bottom: 6px;\n}\n.bill-to[_ngcontent-%COMP%] {\n  margin-bottom: 28px;\n}\n.bill-to__name[_ngcontent-%COMP%] {\n  font-size: 15px;\n  font-weight: 700;\n  margin: 0 0 2px;\n}\n.bill-to[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 2px 0;\n  font-size: 12.5px;\n}\n.items[_ngcontent-%COMP%] {\n  width: 100%;\n  border-collapse: collapse;\n  margin-bottom: 20px;\n}\n.items[_ngcontent-%COMP%]   th[_ngcontent-%COMP%] {\n  text-align: left;\n  font-size: 11px;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  color: #6b7280;\n  border-bottom: 1.5px solid #e5e7eb;\n  padding: 0 0 8px;\n}\n.items[_ngcontent-%COMP%]   th.num[_ngcontent-%COMP%], \n.items[_ngcontent-%COMP%]   td.num[_ngcontent-%COMP%] {\n  text-align: right;\n  white-space: nowrap;\n}\n.items[_ngcontent-%COMP%]   th.no[_ngcontent-%COMP%], \n.items[_ngcontent-%COMP%]   td.no[_ngcontent-%COMP%] {\n  width: 36px;\n  color: #6b7280;\n  font-weight: 700;\n}\n.items[_ngcontent-%COMP%]   td[_ngcontent-%COMP%] {\n  padding: 12px 0;\n  border-bottom: 1px solid #f3f4f6;\n  vertical-align: top;\n}\n.item-title[_ngcontent-%COMP%] {\n  font-weight: 600;\n  font-size: 14px;\n}\n.item-desc[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: #374151;\n  margin-top: 3px;\n  white-space: pre-line;\n  overflow-wrap: anywhere;\n}\n.item-meta[_ngcontent-%COMP%] {\n  font-size: 11.5px;\n  color: #9ca3af;\n  margin-top: 5px;\n}\n.totals[_ngcontent-%COMP%] {\n  margin-left: auto;\n  width: min(280px, 100%);\n  margin-top: 8px;\n}\n.totals__row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  font-size: 13.5px;\n  padding: 6px 0;\n}\n.totals__row[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #6b7280;\n}\n.totals__row--grand[_ngcontent-%COMP%] {\n  border-top: 1.5px solid #111827;\n  margin-top: 4px;\n  font-weight: 800;\n  font-size: 16px;\n}\n.totals__row--grand[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #111827;\n}\n.totals__row--bal[_ngcontent-%COMP%] {\n  font-weight: 700;\n  color: #b45309;\n}\n.totals__row--bal[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #b45309;\n}\n.inv-notes[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  font-size: 13px;\n  color: #374151;\n}\n.vat-note[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  font-size: 12px;\n  color: #6b7280;\n}\n.paid-banner[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n}\n.paid-badge[_ngcontent-%COMP%] {\n  display: inline-block;\n  border: 2px solid #16a34a;\n  color: #16a34a;\n  font-weight: 800;\n  letter-spacing: 0.12em;\n  font-size: 15px;\n  padding: 4px 12px;\n  border-radius: 6px;\n  transform: rotate(-3deg);\n}\n.paid-when[_ngcontent-%COMP%] {\n  font-size: 12.5px;\n  color: #6b7280;\n}\n.inv-footer[_ngcontent-%COMP%] {\n  margin-top: 28px;\n  padding-top: 16px;\n  border-top: 1px solid #e5e7eb;\n  font-size: 12px;\n  color: #6b7280;\n}\n@media (max-width: 760px) {\n  .sheet[_ngcontent-%COMP%] {\n    padding: 24px 20px;\n  }\n  .inv-head[_ngcontent-%COMP%] {\n    flex-direction: column;\n    gap: 16px;\n  }\n  .inv-meta[_ngcontent-%COMP%] {\n    flex: none;\n    text-align: left;\n  }\n  .meta[_ngcontent-%COMP%] {\n    margin-left: 0;\n  }\n  .supplier[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n    overflow-wrap: anywhere;\n  }\n  .paybox[_ngcontent-%COMP%] {\n    padding: 16px;\n  }\n}\n@media print {\n  [_nghost-%COMP%] {\n    background: #fff;\n    padding: 0;\n  }\n  .no-print[_ngcontent-%COMP%] {\n    display: none !important;\n  }\n  .sheet[_ngcontent-%COMP%] {\n    box-shadow: none;\n    border-radius: 0;\n    max-width: none;\n    margin: 0;\n    padding: 24px 28px;\n  }\n}\n/*# sourceMappingURL=invoice.component.css.map */'] });
+    }, dependencies: [CurrencyPipe, DatePipe], styles: ['\n\n[_nghost-%COMP%] {\n  display: block;\n  background: #f3f4f6;\n  min-height: 100vh;\n  padding: 24px 16px 64px;\n  font-family:\n    system-ui,\n    -apple-system,\n    "Segoe UI",\n    Roboto,\n    sans-serif;\n  color: #111827;\n}\n.screen[_ngcontent-%COMP%] {\n  max-width: 640px;\n  margin: 80px auto;\n  text-align: center;\n}\n.muted[_ngcontent-%COMP%] {\n  color: #6b7280;\n}\n.pre[_ngcontent-%COMP%] {\n  white-space: pre-line;\n}\n.toolbar[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: 0 auto 16px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 10px;\n}\n.toolbar[_ngcontent-%COMP%]   .btn[_ngcontent-%COMP%] {\n  flex: 1 1 0;\n  min-width: 140px;\n}\n.toolbar-error[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: -6px auto 16px;\n  font-size: 13px;\n  color: #dc2626;\n}\n.btn[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  text-align: center;\n  text-decoration: none;\n  border: 1.5px solid transparent;\n  border-radius: 8px;\n  padding: 11px 18px;\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn--primary[_ngcontent-%COMP%] {\n  background: #F4A922;\n  color: #111827;\n}\n.btn--ghost[_ngcontent-%COMP%] {\n  background: #fff;\n  color: #374151;\n  border-color: #e5e7eb;\n}\n.btn[_ngcontent-%COMP%]:disabled {\n  opacity: 0.55;\n  cursor: default;\n  filter: none;\n}\n.btn[_ngcontent-%COMP%]:hover:not(:disabled) {\n  filter: brightness(0.95);\n}\n.paybox[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: 0 auto 16px;\n  background: #fff;\n  border: 1px solid #e5e7eb;\n  border-radius: 10px;\n  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);\n  padding: 20px 22px;\n}\n.paybox__actions[_ngcontent-%COMP%] {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 10px;\n  margin-top: 16px;\n}\n.paybox__actions[_ngcontent-%COMP%]   .btn[_ngcontent-%COMP%] {\n  flex: 1 1 auto;\n}\n.paybox__error[_ngcontent-%COMP%] {\n  margin: 12px 0 0;\n  font-size: 13px;\n  color: #dc2626;\n}\n.sheet[_ngcontent-%COMP%] {\n  max-width: 760px;\n  margin: 0 auto;\n  background: #fff;\n  border-radius: 10px;\n  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);\n  padding: 48px 52px;\n}\n.inv-head[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  gap: 24px;\n  border-bottom: 2px solid #111827;\n  padding-bottom: 20px;\n  margin-bottom: 24px;\n}\n.supplier__name[_ngcontent-%COMP%] {\n  font-size: 20px;\n  font-weight: 800;\n  margin: 0 0 6px;\n}\n.supplier[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 2px 0;\n  font-size: 12.5px;\n}\n.inv-meta[_ngcontent-%COMP%] {\n  text-align: right;\n  flex: 0 0 auto;\n}\n.inv-title[_ngcontent-%COMP%] {\n  font-size: 26px;\n  font-weight: 800;\n  letter-spacing: 0.08em;\n  color: #F4A922;\n  margin-bottom: 8px;\n}\n.meta[_ngcontent-%COMP%] {\n  font-size: 12.5px;\n  margin-left: auto;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%] {\n  padding: 2px 0;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%]:first-child {\n  color: #6b7280;\n  padding-right: 16px;\n  text-align: left;\n}\n.meta[_ngcontent-%COMP%]   td[_ngcontent-%COMP%]:last-child {\n  font-weight: 600;\n  text-align: right;\n}\n.block-label[_ngcontent-%COMP%] {\n  font-size: 11px;\n  font-weight: 700;\n  text-transform: uppercase;\n  letter-spacing: 0.06em;\n  color: #9ca3af;\n  margin-bottom: 6px;\n}\n.bill-to[_ngcontent-%COMP%] {\n  margin-bottom: 28px;\n}\n.bill-to__name[_ngcontent-%COMP%] {\n  font-size: 15px;\n  font-weight: 700;\n  margin: 0 0 2px;\n}\n.bill-to[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 2px 0;\n  font-size: 12.5px;\n}\n.items[_ngcontent-%COMP%] {\n  width: 100%;\n  border-collapse: collapse;\n  margin-bottom: 20px;\n}\n.items[_ngcontent-%COMP%]   th[_ngcontent-%COMP%] {\n  text-align: left;\n  font-size: 11px;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  color: #6b7280;\n  border-bottom: 1.5px solid #e5e7eb;\n  padding: 0 0 8px;\n}\n.items[_ngcontent-%COMP%]   th.num[_ngcontent-%COMP%], \n.items[_ngcontent-%COMP%]   td.num[_ngcontent-%COMP%] {\n  text-align: right;\n  white-space: nowrap;\n}\n.items[_ngcontent-%COMP%]   th.no[_ngcontent-%COMP%], \n.items[_ngcontent-%COMP%]   td.no[_ngcontent-%COMP%] {\n  width: 36px;\n  color: #6b7280;\n  font-weight: 700;\n}\n.items[_ngcontent-%COMP%]   td[_ngcontent-%COMP%] {\n  padding: 12px 0;\n  border-bottom: 1px solid #f3f4f6;\n  vertical-align: top;\n}\n.item-title[_ngcontent-%COMP%] {\n  font-weight: 600;\n  font-size: 14px;\n}\n.item-desc[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: #374151;\n  margin-top: 3px;\n  white-space: pre-line;\n  overflow-wrap: anywhere;\n}\n.item-meta[_ngcontent-%COMP%] {\n  font-size: 11.5px;\n  color: #9ca3af;\n  margin-top: 5px;\n}\n.totals[_ngcontent-%COMP%] {\n  margin-left: auto;\n  width: min(280px, 100%);\n  margin-top: 8px;\n}\n.totals__row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  font-size: 13.5px;\n  padding: 6px 0;\n}\n.totals__row[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #6b7280;\n}\n.totals__row--grand[_ngcontent-%COMP%] {\n  border-top: 1.5px solid #111827;\n  margin-top: 4px;\n  font-weight: 800;\n  font-size: 16px;\n}\n.totals__row--grand[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #111827;\n}\n.totals__row--bal[_ngcontent-%COMP%] {\n  font-weight: 700;\n  color: #b45309;\n}\n.totals__row--bal[_ngcontent-%COMP%]   span[_ngcontent-%COMP%]:first-child {\n  color: #b45309;\n}\n.inv-notes[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  font-size: 13px;\n  color: #374151;\n}\n.vat-note[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  font-size: 12px;\n  color: #6b7280;\n}\n.paid-banner[_ngcontent-%COMP%] {\n  margin-top: 24px;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n}\n.paid-badge[_ngcontent-%COMP%] {\n  display: inline-block;\n  border: 2px solid #16a34a;\n  color: #16a34a;\n  font-weight: 800;\n  letter-spacing: 0.12em;\n  font-size: 15px;\n  padding: 4px 12px;\n  border-radius: 6px;\n  transform: rotate(-3deg);\n}\n.paid-when[_ngcontent-%COMP%] {\n  font-size: 12.5px;\n  color: #6b7280;\n}\n.inv-footer[_ngcontent-%COMP%] {\n  margin-top: 28px;\n  padding-top: 16px;\n  border-top: 1px solid #e5e7eb;\n  font-size: 12px;\n  color: #6b7280;\n}\n@media (max-width: 760px) {\n  .sheet[_ngcontent-%COMP%] {\n    padding: 24px 20px;\n  }\n  .inv-head[_ngcontent-%COMP%] {\n    flex-direction: column;\n    gap: 16px;\n  }\n  .inv-meta[_ngcontent-%COMP%] {\n    flex: none;\n    text-align: left;\n  }\n  .meta[_ngcontent-%COMP%] {\n    margin-left: 0;\n  }\n  .supplier[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n    overflow-wrap: anywhere;\n  }\n  .paybox[_ngcontent-%COMP%] {\n    padding: 16px;\n  }\n}\n@media print {\n  [_nghost-%COMP%] {\n    background: #fff;\n    padding: 0;\n  }\n  .no-print[_ngcontent-%COMP%] {\n    display: none !important;\n  }\n  .sheet[_ngcontent-%COMP%] {\n    box-shadow: none;\n    border-radius: 0;\n    max-width: none;\n    margin: 0;\n    padding: 24px 28px;\n  }\n}\n/*# sourceMappingURL=invoice.component.css.map */'] });
   }
 };
 (() => {
@@ -917,4 +930,4 @@ var InvoiceComponent = class _InvoiceComponent {
 export {
   InvoiceComponent
 };
-//# sourceMappingURL=chunk-BIW2PAW7.js.map
+//# sourceMappingURL=chunk-7DX2NTMT.js.map

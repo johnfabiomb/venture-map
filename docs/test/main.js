@@ -82,15 +82,15 @@ var bookingRoutes = [
     // the /:id form below serves admins + the booking's own client (get_invoice).
     // Both precede 'book/:token' so 'invoice' isn't captured as a token.
     path: "book/invoice",
-    loadComponent: () => import("./chunk-BIW2PAW7.js").then((m) => m.InvoiceComponent)
+    loadComponent: () => import("./chunk-7DX2NTMT.js").then((m) => m.InvoiceComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/invoice/invoice.component.ts" } : {}),
   __spreadValues({
     path: "book/invoice/:id",
-    loadComponent: () => import("./chunk-BIW2PAW7.js").then((m) => m.InvoiceComponent)
+    loadComponent: () => import("./chunk-7DX2NTMT.js").then((m) => m.InvoiceComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/invoice/invoice.component.ts" } : {}),
   __spreadValues({
     path: "book/:token",
-    loadComponent: () => import("./chunk-L2SGTD6D.js").then((m) => m.BookPageComponent)
+    loadComponent: () => import("./chunk-SBTTRDOL.js").then((m) => m.BookPageComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/book-page/book-page.component.ts" } : {}),
   __spreadValues({
     path: "pay/success",
@@ -219,7 +219,7 @@ var routes = [
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-RRTV4SD3.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-5XTAJMJH.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 

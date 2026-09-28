@@ -12,19 +12,42 @@
 .pre { white-space: pre-line; }
 
 .toolbar {
-    max-width: 800px;
-    margin: 0 auto 16px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+  // 760px, matching .sheet and .paybox. At 800px the actions overhung the invoice by 20px
+  // on each side, so they read as belonging to a different column than the document.
+  max-width: 760px;
+  margin: 0 auto 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  // Equal thirds filling the row, instead of hugging the right edge. `flex-basis: 0` is what
+  // makes them equal (an `auto` basis would size each to its own label); `min-width` is what
+  // keeps it safe on a phone — three 140px buttons need ~460px, so below that they wrap
+  // rather than crushing "Pay €200.00 by card" to an ellipsis.
+  .btn { flex: 1 1 0; min-width: 140px; }
+}
+
+.toolbar-error {
+  max-width: 760px;
+  margin: -6px auto 16px;
+  font-size: 13px;
+  color: #dc2626;
 }
 
 .btn {
-  border: none; border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 600;
+  // inline-flex + centring so an <a class="btn"> renders identically to a <button class="btn">:
+  // as a plain inline anchor it drew the default underline and its padding collapsed, which
+  // is why the pay action looked nothing like the two buttons beside it.
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  text-decoration: none;
+  // A TRANSPARENT border on the base rather than `none`: --ghost adds 1.5px, which otherwise
+  // made the ghost buttons 3px taller than the primary sharing their row.
+  border: 1.5px solid transparent;
+  border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 600;
   cursor: pointer;
   &--primary { background: #F4A922; color: #111827; }
   // The invoice's Cancel action uses --ghost; without it that button rendered unstyled.
-  &--ghost { background: #fff; color: #374151; border: 1.5px solid #e5e7eb; }
+  &--ghost { background: #fff; color: #374151; border-color: #e5e7eb; }
   &:disabled { opacity: 0.55; cursor: default; filter: none; }
   &:hover:not(:disabled) { filter: brightness(0.95); }
 }

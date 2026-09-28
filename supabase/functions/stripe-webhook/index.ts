@@ -37,8 +37,24 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
     // Idempotent with confirm-payment (success-page return) — keyed on the intent id.
-    await recordSucceededIntent(supabase, intent);
-    console.log(`Payment ${intent.metadata?.payment_type} recorded for ${intent.metadata?.booking_ref}`);
+    try {
+      const result = await recordSucceededIntent(supabase, intent);
+      if (result.recorded) {
+        console.log(`Payment ${intent.metadata?.payment_type} recorded for ${intent.metadata?.booking_ref}`);
+      } else {
+        // Permanent: there is nothing to attach this money to. Acknowledge it — retrying for
+        // days cannot fix it — but make it loud in the logs.
+        console.error(`stripe-webhook: NOT recorded (${result.reason}) intent=${intent.id}`);
+      }
+    } catch (err) {
+      // Transient. Hand Stripe a non-2xx so it retries with backoff. This endpoint
+      // previously returned 200 no matter what, so a failed write meant money had moved at
+      // Stripe with nothing in the ledger and no second chance to record it.
+      console.error('stripe-webhook: recording failed, asking Stripe to retry:', (err as Error).message);
+      return new Response(JSON.stringify({ error: 'record failed' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   return new Response(JSON.stringify({ received: true }), {

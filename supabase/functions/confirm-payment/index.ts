@@ -38,7 +38,10 @@ Deno.serve(async (req) => {
       if (intentI.metadata?.invoice_id !== inv.id) return json({ error: 'intent_mismatch' }, 400);
       if (intentI.status !== 'succeeded') return json({ recorded: false, status: intentI.status });
 
-      await recordSucceededIntent(service, intentI);
+      // A false `recorded: true` would show the client a receipt for money the ledger does
+      // not hold. A transient failure throws and is caught below as a 500.
+      const recI = await recordSucceededIntent(service, intentI);
+      if (!recI.recorded) return json({ recorded: false, reason: recI.reason });
 
       const [{ data: linesI }, { data: paysI }] = await Promise.all([
         service.from('invoice_lines').select('amount').eq('invoice_id', inv.id).is('deleted_at', null),
@@ -73,7 +76,8 @@ Deno.serve(async (req) => {
     if (intent.metadata?.booking_id !== booking.id) return json({ error: 'intent_mismatch' }, 400);
     if (intent.status !== 'succeeded') return json({ recorded: false, status: intent.status });
 
-    await recordSucceededIntent(service, intent);
+    const rec = await recordSucceededIntent(service, intent);
+    if (!rec.recorded) return json({ recorded: false, reason: rec.reason });
 
     // Fresh totals for the receipt.
     // service_role bypasses `hide_deleted`, so filter soft-deleted payments explicitly —
