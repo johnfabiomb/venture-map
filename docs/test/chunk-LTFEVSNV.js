@@ -2038,6 +2038,15 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
 [_nghost-%COMP%] {
   display: block;
 }
+.page[_ngcontent-%COMP%] {
+  max-width: 1600px;
+  padding: 36px 48px;
+}
+@media (max-width: 900px) {
+  .page[_ngcontent-%COMP%] {
+    padding: 24px 20px;
+  }
+}
 .head-tools[_ngcontent-%COMP%] {
   display: flex;
   align-items: center;
@@ -2114,6 +2123,7 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
 .badge[_ngcontent-%COMP%] {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   padding: 3px 9px;
   border-radius: 20px;
   font-size: 11px;
@@ -2265,8 +2275,8 @@ th.num[_ngcontent-%COMP%] {
   text-align: right;
 }
 .actions[_ngcontent-%COMP%] {
-  display: flex;
-  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
 }
 .kebab[_ngcontent-%COMP%] {
   display: inline-flex;
@@ -2329,6 +2339,7 @@ th.num[_ngcontent-%COMP%] {
   color: #0f172a;
 }
 .ellipsis[_ngcontent-%COMP%] {
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2346,4 +2357,4 @@ th.num[_ngcontent-%COMP%] {
 export {
   InvoicesAdminComponent
 };
-//# sourceMappingURL=chunk-7SU7ADPA.js.map
+//# sourceMappingURL=chunk-LTFEVSNV.js.map

@@ -8,6 +8,25 @@
 // Usage in a component .scss:
 //   @use '../../platform/table-cards' as *;   // adjust the relative path
 //   .table { @include table-cards; }
+// ─────────────────────────────────────────────────────────────────────────────
+// TWO RULES FOR ANY TABLE USING THIS MIXIN — both were learned the hard way.
+//
+// 1. NEVER set `display: flex` / `grid` / `block` on a <td> or <th> at DESKTOP width.
+//    A table cell given another display leaves the table's column model: the row's
+//    cells end without it and it renders as a loose block beside them — a visibly
+//    broken row with the last column floating outside the row background. To align
+//    content inside a cell, put the flex on a <div> INSIDE the td (as the Bookings
+//    list does with `.row-actions`), or just use `text-align`.
+//    Below $bp this mixin deliberately DOES make every td a flex row — that is safe
+//    precisely because the element has stopped being a table there.
+//
+// 2. Check the page width against the column count. `admin.shared`'s default .page is
+//    1200px, which does not hold a dense table: Invoices (12 columns) overflowed it,
+//    gained a scrollbar and lost ~25px of width. Wide list pages set 1600px.
+//    Also give any truncating cell a `max-width` — in the default `auto` table layout
+//    `text-overflow: ellipsis` never fires without one, so a long name silently drags
+//    the whole table wider instead of clipping.
+// ─────────────────────────────────────────────────────────────────────────────
 @mixin table-cards($bp: 760px) {
   @media (max-width: $bp) {
     thead { display: none; }
