@@ -1,0 +1,59 @@
+@use '../../platform/admin.shared' as *;
+
+:host { display: block; }
+
+.muted { color: $text-2; font-size: 14px; }
+.err { margin: 10px 0 0; font-size: 13px; color: $red; }
+.err-inline { color: $red; font-weight: 600; }
+
+.head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+  padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid $border;
+  &__num { font-weight: 800; font-size: 15px; color: $text; }
+  &__who { font-size: 13.5px; color: $text-2; }
+  &__due { font-size: 12px; font-weight: 700; color: #b45309; }
+}
+
+app-recipients-editor { display: block; margin-bottom: 12px; }
+
+.from {
+  margin: 4px 0 14px; font-size: 12.5px; color: $text-2;
+  strong { color: $text; }
+}
+
+.field { margin-bottom: 14px;
+  span { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+}
+
+.check { margin-bottom: 4px; }
+
+.acts {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px;
+  .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+.draft-done {
+  margin-top: 18px; padding: 14px 16px;
+  border: 1.5px solid $accent; border-radius: $radius-md; background: $accent-dim;
+  &__title { margin: 0 0 6px; font-size: 13.5px; font-weight: 700; color: $text; }
+  &__todo  { margin: 0 0 8px; font-size: 13px; color: $text-2; }
+  &__acts  { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+}
+
+.hist {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid $border;
+  &__h { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+         letter-spacing: 0.05em; color: $text-3; }
+  .item__name { font-size: 13px; overflow-wrap: anywhere; }
+}
+
+// The sheet is rendered only so html2pdf has something to rasterise. It must have a real
+// layout box (display:none would give it none, and html2canvas would capture nothing), so
+// it is pushed far off-screen instead. 794px ≈ A4 at 96dpi.
+.pdf-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 794px;
+  pointer-events: none;
+}

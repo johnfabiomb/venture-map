@@ -48,3 +48,6 @@
 
 // Stack form fields with a little breathing room inside a card
 .card .field { margin-bottom: 14px; }
+
+// A hint that is reporting a failure (e.g. a dead Google connection) rather than advising.
+.err-hint { color: $red; }

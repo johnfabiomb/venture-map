@@ -58,6 +58,10 @@ export class InvoiceEditComponent implements OnInit {
   items: LineItem[] = [];
   notes = '';
   issueDate = '';     // yyyy-MM-dd — also decides the invoice number's year
+  // yyyy-MM-dd. BLANK MEANS AUTOMATIC: save_invoice fills it at issue time from the org's
+  // payment terms. Clearing it on an existing invoice therefore resets it to automatic
+  // rather than leaving the invoice with no due date at all.
+  dueDate = '';
   title = '';
   serviceDate = '';   // yyyy-MM-dd — when the work happened
   contactName = '';
@@ -133,7 +137,8 @@ export class InvoiceEditComponent implements OnInit {
   private applyInvoice(id: string, inv: {
     booking_id: string | null; client_id: string | null; staff_id: string | null;
     service_id: string | null; contact_name: string | null; title: string | null;
-    service_date: string | null; issue_date: string | null; notes: string | null;
+    service_date: string | null; issue_date: string | null; due_date: string | null;
+    notes: string | null;
     line_items: LineItem[]; status: InvoiceStatus; number_year: number | null; number_seq: number | null;
   }): void {
     this.invoiceId   = id;
@@ -145,6 +150,9 @@ export class InvoiceEditComponent implements OnInit {
     this.title       = inv.title ?? '';
     this.serviceDate = inv.service_date ?? '';
     this.issueDate   = inv.issue_date ?? new Date().toISOString().slice(0, 10);
+    // No fallback: an empty due date is meaningful here (it means "use the org default"),
+    // so don't invent one the way issue_date does.
+    this.dueDate     = inv.due_date ?? '';
     this.notes       = inv.notes ?? '';
     this.status      = inv.status ?? 'issued';
     this.items = (inv.line_items ?? []).map(i => ({
@@ -175,7 +183,7 @@ export class InvoiceEditComponent implements OnInit {
 
   private snapshot(): string {
     return JSON.stringify({
-      items: this.items, notes: this.notes, issueDate: this.issueDate, title: this.title,
+      items: this.items, notes: this.notes, issueDate: this.issueDate, dueDate: this.dueDate, title: this.title,
       serviceDate: this.serviceDate, contactName: this.contactName, jobId: this.jobId,
       clientId: this.clientId, staffId: this.staffId, serviceId: this.serviceId, status: this.status,
     });
@@ -241,6 +249,7 @@ export class InvoiceEditComponent implements OnInit {
         title:        this.title.trim() || null,
         service_date: this.serviceDate || null,
         issue_date:   this.issueDate || null,
+        due_date:     this.dueDate || null,
         notes:        this.notes.trim() || null,
         status:       this.status,
       };

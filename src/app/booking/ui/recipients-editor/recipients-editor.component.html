@@ -1,0 +1,31 @@
+<div class="rec">
+  <span class="rec__label">{{ label() }}</span>
+
+  @if (emails().length) {
+    @for (email of emails(); track $index) {
+      <div class="rec__row">
+        <input class="rec__input" type="email" placeholder="name@email.com"
+               [class.rec__input--invalid]="invalid(email)"
+               [ngModel]="email" (ngModelChange)="set($index, $event)" [name]="label() + 'Email' + $index" />
+        <button type="button" class="rec__remove" (click)="remove($index)"
+                [attr.aria-label]="'Remove ' + (email || 'recipient')">×</button>
+      </div>
+      @if (invalid(email)) {
+        <p class="rec__warn">That doesn't look like an email address</p>
+      }
+    }
+  } @else {
+    <p class="rec__empty">No one yet — add an address below.</p>
+  }
+
+  <div class="rec__actions">
+    <button type="button" class="rec__add" (click)="add()">+ Add address</button>
+    <!-- The whole point of the send log: an invoice remembers everyone it has reached, so
+         a reminder can go back to all of them even if one was a one-off resend. -->
+    @if (missing().length) {
+      <button type="button" class="rec__add rec__add--prev" (click)="addAll()">
+        + Add all previous ({{ missing().length }})
+      </button>
+    }
+  </div>
+</div>

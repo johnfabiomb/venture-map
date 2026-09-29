@@ -1,34 +1,11 @@
 import { Component, ElementRef, OnInit, inject, signal, viewChild, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser, CurrencyPipe, DatePipe } from '@angular/common';
+import { isPlatformBrowser, CurrencyPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
-import { InvoiceDetails } from '@booking/core/services/booking-admin.service';
+import { InvoiceBundle } from '@booking/core/interfaces/invoice.interface';
 import { downloadElementAsPdf } from '@booking/core/utils/pdf.util';
-import { renderInvoiceFooter } from '@booking/core/utils/invoice-footer.util';
 import { STRIPE_PK } from '@booking/core/config/stripe';
-
-export interface InvoiceLineItem { description: string; amount: number; }
-
-interface InvoiceBundle {
-  org: { name: string; currency: string; invoice_details: InvoiceDetails };
-  client: { name: string; company: string | null; vat_number: string | null; billing_address: string | null; email: string | null; phone: string | null } | null;
-  // NULL for a standalone invoice — work billed with no time slot. Everything that
-  // reads this must null-check it; it is the whole point of the invoice restructure.
-  booking: { id: string; booking_ref: string; location: string | null; start_at: string; end_at: string; status: string; price_total: number; deposit_percent: number | null } | null;
-  invoice: {
-    id: string | null;
-    line_items: InvoiceLineItem[];
-    notes: string | null;
-    issue_date: string | null;
-    customized: boolean;
-    total: number;
-    number: string | null;        // formatted server-side with the org's prefix
-    service_date: string | null;  // the invoice's own date; falls back to the booking's
-    status: string | null;
-  };
-  total_paid: number;
-  payments: { amount: number; method: string; paid_at: string | null }[];
-}
+import { InvoiceSheetComponent } from '@booking/ui/invoice-sheet/invoice-sheet.component';
 
 // Standalone, printable A4 invoice. Three ways in:
 //   /book/invoice/:id        → get_invoice (org admin OR the booking's own client)
@@ -36,10 +13,13 @@ interface InvoiceBundle {
 //                              an invoice that has no booking)
 //   /book/invoice?token=…    → get_invoice_by_token (anon-safe: a share or pay link)
 // so admins, signed-in clients AND token-link recipients can all view/print it.
+// This page owns the toolbar and the Stripe pay flow; the printable sheet itself is
+// InvoiceSheetComponent (ui/invoice-sheet) — a reusable presentational render of the same
+// InvoiceBundle, so it can also be rendered offscreen elsewhere (e.g. to email a PDF).
 @Component({
   selector: 'app-invoice',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe],
+  imports: [CurrencyPipe, InvoiceSheetComponent],
   templateUrl: './invoice.component.html',
   styleUrl: './invoice.component.scss',
 })
@@ -50,8 +30,11 @@ export class InvoiceComponent implements OnInit {
   readonly state = signal<'loading' | 'ready' | 'error'>('loading');
   readonly data = signal<InvoiceBundle | null>(null);
   readonly downloading = signal(false);
-  // The A4 sheet element — captured as-is into the PDF.
-  private readonly sheet = viewChild<ElementRef<HTMLElement>>('sheet');
+  // The rendered sheet component — read two ways: the instance (for its `invoiceNumber`,
+  // used as the download filename) and its host element (the thing actually captured into
+  // the PDF, unchanged from when this was a local `#sheet` template ref).
+  private readonly sheetCmp = viewChild(InvoiceSheetComponent);
+  private readonly sheetEl = viewChild(InvoiceSheetComponent, { read: ElementRef<HTMLElement> });
 
   // ── Paying this invoice by card (share-link recipients only) ──────────
   readonly payState = signal<'idle' | 'form' | 'processing'>('idle');
@@ -87,60 +70,19 @@ export class InvoiceComponent implements OnInit {
     else if (auto === 'download') setTimeout(() => this.download(), 300);
   }
 
-  // ── Derived invoice values ──────────────────────────────────────────
-  get inv(): InvoiceDetails { return this.data()?.org.invoice_details ?? {}; }
-  /** Footer with {deposit}/{balance}/{depositPercent}/{total} keys filled from this booking. */
-  get footerText(): string {
-    return renderInvoiceFooter(this.inv.invoice_footer, {
-      total: this.total,
-      // `booking` is null for a standalone invoice — the optional chain has to cover it,
-      // not just `data()`. A footer template using {deposit} simply renders no percentage.
-      depositPercent: this.data()?.booking?.deposit_percent ?? null,
-      currency: this.currency,
-    });
-  }
+  // ── Derived invoice values still needed here ──────────────────────────
+  // The full set (inv/total/net/vat/paid/fullyPaid/etc.) now lives on InvoiceSheetComponent,
+  // which renders from this same `data()` bundle. These two are kept here too only because
+  // the toolbar/paybox above the sheet — not the sheet itself — also renders them; reading
+  // them through the child would be correct once its view is ready, but wrong (undefined)
+  // on the very first render pass, since the sheet element sits after this toolbar in the
+  // template. Computing them directly from the bundle this component already holds avoids
+  // that entirely.
   get currency(): string { return this.data()?.org.currency ?? 'EUR'; }
-  get supplierName(): string { return this.inv.legal_name?.trim() || this.data()?.org.name || ''; }
-  get vatRegistered(): boolean { return !!this.inv.vat_registered; }
-  get vatRate(): number { return this.inv.vat_rate ?? 18; }
-
-  /** The invoice number, formatted once server-side from the org's own prefix. The
-   *  booking-ref fallback stays only for a booking that has no invoice row at all. */
-  get invoiceNumber(): string {
-    const fromBundle = this.data()?.invoice.number;
-    if (fromBundle) return fromBundle;
-    const ref = this.data()?.booking?.booking_ref ?? '';
-    const prefix = (this.inv.invoice_prefix || 'INV').toUpperCase();
-    const dash = ref.indexOf('-');
-    return dash >= 0 ? `${prefix}-${ref.slice(dash + 1)}` : `${prefix}-${ref}`;
-  }
-
-  /** When the work happened. The invoice's own date, falling back to the booking's. */
-  get serviceDate(): string | null { return this.data()?.invoice.service_date ?? null; }
-  /** A standalone invoice has no job in the calendar behind it. */
-  get bookingRef(): string | null { return this.data()?.booking?.booking_ref ?? null; }
-
-  get lineItems(): InvoiceLineItem[] { return this.data()?.invoice.line_items ?? []; }
-  get notes(): string | null { return this.data()?.invoice.notes ?? null; }
-  /** Issue date: the saved invoice date if customised, otherwise today. */
-  get issueDate(): string | Date { return this.data()?.invoice.issue_date ?? new Date(); }
-  get total(): number { return this.data()?.invoice.total ?? 0; }
-  /** With VAT prices are treated as inclusive: back out the net and VAT from the gross total. */
-  get net(): number { return this.vatRegistered ? this.total / (1 + this.vatRate / 100) : this.total; }
-  get vat(): number { return this.vatRegistered ? this.total - this.net : 0; }
-  get paid(): number { return this.data()?.total_paid ?? 0; }
-  get balance(): number { return Math.max(0, this.total - this.paid); }
-  /** Settled: no balance left. The invoice then reads as a receipt (PAID, no pay instructions). */
-  get fullyPaid(): boolean { return this.total > 0 && this.paid >= this.total - 0.005; }
-  /** Distinct payment methods used (for the PAID receipt line). */
-  get paidMethods(): string {
-    const pays = this.data()?.payments ?? [];
-    return [...new Set(pays.map(p => p.method))].join(', ');
-  }
-  /** Date of the most recent completed payment. */
-  get lastPaidAt(): string | null {
-    const pays = this.data()?.payments ?? [];
-    return pays.length ? pays[pays.length - 1].paid_at : null;
+  get balance(): number {
+    const total = this.data()?.invoice.total ?? 0;
+    const paid = this.data()?.total_paid ?? 0;
+    return Math.max(0, total - paid);
   }
 
   /**
@@ -260,11 +202,12 @@ export class InvoiceComponent implements OnInit {
 
   /** Download the invoice as a PDF file, exactly as shown (no margins / browser chrome). */
   async download(): Promise<void> {
-    const el = this.sheet()?.nativeElement;
+    const el = this.sheetEl()?.nativeElement;
     if (!el || this.downloading()) return;
     this.downloading.set(true);
     try {
-      await downloadElementAsPdf(el, `${this.invoiceNumber}.pdf`);
+      const filename = this.sheetCmp()?.invoiceNumber ?? 'invoice';
+      await downloadElementAsPdf(el, `${filename}.pdf`);
     } finally {
       this.downloading.set(false);
     }

@@ -1,4 +1,5 @@
 import { ServicePricing } from './org.interface';
+import { InvoiceDetails } from '@booking/core/services/booking-admin.service';
 
 /**
  * A single charge line on an invoice — description + amount (summed for the total).
@@ -39,6 +40,7 @@ export interface EditableInvoice {
   title: string | null;
   service_date: string | null;
   issue_date: string | null;
+  due_date: string | null;
   notes: string | null;
   line_items: LineItem[];
   status: InvoiceStatus;
@@ -63,6 +65,10 @@ export interface InvoiceInput {
   title?: string | null;
   service_date?: string | null;   // yyyy-MM-dd
   issue_date?: string | null;     // yyyy-MM-dd — also decides the invoice number's year
+  // yyyy-MM-dd. Omit it and `save_invoice` fills it at ISSUE time from the org's
+  // payment terms; send it to override. Patch-guarded, so the booking form's
+  // line-items-only saves leave an existing due date alone.
+  due_date?: string | null;
   notes?: string | null;
   amount_expenses?: number;
   status?: InvoiceStatus;
@@ -107,4 +113,86 @@ export interface InvoiceListRow {
   amount_paid: number;
   balance_due: number;
   payment_status: 'unpaid' | 'partial' | 'paid';
+  /** When payment is expected. Null on a draft — nothing has been issued to anyone yet. */
+  due_date: string | null;
+  /** The client's stored address, for prefilling the send dialog. Null for a walk-in. */
+  client_email: string | null;
+  /** Issued, past its due date, and still something owed. Computed in SQL on read. */
+  is_overdue: boolean;
+  /** Days past the due date; 0 when not overdue or when there is no due date. */
+  days_overdue: number;
+}
+
+/**
+ * One row of `invoice_sends` — the record of an invoice actually leaving.
+ *
+ * `drafted` is deliberately NOT `sent`: the mailto path hands the message to the owner's
+ * own mail client, where delivery is unobservable. Claiming "sent" there would be a lie
+ * the owner might rely on when chasing payment.
+ */
+export interface InvoiceSend {
+  id: string;
+  invoice_id: string;
+  kind: 'invoice' | 'reminder';
+  channel: 'gmail' | 'mailto';
+  status: 'sending' | 'sent' | 'failed' | 'drafted';
+  to_emails: string[];
+  cc_emails: string[];
+  subject: string | null;
+  had_attachment: boolean;
+  error: string | null;
+  created_at: string;
+}
+
+/** What Settings is allowed to know about the org's Google connection — never the token. */
+export interface GoogleConnection {
+  connected: boolean;
+  email?: string;
+  /** Connected is not enough: a connection predating the gmail.send scope cannot send. */
+  can_send?: boolean;
+  scopes?: string[];
+  connected_at?: string;
+  last_used_at?: string | null;
+  last_error?: string | null;
+}
+
+/**
+ * One charge line on a PRINTED invoice, as returned inside an `InvoiceBundle` — description
+ * + amount only. Distinct from the editable `LineItem` above, which also carries
+ * `serviceId`/`hours` for the line-items editor; a rendered invoice never needs those.
+ */
+export interface InvoiceLineItem { description: string; amount: number; }
+
+/**
+ * The full read model behind the printable A4 invoice sheet (`InvoiceSheetComponent`) and
+ * every page that renders one from it (the public invoice page; the Stripe pay flow around
+ * it). Returned by `get_invoice` / `get_invoice_by_token` / `get_invoice_by_id`.
+ *
+ * NOTE: `payment-success.component.ts` intentionally keeps its own smaller, separately
+ * declared `InvoiceBundle`-shaped type for its receipt view rather than importing this one —
+ * it renders a different (reduced) summary, not the full sheet, so it doesn't need every
+ * field here (e.g. no `due_date`, no full client billing detail).
+ */
+export interface InvoiceBundle {
+  org: { name: string; currency: string; invoice_details: InvoiceDetails };
+  client: { name: string; company: string | null; vat_number: string | null; billing_address: string | null; email: string | null; phone: string | null } | null;
+  // NULL for a standalone invoice — work billed with no time slot. Everything that
+  // reads this must null-check it; it is the whole point of the invoice restructure.
+  booking: { id: string; booking_ref: string; location: string | null; start_at: string; end_at: string; status: string; price_total: number; deposit_percent: number | null } | null;
+  invoice: {
+    id: string | null;
+    line_items: InvoiceLineItem[];
+    notes: string | null;
+    /** The invoice's own title, falling back to the booking's. Drives {invoiceTitle}. */
+    title: string | null;
+    issue_date: string | null;
+    customized: boolean;
+    total: number;
+    number: string | null;        // formatted server-side with the org's prefix
+    service_date: string | null;  // the invoice's own date; falls back to the booking's
+    due_date: string | null;      // when payment is expected; null on a draft
+    status: string | null;
+  };
+  total_paid: number;
+  payments: { amount: number; method: string; paid_at: string | null }[];
 }

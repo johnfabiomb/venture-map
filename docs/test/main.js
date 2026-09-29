@@ -1,18 +1,18 @@
 import {
   BookingsAuthService
-} from "./chunk-KKHOHJA2.js";
-import "./chunk-F6LTA4RG.js";
-import "./chunk-4746DPCT.js";
+} from "./chunk-76D3SO4I.js";
+import "./chunk-SDZFQ4XN.js";
+import "./chunk-JZYNJ4ST.js";
 import {
   Router,
   RouterOutlet,
   provideRouter,
   withInMemoryScrolling
-} from "./chunk-Q6APD67I.js";
+} from "./chunk-F2R7EXZF.js";
 import {
   DomRendererFactory2,
   bootstrapApplication
-} from "./chunk-GHBBMOR7.js";
+} from "./chunk-YHDSDEW7.js";
 import {
   ANIMATION_MODULE_TYPE,
   ChangeDetectionScheduler,
@@ -33,7 +33,7 @@ import {
   ɵɵdefineInjectable,
   ɵɵelement,
   ɵɵinvalidFactory
-} from "./chunk-EBVVQ6Y2.js";
+} from "./chunk-JW5UDKQ7.js";
 import {
   __spreadValues
 } from "./chunk-TWWAJFRB.js";
@@ -62,39 +62,39 @@ var bookingRoutes = [
   // ── Public (no auth) ──────────────────────────────────────────────
   __spreadValues({
     path: "book",
-    loadComponent: () => import("./chunk-JBFLJYMQ.js").then((m) => m.ServicePickerComponent)
+    loadComponent: () => import("./chunk-P26NRUIJ.js").then((m) => m.ServicePickerComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/service-picker/service-picker.component.ts" } : {}),
   __spreadValues({
     // literals must precede 'book/:token' so they aren't captured as a token
     path: "book/calendar",
-    loadComponent: () => import("./chunk-ZO46JJWF.js").then((m) => m.BookingCalendarComponent)
+    loadComponent: () => import("./chunk-3MKAI4RT.js").then((m) => m.BookingCalendarComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/booking-calendar/booking-calendar.component.ts" } : {}),
   __spreadValues({
     path: "book/checkout",
-    loadComponent: () => import("./chunk-JG3JUEPV.js").then((m) => m.BookingCheckoutComponent)
+    loadComponent: () => import("./chunk-JV4UUW4E.js").then((m) => m.BookingCheckoutComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/booking-checkout/booking-checkout.component.ts" } : {}),
   __spreadValues({
     path: "book/mine",
-    loadComponent: () => import("./chunk-IYKKMJ6Y.js").then((m) => m.MyBookingsComponent)
+    loadComponent: () => import("./chunk-LWHPXVM6.js").then((m) => m.MyBookingsComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/my-bookings/my-bookings.component.ts" } : {}),
   __spreadValues({
     // Printable invoice. ?token=… serves anon pay-link customers (get_invoice_by_token);
     // the /:id form below serves admins + the booking's own client (get_invoice).
     // Both precede 'book/:token' so 'invoice' isn't captured as a token.
     path: "book/invoice",
-    loadComponent: () => import("./chunk-7DX2NTMT.js").then((m) => m.InvoiceComponent)
+    loadComponent: () => import("./chunk-LNQHANEY.js").then((m) => m.InvoiceComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/invoice/invoice.component.ts" } : {}),
   __spreadValues({
     path: "book/invoice/:id",
-    loadComponent: () => import("./chunk-7DX2NTMT.js").then((m) => m.InvoiceComponent)
+    loadComponent: () => import("./chunk-LNQHANEY.js").then((m) => m.InvoiceComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/invoice/invoice.component.ts" } : {}),
   __spreadValues({
     path: "book/:token",
-    loadComponent: () => import("./chunk-SBTTRDOL.js").then((m) => m.BookPageComponent)
+    loadComponent: () => import("./chunk-OHGEPJND.js").then((m) => m.BookPageComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/book-page/book-page.component.ts" } : {}),
   __spreadValues({
     path: "pay/success",
-    loadComponent: () => import("./chunk-QMYDMCJJ.js").then((m) => m.PaymentSuccessComponent)
+    loadComponent: () => import("./chunk-XBENN4U2.js").then((m) => m.PaymentSuccessComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/payment-success/payment-success.component.ts" } : {}),
   // ── Per-org public booking (slug-driven) ──────────────────────────
   // `:org/book*` — the `book` second segment can't collide with the map app
@@ -102,19 +102,19 @@ var bookingRoutes = [
   // stays for the primary org.
   __spreadValues({
     path: ":org/book",
-    loadComponent: () => import("./chunk-JBFLJYMQ.js").then((m) => m.ServicePickerComponent)
+    loadComponent: () => import("./chunk-P26NRUIJ.js").then((m) => m.ServicePickerComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/service-picker/service-picker.component.ts" } : {}),
   __spreadValues({
     path: ":org/book/calendar",
-    loadComponent: () => import("./chunk-ZO46JJWF.js").then((m) => m.BookingCalendarComponent)
+    loadComponent: () => import("./chunk-3MKAI4RT.js").then((m) => m.BookingCalendarComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/booking-calendar/booking-calendar.component.ts" } : {}),
   __spreadValues({
     path: ":org/book/checkout",
-    loadComponent: () => import("./chunk-JG3JUEPV.js").then((m) => m.BookingCheckoutComponent)
+    loadComponent: () => import("./chunk-JV4UUW4E.js").then((m) => m.BookingCheckoutComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/booking-checkout/booking-checkout.component.ts" } : {}),
   __spreadValues({
     path: ":org/book/mine",
-    loadComponent: () => import("./chunk-IYKKMJ6Y.js").then((m) => m.MyBookingsComponent)
+    loadComponent: () => import("./chunk-LWHPXVM6.js").then((m) => m.MyBookingsComponent)
   }, false ? { \u0275entryName: "src/app/booking/public/my-bookings/my-bookings.component.ts" } : {}),
   // ── Studio (logged-in platform) ───────────────────────────────────
   {
@@ -123,80 +123,80 @@ var bookingRoutes = [
       __spreadValues({
         path: "login",
         canActivate: [loginGuard],
-        loadComponent: () => import("./chunk-INAI2D7A.js").then((m) => m.LoginComponent)
+        loadComponent: () => import("./chunk-QDBEPTBF.js").then((m) => m.LoginComponent)
       }, false ? { \u0275entryName: "src/app/booking/auth/login/login.component.ts" } : {}),
       __spreadValues({
         path: "",
         canActivate: [adminGuard],
-        loadComponent: () => import("./chunk-PYKUVQF4.js").then((m) => m.PlatformShellComponent),
+        loadComponent: () => import("./chunk-JCR5FJLF.js").then((m) => m.PlatformShellComponent),
         children: [
           { path: "", redirectTo: "dashboard", pathMatch: "full" },
           {
             path: "dashboard",
-            loadComponent: () => import("./chunk-DKBDI7MZ.js").then((m) => m.DashboardComponent)
+            loadComponent: () => import("./chunk-KFMZPQH5.js").then((m) => m.DashboardComponent)
           },
           {
             path: "list",
-            loadComponent: () => import("./chunk-3Z4PYYGS.js").then((m) => m.BookingListComponent)
+            loadComponent: () => import("./chunk-GNY5XKRY.js").then((m) => m.BookingListComponent)
           },
           {
             path: "new",
-            loadComponent: () => import("./chunk-LPKP3F3P.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-LEKFP2LX.js").then((m) => m.BookingFormComponent)
           },
           {
             path: ":id/edit",
-            loadComponent: () => import("./chunk-LPKP3F3P.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-LEKFP2LX.js").then((m) => m.BookingFormComponent)
           },
           {
             path: "organizations",
-            loadComponent: () => import("./chunk-HRNXKZJS.js").then((m) => m.OrganizationsComponent)
+            loadComponent: () => import("./chunk-QF2FX7KE.js").then((m) => m.OrganizationsComponent)
           },
           {
             path: "invoices",
-            loadComponent: () => import("./chunk-DG5D74AE.js").then((m) => m.InvoicesAdminComponent)
+            loadComponent: () => import("./chunk-7SU7ADPA.js").then((m) => m.InvoicesAdminComponent)
           },
           {
             // Standalone invoice — no booking, no time slot. Must precede 'invoices/edit/:invoiceId'
             // so 'new' isn't captured as an id.
             path: "invoices/new",
-            loadComponent: () => import("./chunk-ASMZAS6V.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-R3WWLHXE.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the INVOICE id — the only way to open an invoice that has no booking.
             path: "invoices/edit/:invoiceId",
-            loadComponent: () => import("./chunk-ASMZAS6V.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-R3WWLHXE.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the BOOKING id (kept: the booking detail page links here).
             // Literal segment, so it precedes the catch-all ':id' below.
             path: "invoice-edit/:id",
-            loadComponent: () => import("./chunk-ASMZAS6V.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-R3WWLHXE.js").then((m) => m.InvoiceEditComponent)
           },
           {
             path: "clients",
-            loadComponent: () => import("./chunk-3M6FU4AJ.js").then((m) => m.ClientListComponent)
+            loadComponent: () => import("./chunk-TSCQUXXE.js").then((m) => m.ClientListComponent)
           },
           {
             path: "services",
-            loadComponent: () => import("./chunk-XLZ5BTT4.js").then((m) => m.ServicesAdminComponent)
+            loadComponent: () => import("./chunk-P6T6ZJJI.js").then((m) => m.ServicesAdminComponent)
           },
           {
             path: "staff",
-            loadComponent: () => import("./chunk-MV6PT24V.js").then((m) => m.StaffAdminComponent)
+            loadComponent: () => import("./chunk-W4XD2OQO.js").then((m) => m.StaffAdminComponent)
           },
           {
             path: "settings",
-            loadComponent: () => import("./chunk-GBQWD3NT.js").then((m) => m.SettingsAdminComponent)
+            loadComponent: () => import("./chunk-ONK4AMBL.js").then((m) => m.SettingsAdminComponent)
           },
           {
             path: "work",
-            loadComponent: () => import("./chunk-3TW73MRN.js").then((m) => m.WorkBoardComponent)
+            loadComponent: () => import("./chunk-CXWSRD4D.js").then((m) => m.WorkBoardComponent)
           },
           {
             // Keep LAST: ':id' matches a single segment, so it must come after all
             // the literal routes above (list/new/clients/…) to avoid shadowing them.
             path: ":id",
-            loadComponent: () => import("./chunk-CV6ANA4B.js").then((m) => m.BookingDetailComponent)
+            loadComponent: () => import("./chunk-SQA74J5U.js").then((m) => m.BookingDetailComponent)
           }
         ]
       }, false ? { \u0275entryName: "src/app/booking/platform/platform-shell/platform-shell.component.ts" } : {})
@@ -212,14 +212,14 @@ var routes = [
   __spreadValues({
     path: "",
     pathMatch: "full",
-    loadComponent: () => import("./chunk-YEZSCYYX.js").then((m) => m.LandingComponent)
+    loadComponent: () => import("./chunk-OMFFO4DE.js").then((m) => m.LandingComponent)
   }, false ? { \u0275entryName: "src/app/landing/landing.component.ts" } : {}),
   // Map routes are loaded lazily so the map Supabase client (and the full
   // AuthService / UserDataService chain) is never initialised on booking pages.
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-5XTAJMJH.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-PAHCH76C.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 
@@ -257,7 +257,7 @@ var AsyncAnimationRendererFactory = class _AsyncAnimationRendererFactory {
    * @internal
    */
   loadImpl() {
-    const loadFn = () => this.moduleImpl ?? import("./chunk-WOUJFXFW.js").then((m) => m);
+    const loadFn = () => this.moduleImpl ?? import("./chunk-7SJKEGXG.js").then((m) => m);
     let moduleImplPromise;
     if (this.loadingSchedulerFn) {
       moduleImplPromise = this.loadingSchedulerFn(loadFn);

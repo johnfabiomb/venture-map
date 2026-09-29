@@ -51,7 +51,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Date</th><th>Client</th><th>Worker</th><th>Service</th>
+              <th>Invoice</th><th>Date</th><th>Due</th><th>Client</th><th>Worker</th><th>Service</th>
               <th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
             </tr>
           </thead>
@@ -60,6 +60,9 @@
               <tr class="row" (click)="open(r)">
                 <td class="mono" data-label="Invoice">{{ r.invoice_number ?? '—' }}</td>
                 <td data-label="Date">{{ r.service_date ? (r.service_date | date:'d MMM y') : '—' }}</td>
+                <!-- data-label is required on EVERY td: the _table-cards mixin turns each
+                     one into a labelled row below 760px, and an unlabelled cell renders bare. -->
+                <td data-label="Due" [class.due]="r.is_overdue">{{ r.due_date ? (r.due_date | date:'d MMM y') : '—' }}</td>
                 <td class="ellipsis" data-label="Client">{{ r.client_name ?? '—' }}</td>
                 <td class="ellipsis" data-label="Worker">{{ r.staff_name ?? '—' }}</td>
                 <td class="ellipsis" data-label="Service">{{ r.service_name ?? '—' }}</td>
@@ -71,6 +74,11 @@
                         [class.badge--paid]="r.payment_status === 'paid'"
                         [class.badge--partial]="r.payment_status === 'partial'"
                         [class.badge--unpaid]="r.payment_status === 'unpaid'">{{ statusLabel(r) }}</span>
+                  <!-- Shown ALONGSIDE the payment status, not instead of it: overdue cuts
+                       across unpaid/partial rather than replacing either. -->
+                  @if (r.is_overdue) {
+                    <span class="badge badge--overdue">{{ r.days_overdue }}d overdue</span>
+                  }
                 </td>
                 <td class="actions" data-label="">
                   <button class="kebab" [cdkMenuTriggerFor]="rowMenu" (click)="$event.stopPropagation()" aria-label="Actions">
@@ -85,6 +93,11 @@
                            and shares via its own invoice token. -->
                       <button class="menu__item" cdkMenuItem (click)="open(r)">View / print</button>
                       <button class="menu__item" cdkMenuItem (click)="copyShareLink(r)">Copy share link</button>
+                      <button class="menu__item" cdkMenuItem (click)="openSend(r, 'invoice')">Send by email…</button>
+                      <!-- Chasing only makes sense while something is actually owed. -->
+                      @if (r.balance_due > 0) {
+                        <button class="menu__item" cdkMenuItem (click)="openSend(r, 'reminder')">Send reminder…</button>
+                      }
                     </div>
                   </ng-template>
                 </td>
@@ -96,3 +109,7 @@
     }
   }
 </div>
+
+<!-- One dialog for the whole page: it loads its own data from the invoice id, so hosting
+     one per row would mean an idle component behind every line of the table. -->
+<app-invoice-send [(open)]="sendOpen" [invoiceId]="sendId()" [(kind)]="sendKind" (sent)="reload()" />

@@ -67,6 +67,15 @@ CREATE TABLE public.organizations (
   -- address, vat_number, vat_rate, invoice_prefix, invoice_footer …) — both per-org JSONB.
   features       JSONB NOT NULL DEFAULT '{}',
   invoice_details JSONB NOT NULL DEFAULT '{}',
+  -- Invoicing BEHAVIOUR + email sending: payment_terms_days, email_from,
+  -- email_from_name, email_reply_to, email_bcc_self, templates{invoice,reminder}.
+  --
+  -- Deliberately a SEPARATE blob from invoice_details, and this is load-bearing:
+  -- private._invoice_bundle returns `org.invoice_details` WHOLESALE, and
+  -- get_invoice_by_token is GRANT EXECUTE … TO anon — so every key in invoice_details
+  -- is readable by anyone holding a share link. Nothing in invoice_settings is ever
+  -- returned by a token RPC. Keep it that way.
+  invoice_settings JSONB NOT NULL DEFAULT '{}',
   -- Stripe Connect: the org's connected account + onboarding flags + optional platform
   -- fee (basis points). These are payout-critical → service-role-write-only (see §14).
   -- NULL stripe_account_id ⇒ charge on the platform account (single-account fallback).
@@ -855,8 +864,13 @@ GRANT SELECT ON public.work_board TO authenticated;
 -- GRANT ALL above and bypasses RLS). Defence-in-depth: even a compromised admin JWT
 -- cannot touch where the money lands.
 REVOKE UPDATE ON public.organizations FROM authenticated;
-GRANT  UPDATE (name, timezone, currency, booking_params, features, invoice_details)
+GRANT  UPDATE (name, timezone, currency, booking_params, features, invoice_details,
+               invoice_settings)
   ON public.organizations TO authenticated;
+-- ⚠ ADDING A COLUMN HERE IS NOT OPTIONAL. The blanket UPDATE was revoked above, so a new
+-- organizations column is invisible to admin writes until it is named in this list — and
+-- the failure is SILENT: PostgREST updates zero rows and returns no error, so Settings
+-- reports "saved" while nothing persists.
 
 
 -- ── Notes on deposit & invoicing config (columns defined on their tables) ──
@@ -898,6 +912,11 @@ CREATE TABLE public.invoices (
   line_items  JSONB NOT NULL DEFAULT '[]'::jsonb,   -- legacy mirror of invoice_lines
   notes       TEXT,
   issue_date  DATE,
+  -- When payment is expected. MATERIALISED at issue time by save_invoice from
+  -- organizations.invoice_settings.payment_terms_days, not computed on read — changing
+  -- the org's default terms later must never move the due date on a document a client
+  -- already holds. NULL on a draft (nothing has been issued to anyone yet).
+  due_date    DATE,
   amount_expenses NUMERIC(10,2) NOT NULL DEFAULT 0, -- the seam a future expenses/VAT module plugs into
   -- One continuous series per org+year (INV-YYYY-NNN), assigned by save_invoice.
   -- NULL until issued, so drafts never consume a number.
@@ -1112,7 +1131,7 @@ BEGIN
   IF v_id IS NULL THEN
     INSERT INTO invoices (org_id, booking_id, client_id, staff_id, service_id, contact_name,
                           title, service_date, line_items, notes, issue_date,
-                          amount_expenses, status)
+                          amount_expenses, status, due_date)
     VALUES (p_org, v_booking,
             -- A new invoice INHERITS the booking's identity when the caller doesn't
             -- supply one. booking-form sends only line items, so without this every
@@ -1136,7 +1155,14 @@ BEGIN
             NULLIF(p_invoice->>'notes',''),
             NULLIF(p_invoice->>'issue_date','')::date,
             COALESCE(NULLIF(p_invoice->>'amount_expenses','')::numeric, 0),
-            COALESCE(NULLIF(p_invoice->>'status',''), 'issued'))
+            COALESCE(NULLIF(p_invoice->>'status',''), 'issued'),
+            -- An explicitly supplied due date wins; otherwise the issue date plus the
+            -- org's payment terms (14 days if the org has never set any).
+            COALESCE(
+              NULLIF(p_invoice->>'due_date','')::date,
+              COALESCE(NULLIF(p_invoice->>'issue_date','')::date, current_date)
+                + COALESCE((SELECT (o.invoice_settings->>'payment_terms_days')::int
+                              FROM organizations o WHERE o.id = p_org), 14)))
     RETURNING id INTO v_id;
   ELSE
     UPDATE invoices SET
@@ -1157,6 +1183,11 @@ BEGIN
                              THEN NULLIF(p_invoice->>'notes','') ELSE notes END,
       issue_date      = CASE WHEN p_invoice ? 'issue_date'
                              THEN NULLIF(p_invoice->>'issue_date','')::date ELSE issue_date END,
+      -- Patch-guarded like its neighbours. This matters: booking-form.component.ts saves
+      -- only line items / notes / issue date on EVERY booking edit, so an unguarded
+      -- assignment here would wipe the due date of an invoice the client already holds.
+      due_date        = CASE WHEN p_invoice ? 'due_date'
+                             THEN NULLIF(p_invoice->>'due_date','')::date ELSE due_date END,
       amount_expenses = CASE WHEN p_invoice ? 'amount_expenses'
                              THEN COALESCE(NULLIF(p_invoice->>'amount_expenses','')::numeric, 0)
                              ELSE amount_expenses END,
@@ -1193,6 +1224,19 @@ BEGIN
       v_seq  := public.next_invoice_seq(p_org, v_year);
       UPDATE invoices SET number_year = v_year, number_seq = v_seq WHERE id = v_id;
     END IF;
+  END IF;
+
+  -- Materialise the due date the first time an invoice is ISSUED. Two reasons this is
+  -- here rather than computed on read: an invoice that exists only as a draft has no
+  -- payment expectation yet, and once the client holds the document, changing the org's
+  -- default terms must never silently move its due date. Only fills a NULL, so an
+  -- explicit per-invoice date set by the owner always survives.
+  IF v_status = 'issued' THEN
+    UPDATE invoices
+       SET due_date = COALESCE(issue_date, current_date)
+                    + COALESCE((SELECT (o.invoice_settings->>'payment_terms_days')::int
+                                  FROM organizations o WHERE o.id = p_org), 14)
+     WHERE id = v_id AND due_date IS NULL;
   END IF;
 
   RETURN v_id;
@@ -1270,7 +1314,23 @@ SELECT
      AND paid.amount_paid >= gross.amount_gross - 0.005 THEN 'paid'
     WHEN paid.amount_paid > 0                           THEN 'partial'
     ELSE 'unpaid'
-  END                                                    AS payment_status
+  END                                                    AS payment_status,
+  -- ── appended for due dates / overdue ──────────────────────────────────────
+  -- APPEND ONLY. `CREATE OR REPLACE VIEW` permits adding columns at the end and nothing
+  -- else; reordering, renaming or retyping forces a DROP, which silently discards the
+  -- `GRANT SELECT … TO authenticated` below and 403s the entire Invoices page. If a drop
+  -- ever becomes unavoidable, re-issue that grant in the same transaction.
+  i.due_date,
+  -- The send dialog prefills recipients from here; the view carried no email before.
+  cl.email                                               AS client_email,
+  -- Overdue is computed ON READ, deliberately: there is no pg_cron in this project, so a
+  -- stored flag would have nothing to keep it true. Issued, past its date, and still owed.
+  (i.status = 'issued'
+   AND i.due_date IS NOT NULL
+   AND i.due_date < current_date
+   AND GREATEST(0, gross.amount_gross - paid.amount_paid) > 0.005) AS is_overdue,
+  -- GREATEST ignores NULLs in Postgres, so an invoice with no due date reads 0, not NULL.
+  GREATEST(0, current_date - i.due_date)                 AS days_overdue
 FROM public.invoices i
 LEFT JOIN LATERAL (
   SELECT COALESCE(SUM(l.amount), 0) AS amount_gross FROM public.invoice_lines l
@@ -1527,8 +1587,8 @@ DECLARE
   items JSONB; total NUMERIC; paid NUMERIC; pays JSONB;
 BEGIN
   SELECT id, org_id, booking_id, client_id, staff_id, contact_name, title,
-         service_date, issue_date, notes, line_items, status, number_year, number_seq,
-         amount_expenses
+         service_date, issue_date, due_date, notes, line_items, status,
+         number_year, number_seq, amount_expenses
     INTO i FROM invoices
    WHERE deleted_at IS NULL
      AND ((p_invoice IS NOT NULL AND id = p_invoice)
@@ -1603,6 +1663,10 @@ BEGIN
         'id',          i.id,
         'line_items',  items,
         'notes',       i.notes,
+        -- The invoice's OWN title (falling back to the booking's). Needed by the email
+        -- templates' {invoiceTitle} — "your invoice for <what>" reads as a form letter
+        -- without it. Already selected INTO i; it just wasn't being returned.
+        'title',       COALESCE(i.title, b.title),
         'issue_date',  i.issue_date,
         'customized',  (i.line_items IS NOT NULL AND jsonb_array_length(i.line_items) > 0),
         'total',       total,
@@ -1615,6 +1679,9 @@ BEGIN
                            THEN v_prefix || '-' || SUBSTRING(b.booking_ref FROM POSITION('-' IN b.booking_ref) + 1)
                          ELSE NULL END,
         'service_date', COALESCE(i.service_date, b.start_at::date),
+        -- The printed document states when payment is expected. Safe to expose through
+        -- the anon token RPC: it is the client's own due date, on their own invoice.
+        'due_date',     i.due_date,
         'status',       i.status),
     'total_paid', paid, 'payments', pays);
 END $$;
@@ -1993,6 +2060,11 @@ BEGIN
      WHERE invoice_id = NEW.id AND deleted_at IS NULL;
     UPDATE public.invoice_links SET deleted_at = NEW.deleted_at, is_active = false
      WHERE invoice_id = NEW.id AND deleted_at IS NULL;
+    -- The send history goes with it. Leaving it visible would keep listing emails for an
+    -- invoice the owner has removed, and the "every address ever used" union would keep
+    -- resurrecting recipients from a document that no longer exists.
+    UPDATE public.invoice_sends SET deleted_at = NEW.deleted_at
+     WHERE invoice_id = NEW.id AND deleted_at IS NULL;
   END IF;
   RETURN NEW;
 END $f$;
@@ -2031,7 +2103,7 @@ BEGIN
   -- wire a delete button to it — an upsert(onConflict:booking_id) can't resolve its conflict
   -- target against a soft-deleted row (hide_deleted hides it), so "Remove" clears in place.
   IF p_table NOT IN ('bookings','payments','services','staff','work_items','tasks',
-                     'deliveries','invoices','invoice_lines') THEN
+                     'deliveries','invoices','invoice_lines','invoice_sends') THEN
     RAISE EXCEPTION 'soft_delete: table % not allowed', p_table USING errcode = '42501';
   END IF;
   EXECUTE format('SELECT org_id FROM public.%I WHERE id = $1 AND deleted_at IS NULL', p_table)
@@ -2076,3 +2148,283 @@ END $f$;
 DROP TRIGGER IF EXISTS bookings_purge_calendar ON public.bookings;
 CREATE TRIGGER bookings_purge_calendar AFTER UPDATE OF deleted_at, status ON public.bookings
   FOR EACH ROW EXECUTE FUNCTION public.purge_booking_calendar();
+
+
+-- ── 20. Invoice email — send log, draft logging, and the per-org Google account ──
+-- Two separable concerns that share a section because they exist for one feature:
+--   (a) invoice_sends  — what was sent, to whom, and whether it actually went.
+--   (b) the Google credential that lets us send as the organisation at all.
+--
+-- Nothing here is ever returned by a token RPC. Contrast organizations.invoice_details,
+-- which _invoice_bundle hands out wholesale to anon — which is exactly why the email
+-- configuration lives in organizations.invoice_settings and not in that blob.
+
+-- ── 20a. invoice_sends — the send log ──────────────────────────────────────
+-- This table IS the "remember every address" feature. A reminder pre-fills with the
+-- union of to_emails||cc_emails across an invoice's rows, so sending a one-off copy to
+-- a new address automatically includes that address in the next reminder.
+--
+-- It is also the idempotency guard: the unique (org_id, idempotency_key) means a
+-- double-clicked Send, a retried invoke or a browser retry cannot charge the client's
+-- inbox twice.
+CREATE TABLE public.invoice_sends (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id          UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  invoice_id      UUID NOT NULL REFERENCES public.invoices(id)      ON DELETE CASCADE,
+  kind            TEXT NOT NULL CHECK (kind    IN ('invoice','reminder')),
+  -- 'mailto' = composed into the owner's own mail client. It is logged even though we
+  -- cannot observe delivery, because the recipient MEMORY must survive that path too.
+  channel         TEXT NOT NULL CHECK (channel IN ('gmail','mailto')),
+  -- 'drafted' is deliberately distinct from 'sent': we never claim a delivery we did
+  -- not make. The UI labels it "Drafted in your mail app".
+  status          TEXT NOT NULL CHECK (status  IN ('sending','sent','failed','drafted')),
+  to_emails       TEXT[] NOT NULL DEFAULT '{}',
+  cc_emails       TEXT[] NOT NULL DEFAULT '{}',
+  bcc_emails      TEXT[] NOT NULL DEFAULT '{}',
+  from_email      TEXT,
+  subject         TEXT,
+  body_preview    TEXT,                -- first ~500 chars; the log is an audit trail, not an archive
+  had_attachment  BOOLEAN NOT NULL DEFAULT false,
+  share_url       TEXT,
+  provider_message_id TEXT,
+  provider_thread_id  TEXT,
+  error           TEXT,
+  idempotency_key TEXT,
+  sent_by         UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now(),
+  deleted_at      TIMESTAMPTZ
+);
+CREATE INDEX invoice_sends_invoice_idx ON public.invoice_sends(invoice_id, created_at DESC);
+CREATE INDEX invoice_sends_org_idx     ON public.invoice_sends(org_id);
+CREATE UNIQUE INDEX invoice_sends_idem_key ON public.invoice_sends(org_id, idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+
+ALTER TABLE public.invoice_sends ENABLE ROW LEVEL SECURITY;
+-- Template: `deliveries` (§17). The column names in the WITH CHECK subquery are
+-- TABLE-QUALIFIED on purpose — an unqualified `org_id` there binds to the INNER table
+-- and silently becomes `i.org_id = i.org_id`, a tautology. That exact bug shipped twice
+-- in this schema (inv_admin and del_admin) before it was caught.
+CREATE POLICY isend_admin ON public.invoice_sends FOR ALL
+  USING (public.is_org_admin(org_id))
+  WITH CHECK (public.is_org_admin(org_id)
+              AND EXISTS (SELECT 1 FROM public.invoices i
+                           WHERE i.id     = invoice_sends.invoice_id
+                             AND i.org_id = invoice_sends.org_id));
+
+-- hide_deleted is declared HERE rather than appended to the §18 array loop, because
+-- that loop runs before this table exists on a from-scratch build. Same policy, same
+-- RESTRICTIVE semantics — see §18 for the rule.
+DROP POLICY IF EXISTS hide_deleted ON public.invoice_sends;
+CREATE POLICY hide_deleted ON public.invoice_sends
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+
+-- READS only for admins. Every write goes through a definer RPC or service_role: a
+-- browser that could INSERT freely could claim channel='gmail', status='sent' for an
+-- email that was never sent, which would corrupt the one record of what the client got.
+GRANT SELECT ON public.invoice_sends TO authenticated;
+GRANT ALL    ON public.invoice_sends TO service_role;   -- created after §11's blanket grant
+
+CREATE TRIGGER invoice_sends_updated BEFORE UPDATE ON public.invoice_sends
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ── 20b. log_invoice_draft — the ONLY write path open to the browser ───────
+-- The draft/mailto path has no server leg: the browser opens the user's mail client.
+-- So the browser must be able to record it — but only as a draft. channel and status
+-- are hardcoded here, not taken from the caller.
+CREATE OR REPLACE FUNCTION public.log_invoice_draft(
+  p_invoice uuid, p_kind text, p_to text[], p_cc text[],
+  p_subject text, p_body text, p_share_url text, p_attached boolean)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_org uuid; v_id uuid;
+BEGIN
+  SELECT org_id INTO v_org FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RAISE EXCEPTION 'invoice not found' USING errcode = '42501'; END IF;
+  IF NOT public.is_org_admin(v_org) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  IF p_kind NOT IN ('invoice','reminder') THEN
+    RAISE EXCEPTION 'bad kind' USING errcode = '22023';
+  END IF;
+
+  INSERT INTO invoice_sends (org_id, invoice_id, kind, channel, status,
+                             to_emails, cc_emails, subject, body_preview,
+                             had_attachment, share_url, sent_by)
+  VALUES (v_org, p_invoice, p_kind,
+          'mailto',            -- hardcoded: a browser may never claim it sent via Gmail
+          'drafted',           -- hardcoded: delivery here is unobservable, so never 'sent'
+          -- Lowercased + de-duplicated so the "every address ever used" union doesn't
+          -- treat Client@x.com and client@x.com as two different people.
+          COALESCE((SELECT array_agg(DISTINCT lower(btrim(e))) FROM unnest(p_to) e
+                     WHERE btrim(e) <> ''), '{}'),
+          COALESCE((SELECT array_agg(DISTINCT lower(btrim(e))) FROM unnest(COALESCE(p_cc,'{}')) e
+                     WHERE btrim(e) <> ''), '{}'),
+          left(COALESCE(p_subject,''), 200),
+          left(COALESCE(p_body,''), 500),
+          COALESCE(p_attached, false), p_share_url, auth.uid())
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END $$;
+REVOKE ALL ON FUNCTION public.log_invoice_draft(uuid,text,text[],text[],text,text,text,boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.log_invoice_draft(uuid,text,text[],text[],text,text,text,boolean) TO authenticated;
+
+
+-- ── 20c. org_google_accounts — the per-org sending credential ──────────────
+-- WHY THE REFRESH TOKEN IS NOT IN THIS TABLE.
+-- A Gmail-send refresh token is an IMPERSONATION credential: whoever holds it can send
+-- mail as the business owner, indefinitely, until it is revoked at Google. A plain TEXT
+-- column would put it in every `SELECT *`, every pg_dump, every Studio table view and
+-- every point-in-time backup. It goes in Supabase Vault (already in use — see §19's
+-- purge_secret) and this table keeps only the secret's id.
+--
+-- RLS is enabled with NO POLICIES and grants to service_role ONLY. That is the point:
+-- an org ADMIN must not be able to read their own org's token either, because the
+-- Settings page never needs it — google_connection_status returns status, not secrets.
+-- Precedent for a policy-less, grant-less config table: invoice_counters (§15d).
+--
+-- No deleted_at: this is a credential, not an item, so the §18 soft-delete rule does
+-- not apply. Disconnecting REVOKES at Google and deletes the row outright — a
+-- soft-deleted credential that still works at Google would be a trap.
+CREATE TABLE public.org_google_accounts (
+  org_id            UUID PRIMARY KEY REFERENCES public.organizations(id) ON DELETE CASCADE,
+  google_email      TEXT NOT NULL,          -- the account that consented; NOT necessarily the From
+  google_sub        TEXT,
+  scopes            TEXT[] NOT NULL DEFAULT '{}',
+  refresh_secret_id UUID NOT NULL,          -- vault.secrets.id — never the token itself
+  access_token      TEXT,                   -- short-lived cache; see google_send_credentials
+  access_expires_at TIMESTAMPTZ,
+  connected_by      UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  connected_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at      TIMESTAMPTZ,
+  last_error        TEXT,                   -- surfaced in Settings so a dead connection is visible
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.org_google_accounts ENABLE ROW LEVEL SECURITY;   -- deliberately no policies
+GRANT ALL ON public.org_google_accounts TO service_role;
+-- nothing to authenticated, nothing to anon.
+CREATE TRIGGER org_google_accounts_updated BEFORE UPDATE ON public.org_google_accounts
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ── 20d. google_oauth_states — CSRF state for the connect flow ─────────────
+-- The callback reads the org id from THIS TABLE, never from the query string. That is
+-- the actual CSRF guard: without it, a forged callback could bind an attacker's Google
+-- account to someone else's organisation, and every invoice would then be sent from it.
+CREATE TABLE public.google_oauth_states (
+  state      TEXT PRIMARY KEY,
+  org_id     UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES auth.users(id)           ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '15 minutes',
+  used_at    TIMESTAMPTZ                      -- set once; a replayed callback finds it non-null
+);
+ALTER TABLE public.google_oauth_states ENABLE ROW LEVEL SECURITY;   -- deliberately no policies
+GRANT ALL ON public.google_oauth_states TO service_role;
+
+-- ── 20e. Credential accessors ──────────────────────────────────────────────
+-- Store: called by connect-google-callback (service_role) after a successful exchange.
+CREATE OR REPLACE FUNCTION public.google_store_credentials(
+  p_org uuid, p_email text, p_sub text, p_scopes text[],
+  p_refresh_token text, p_user uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_secret_id uuid;
+BEGIN
+  SELECT refresh_secret_id INTO v_secret_id FROM org_google_accounts WHERE org_id = p_org;
+
+  IF v_secret_id IS NULL THEN
+    v_secret_id := vault.create_secret(
+      p_refresh_token, 'google_refresh_' || p_org::text, 'Gmail send refresh token');
+  ELSE
+    -- REPLACE the existing secret rather than creating a second one. Google keeps a
+    -- limited number of refresh tokens per client/user and silently revokes the oldest,
+    -- so accumulating orphaned secrets would eventually revoke the one in use.
+    PERFORM vault.update_secret(v_secret_id, p_refresh_token);
+  END IF;
+
+  INSERT INTO org_google_accounts (org_id, google_email, google_sub, scopes,
+                                   refresh_secret_id, connected_by, last_error,
+                                   access_token, access_expires_at)
+  VALUES (p_org, p_email, p_sub, COALESCE(p_scopes,'{}'), v_secret_id, p_user, NULL, NULL, NULL)
+  ON CONFLICT (org_id) DO UPDATE SET
+    google_email      = EXCLUDED.google_email,
+    google_sub        = EXCLUDED.google_sub,
+    scopes            = EXCLUDED.scopes,
+    refresh_secret_id = EXCLUDED.refresh_secret_id,
+    connected_by      = EXCLUDED.connected_by,
+    connected_at      = now(),
+    last_error        = NULL,   -- a fresh consent clears any stale failure
+    access_token      = NULL,   -- and invalidates the cached access token
+    access_expires_at = NULL;
+END $$;
+REVOKE ALL ON FUNCTION public.google_store_credentials(uuid,text,text,text[],text,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.google_store_credentials(uuid,text,text,text[],text,uuid) TO service_role;
+
+-- Read: service_role ONLY. This is the one function that hands out the decrypted token.
+CREATE OR REPLACE FUNCTION public.google_send_credentials(p_org uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE g RECORD; v_token text;
+BEGIN
+  SELECT * INTO g FROM org_google_accounts WHERE org_id = p_org;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  SELECT decrypted_secret INTO v_token FROM vault.decrypted_secrets WHERE id = g.refresh_secret_id;
+  RETURN jsonb_build_object(
+    'refresh_token',     v_token,
+    'google_email',      g.google_email,
+    'scopes',            g.scopes,
+    'access_token',      g.access_token,
+    'access_expires_at', g.access_expires_at);
+END $$;
+-- The REVOKE is not optional: this database has no ALTER DEFAULT PRIVILEGES, so every
+-- new function is created EXECUTE-able by PUBLIC. Without it, any signed-in user could
+-- call this and read another organisation's Gmail token.
+REVOKE ALL ON FUNCTION public.google_send_credentials(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.google_send_credentials(uuid) TO service_role;
+
+-- Status: what the Settings page is allowed to know. No token, ever.
+CREATE OR REPLACE FUNCTION public.google_connection_status(p_org uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE g RECORD;
+BEGIN
+  IF NOT public.is_org_admin(p_org) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  SELECT * INTO g FROM org_google_accounts WHERE org_id = p_org;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('connected', false);
+  END IF;
+  RETURN jsonb_build_object(
+    'connected',    true,
+    'email',        g.google_email,
+    -- can_send is what the UI actually branches on. A connection that predates the
+    -- gmail.send scope is "connected" but cannot send, and must prompt a reconnect
+    -- rather than failing at the moment the owner tries to email a client.
+    'can_send',     ('https://www.googleapis.com/auth/gmail.send' = ANY(g.scopes)),
+    'scopes',       to_jsonb(g.scopes),
+    'connected_at', g.connected_at,
+    'last_used_at', g.last_used_at,
+    'last_error',   g.last_error);
+END $$;
+REVOKE ALL ON FUNCTION public.google_connection_status(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.google_connection_status(uuid) TO authenticated;
+
+-- Disconnect: drop the credential AND its Vault secret in one atomic step.
+-- Exists because the alternative is deleting from `vault.secrets` over PostgREST, which
+-- depends on the vault schema being exposed — it is not, by default. Leaving the secret
+-- behind would also orphan an encrypted row nothing references, forever.
+-- Revoking at GOOGLE is the Edge Function's job: Postgres cannot make that call.
+CREATE OR REPLACE FUNCTION public.google_delete_credentials(p_org uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_secret_id uuid;
+BEGIN
+  SELECT refresh_secret_id INTO v_secret_id FROM org_google_accounts WHERE org_id = p_org;
+  DELETE FROM org_google_accounts WHERE org_id = p_org;
+  IF v_secret_id IS NOT NULL THEN
+    DELETE FROM vault.secrets WHERE id = v_secret_id;
+  END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.google_delete_credentials(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.google_delete_credentials(uuid) TO service_role;

@@ -1,0 +1,106 @@
+<app-modal [(open)]="open" [title]="kind() === 'reminder' ? 'Send a reminder' : 'Send invoice'">
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else {
+    @if (bundle(); as b) {
+    <!-- What is being sent, so the owner can sanity-check before it reaches a client. -->
+    <div class="head">
+      <span class="head__num">{{ b.invoice.number ?? 'Draft' }}</span>
+      <span class="head__who">{{ b.client?.company || b.client?.name || '—' }}</span>
+      @if (b.invoice.due_date) {
+        <span class="head__due">Due {{ b.invoice.due_date }}</span>
+      }
+    </div>
+
+    <app-recipients-editor label="To" [(emails)]="to" [suggestions]="prior()" />
+    <app-recipients-editor label="Cc" [(emails)]="cc" />
+
+    <p class="from">
+      @if (canSendViaGmail) {
+        From <strong>{{ google().email }}</strong>
+      } @else {
+        Will open in <strong>your own mail app</strong> — Google isn't connected.
+      }
+    </p>
+
+    <label class="field">
+      <span>Subject</span>
+      <input type="text" [(ngModel)]="subject" name="subject" />
+    </label>
+
+    <label class="field">
+      <span>Message <button type="button" class="link-btn" (click)="resetTemplate()">Reset to template</button></span>
+      <textarea rows="11" [(ngModel)]="body" name="body"></textarea>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="attachPdf" name="attachPdf" />
+      <span>Attach the invoice PDF</span>
+    </label>
+
+    @if (error()) { <p class="err">{{ error() }}</p> }
+
+    <!-- After a hand-off to the mail client. Stays visible because mailto CANNOT carry an
+         attachment — if this were a toast the owner would send it without the PDF. -->
+    @if (drafted()) {
+      <div class="draft-done">
+        <p class="draft-done__title">Your mail app should have opened.</p>
+        @if (attachPdf) {
+          <p class="draft-done__todo">One thing left: <strong>attach the PDF</strong> that was just downloaded — email drafts can't carry a file.</p>
+        }
+        @if (truncated()) {
+          <p class="draft-done__todo">The message was too long for your mail app, so it was shortened — the full text is on your clipboard, paste it in.</p>
+        }
+        <div class="draft-done__acts">
+          <button type="button" class="btn btn--ghost btn--sm" (click)="redownloadPdf()">Download the PDF again</button>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="copyBody()">Copy the message</button>
+          <button type="button" class="btn btn--primary btn--sm" (click)="close()">Done</button>
+        </div>
+      </div>
+    } @else {
+      <div class="acts">
+        @if (canSendViaGmail) {
+          <button type="button" class="btn btn--primary" [disabled]="busy() || !recipientCount" (click)="sendViaGmail()">
+            {{ busy() ? 'Sending…' : 'Send' + (recipientCount > 1 ? ' to ' + recipientCount + ' people' : '') }}
+          </button>
+          <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="sendAsDraft()">Open in my mail app</button>
+        } @else {
+          <button type="button" class="btn btn--primary" [disabled]="busy() || !recipientCount" (click)="sendAsDraft()">
+            {{ busy() ? 'Preparing…' : 'Open in my mail app' }}
+          </button>
+        }
+        <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="close()">Cancel</button>
+      </div>
+    }
+
+    @if (history().length) {
+      <div class="hist">
+        <p class="hist__h">Already sent</p>
+        <ul class="list">
+          @for (h of history(); track h.id) {
+            <li class="item">
+              <div class="item__main">
+                <div class="item__name">{{ h.to_emails.join(', ') }}</div>
+                <div class="item__meta">
+                  {{ h.kind === 'reminder' ? 'Reminder' : 'Invoice' }} ·
+                  {{ h.channel === 'gmail' ? 'Sent by email' : 'Drafted in your mail app' }}
+                  @if (h.status === 'failed') { · <span class="err-inline">failed</span> }
+                </div>
+              </div>
+              <span class="tag">{{ h.created_at | slice:0:10 }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <!-- Offscreen, purely to produce PDF bytes. `position:fixed; left:-10000px` rather
+         than display:none — html2canvas cannot capture an element with no layout box. -->
+    <div class="pdf-stage" aria-hidden="true">
+      <app-invoice-sheet [bundle]="b" />
+    </div>
+    } @else {
+      <p class="err">{{ error() || 'Could not load this invoice.' }}</p>
+    }
+  }
+</app-modal>

@@ -1,0 +1,49 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.117.2"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.117.2": "6da4477d96ad4392b5a8be8f423384a3812cdd651df483e433ba422a69ff879b"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@angular-devkit/build-angular@^19.2.1",
+        "npm:@angular/animations@^19.2.1",
+        "npm:@angular/cdk@^19.2.1",
+        "npm:@angular/cli@^19.2.1",
+        "npm:@angular/common@^19.2.1",
+        "npm:@angular/compiler-cli@^19.2.1",
+        "npm:@angular/compiler@^19.2.1",
+        "npm:@angular/core@^19.2.1",
+        "npm:@angular/forms@^19.2.1",
+        "npm:@angular/material@^19.2.1",
+        "npm:@angular/platform-browser-dynamic@^19.2.1",
+        "npm:@angular/platform-browser@^19.2.1",
+        "npm:@angular/platform-server@^19.2.21",
+        "npm:@angular/router@^19.2.1",
+        "npm:@angular/service-worker@^19.2.21",
+        "npm:@angular/ssr@^19.2.25",
+        "npm:@nguniversal/express-engine@^7.0.2",
+        "npm:@stripe/stripe-js@^9.4.0",
+        "npm:@supabase/supabase-js@^2.106.2",
+        "npm:@types/jasmine@5.1",
+        "npm:emoji-picker-element@^1.29.1",
+        "npm:html2pdf.js@0.14",
+        "npm:jasmine-core@5.1",
+        "npm:karma-chrome-launcher@3.2",
+        "npm:karma-coverage@2.2",
+        "npm:karma-jasmine-html-reporter@2.1",
+        "npm:karma-jasmine@5.1",
+        "npm:karma@6.4",
+        "npm:ol@^9.1.0",
+        "npm:rxjs@7.8",
+        "npm:sharp@~0.34.5",
+        "npm:tslib@^2.3.0",
+        "npm:typescript@~5.8.2",
+        "npm:zone.js@0.15"
+      ]
+    }
+  }
+}

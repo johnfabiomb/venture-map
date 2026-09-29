@@ -1,0 +1,41 @@
+@use '../../booking.styles' as *;
+
+:host { display: block; }
+
+.rec {
+  display: flex; flex-direction: column; gap: 6px;
+
+  &__label { font-size: 12px; font-weight: 600; color: $text-2; }
+
+  &__row { display: flex; gap: 8px; align-items: center; }
+
+  &__input {
+    // min-width: 0 so a long address can't force the row wider than the dialog — the
+    // flex default (min-width:auto) floors an input at its intrinsic width.
+    flex: 1 1 0; min-width: 0;
+    font-family: $font; font-size: 14px; color: $text;
+    border: 1.5px solid $border; border-radius: $radius-md; padding: 9px 12px;
+    background: $card; box-sizing: border-box;
+    &:focus { outline: none; border-color: $accent; }
+    &--invalid { border-color: $red; }
+  }
+
+  &__remove {
+    flex: none; width: 32px; height: 38px; padding: 0;
+    background: none; border: none; cursor: pointer;
+    color: $text-3; font-size: 20px; line-height: 1; border-radius: $radius-sm;
+    &:hover { color: $red; background: rgba(239, 68, 68, 0.08); }
+  }
+
+  &__warn  { margin: 0; font-size: 12px; color: $red; }
+  &__empty { margin: 0; font-size: 13px; color: $text-3; }
+
+  &__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  &__add {
+    background: none; border: none; padding: 2px 0; cursor: pointer;
+    font-family: $font; font-size: 13px; font-weight: 700; color: $accent;
+    &:hover { text-decoration: underline; }
+    &--prev { color: $text-2; }
+  }
+}

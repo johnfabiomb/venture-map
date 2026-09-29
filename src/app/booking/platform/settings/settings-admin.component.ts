@@ -1,10 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BookingAdminService, ConnectStatus, OrgMember } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, ConnectStatus, OrgMember, InvoiceDetails, InvoiceSettings } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
+import { GoogleConnection } from '@booking/core/interfaces/invoice.interface';
+import { INVOICE_EMAIL_KEY_DEFS, DEFAULT_INVOICE_EMAIL, DEFAULT_REMINDER_EMAIL } from '@booking/core/utils/invoice-email.util';
 
 interface IntStatus { ok: boolean; detail: string; }
 
@@ -27,6 +30,7 @@ function supportedList(key: 'timeZone' | 'currency', fallback: string[]): string
 })
 export class SettingsAdminComponent implements OnInit {
   private readonly admin = inject(BookingAdminService);
+  private readonly data = inject(BookingDataService);
   readonly auth = inject(BookingsAuthService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
@@ -38,7 +42,7 @@ export class SettingsAdminComponent implements OnInit {
   readonly saved = signal(false);
 
   // Which section is shown.
-  readonly tabs = ['general', 'booking', 'company', 'team', 'payments', 'integrations'] as const;
+  readonly tabs = ['general', 'booking', 'company', 'email', 'team', 'payments', 'integrations'] as const;
   readonly tab = signal<typeof this.tabs[number]>('general');
   setTab(t: typeof this.tabs[number]): void { this.tab.set(t); }
 
@@ -60,6 +64,34 @@ export class SettingsAdminComponent implements OnInit {
   vatNote = '';
   invoicePrefix = 'INV';
   invoiceFooter = '';
+
+  // Email & sending — organizations.invoice_settings, a SEPARATE column from
+  // invoice_details because _invoice_bundle hands that one to anon wholesale.
+  paymentTermsDays = 14;
+  emailFrom = '';
+  emailFromName = '';
+  emailReplyTo = '';
+  emailBccSelf = true;
+  invoiceSubject = '';
+  invoiceBody = '';
+  reminderSubject = '';
+  reminderBody = '';
+  /** Rendered as the placeholder help — Settings never restates the key list. */
+  readonly emailKeys = INVOICE_EMAIL_KEY_DEFS;
+  readonly gmail = signal<GoogleConnection>({ connected: false });
+  readonly gmailBusy = signal(false);
+
+  /**
+   * The JSONB blobs exactly as loaded.
+   *
+   * save() REBUILDS these objects from the fields on this page, so any key written by
+   * another code path was silently dropped on the next save. Spreading the loaded object
+   * means an unknown key survives — which matters now that two features write config.
+   */
+  private loadedInvoiceDetails: InvoiceDetails = {};
+  private loadedInvoiceSettings: InvoiceSettings = {};
+  /** Never write defaults over real data before the load has actually happened. */
+  private settingsLoaded = false;
 
   // Stripe Connect (per-org payouts)
   readonly connect = signal<ConnectStatus | null>(null);
@@ -110,6 +142,22 @@ export class SettingsAdminComponent implements OnInit {
         this.vatNote = inv.vat_note ?? '';
         this.invoicePrefix = (inv.invoice_prefix ?? 'INV').toUpperCase();
         this.invoiceFooter = inv.invoice_footer ?? '';
+        this.loadedInvoiceDetails = inv;
+
+        const es = s.invoice_settings ?? {};
+        this.loadedInvoiceSettings = es;
+        this.paymentTermsDays = es.payment_terms_days ?? 14;
+        this.emailFrom = es.email_from ?? '';
+        this.emailFromName = es.email_from_name ?? '';
+        this.emailReplyTo = es.email_reply_to ?? '';
+        this.emailBccSelf = es.email_bcc_self ?? true;
+        // Seeded from the shipped defaults so the boxes are never blank — an empty
+        // template would otherwise send an empty email.
+        this.invoiceSubject  = es.templates?.invoice?.subject  ?? DEFAULT_INVOICE_EMAIL.subject;
+        this.invoiceBody     = es.templates?.invoice?.body     ?? DEFAULT_INVOICE_EMAIL.body;
+        this.reminderSubject = es.templates?.reminder?.subject ?? DEFAULT_REMINDER_EMAIL.subject;
+        this.reminderBody    = es.templates?.reminder?.body    ?? DEFAULT_REMINDER_EMAIL.body;
+        this.settingsLoaded = true;
       }
     }
     this.loading.set(false);
@@ -123,6 +171,22 @@ export class SettingsAdminComponent implements OnInit {
       if (stripeParam === 'return') this.toast.info('Checking your Stripe connection…');
     }
     this.loadConnect();
+
+    // Returning from Google's consent screen. Mirrors the Stripe handler above: clean the
+    // URL so a refresh doesn't re-trigger, and translate the reason into something the
+    // owner can act on rather than a bare "error".
+    const g = this.route.snapshot.queryParamMap.get('google');
+    if (g) {
+      const reason = this.route.snapshot.queryParamMap.get('reason');
+      this.router.navigate([], { queryParams: { google: null, reason: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      if (g === 'connected') this.toast.success('Google connected');
+      else if (g === 'denied') this.toast.info('Google sign-in was cancelled');
+      else if (reason === 'no_refresh_token') this.toast.error('Google didn\'t return a lasting permission. Remove this app at myaccount.google.com → Third-party access, then connect again.');
+      else if (reason === 'scope') this.toast.error('The send-email permission wasn\'t granted. Connect again and allow it.');
+      else this.toast.error('Could not connect Google. Please try again.');
+      this.tab.set('email');
+    }
+    this.loadGmail();
   }
 
   async loadConnect(): Promise<void> {
@@ -132,6 +196,46 @@ export class SettingsAdminComponent implements OnInit {
     try {
       this.connect.set(await this.admin.connectStripeStatus(org));
     } finally { this.connectLoading.set(false); }
+  }
+
+  // ── Google / Gmail sending ────────────────────────────────────────
+  /** Status only — the refresh token is service-role-only and never reaches the browser. */
+  async loadGmail(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org) return;
+    this.gmail.set(await this.data.googleStatus(org));
+  }
+
+  /** Redirects to Google's consent screen, exactly like connectStripe does for Stripe. */
+  async connectGoogle(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org || this.gmailBusy()) return;
+    this.gmailBusy.set(true);
+    try {
+      const res = await this.admin.connectGoogleStart(org);
+      if (res.url) { window.location.href = res.url; return; }
+      this.toast.error(res.error ?? 'Could not start Google sign-in.');
+    } catch {
+      this.toast.error('Could not start Google sign-in. Please try again.');
+    } finally { this.gmailBusy.set(false); }
+  }
+
+  async disconnectGoogle(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org || this.gmailBusy()) return;
+    if (!(await this.confirm.ask({
+      title: 'Disconnect Google',
+      message: 'Invoices will stop sending automatically. You can still email them from your own mail app.',
+      confirmLabel: 'Disconnect', danger: true,
+    }))) return;
+    this.gmailBusy.set(true);
+    try {
+      await this.admin.disconnectGoogle(org);
+      await this.loadGmail();
+      this.toast.success('Google disconnected');
+    } catch {
+      this.toast.error('Could not disconnect.');
+    } finally { this.gmailBusy.set(false); }
   }
 
   /** Begin (or resume) onboarding — redirects to Stripe's hosted flow. */
@@ -161,7 +265,11 @@ export class SettingsAdminComponent implements OnInit {
           min_lead_minutes: Number(this.minLeadMinutes), cash_allowed: this.cashAllowed,
         },
         features: { work_board: this.workBoard },
+        // The spread is load-bearing. This rebuilds the blob from the fields on this page,
+        // so WITHOUT it any key written by another code path is silently dropped the next
+        // time anyone saves Settings — from any tab, since there is one save() for all.
         invoice_details: {
+          ...this.loadedInvoiceDetails,
           legal_name: this.legalName.trim(),
           address: this.companyAddress.trim(),
           phone: this.companyPhone.trim(),
@@ -173,6 +281,22 @@ export class SettingsAdminComponent implements OnInit {
           invoice_prefix: (this.invoicePrefix.trim() || 'INV').toUpperCase(),
           invoice_footer: this.invoiceFooter.trim(),
         },
+        // Only written once the load has actually populated these fields. Saving from the
+        // General tab before that would otherwise write defaults over real templates.
+        ...(this.settingsLoaded ? {
+          invoice_settings: {
+            ...this.loadedInvoiceSettings,
+            payment_terms_days: Number(this.paymentTermsDays) || 14,
+            email_from: this.emailFrom.trim(),
+            email_from_name: this.emailFromName.trim(),
+            email_reply_to: this.emailReplyTo.trim(),
+            email_bcc_self: this.emailBccSelf,
+            templates: {
+              invoice:  { subject: this.invoiceSubject.trim(),  body: this.invoiceBody.trim() },
+              reminder: { subject: this.reminderSubject.trim(), body: this.reminderBody.trim() },
+            },
+          },
+        } : {}),
       });
       this.saved.set(true);
       setTimeout(() => this.saved.set(false), 2500);

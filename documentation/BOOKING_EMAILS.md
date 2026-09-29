@@ -1,9 +1,19 @@
-# Booking Platform — Email / Notifications (spec, not yet built)
+# Booking Platform — Email / Notifications
 
-The system currently sends **no transactional emails** (only Supabase's magic-link sign-in).
-This is the highest-impact missing piece. This doc is the plan so it can be built cleanly.
+> **PARTLY SUPERSEDED.** Invoice email (send an invoice, send a payment reminder) is now
+> **built** — see §20 of `supabase/bookings-schema.sql`, `ui/invoice-send/`, and the
+> `send-invoice-email` / `connect-google-*` Edge Functions. It sends through the org's own
+> **Google account** (Gmail API, per-org OAuth, token in Supabase Vault), **not** Resend:
+> the owner requires mail to come from their own Workspace alias, which a third-party
+> transactional provider cannot do without sending from a different mailbox.
+>
+> What remains unbuilt is the **booking lifecycle** half below — confirmations, receipts,
+> cancellations and the owner alerts. Those should reuse the sending engine that now
+> exists (per-org sender, `{placeholder}` templates, the `invoice_sends`-style log) rather
+> than introducing the Resend path this document originally proposed. The 24h shoot
+> reminder still needs a scheduler, which this project still does not have.
 
-## Recommended approach
+## Original recommended approach (superseded for invoices)
 - **Provider:** [Resend](https://resend.com) (simple API, generous free tier) — or any SMTP via Supabase.
 - **Where:** a single `send-email` Edge Function (service-role), called from the booking
   lifecycle (webhook, approve, create-booking-request) — never from the browser.

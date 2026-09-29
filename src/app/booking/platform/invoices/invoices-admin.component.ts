@@ -7,9 +7,17 @@ import { BookingAdminService } from '@booking/core/services/booking-admin.servic
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
+import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
+import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
-type InvoiceTab = 'all' | 'unpaid' | 'partial' | 'paid';
-const STATUS_LABEL: Record<Exclude<InvoiceTab, 'all'>, string> = {
+/** What a row's money actually is. */
+type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+/** `overdue` is a CROSS-CUTTING tab, not a payment status — an overdue invoice is also
+ *  unpaid or partial. Kept out of PaymentStatus so the two can never be conflated. */
+type InvoiceTab = 'all' | PaymentStatus | 'overdue';
+// Keyed on PaymentStatus, NOT on the tab union: statusLabel() renders a row's payment
+// status, and no row's payment status is ever "overdue".
+const STATUS_LABEL: Record<PaymentStatus, string> = {
   unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid',
 };
 
@@ -23,7 +31,7 @@ const STATUS_LABEL: Record<Exclude<InvoiceTab, 'all'>, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -36,6 +44,19 @@ export class InvoicesAdminComponent implements OnInit {
   readonly currency = signal('EUR');
   readonly invoices = signal<InvoiceListRow[]>([]);
   readonly loading = signal(true);
+
+  // ── Send-by-email dialog ────────────────────────────────────────────────
+  // One instance hosted at page level rather than one per row: the dialog fetches its
+  // own data from the invoice id, so N rows would mean N idle components.
+  readonly sendOpen = signal(false);
+  readonly sendId = signal('');
+  readonly sendKind = signal<InvoiceEmailKind>('invoice');
+
+  openSend(r: InvoiceListRow, kind: InvoiceEmailKind): void {
+    this.sendId.set(r.id);
+    this.sendKind.set(kind);
+    this.sendOpen.set(true);
+  }
 
   // Year filter (for VAT periods). 'all' or a 4-digit year string.
   readonly year = signal<string>('all');
@@ -62,21 +83,32 @@ export class InvoicesAdminComponent implements OnInit {
   readonly tabs: ReadonlyArray<{ key: InvoiceTab; label: string }> = [
     { key: 'all',     label: 'All' },
     { key: 'unpaid',  label: 'Unpaid' },
+    { key: 'overdue', label: 'Overdue' },
     { key: 'partial', label: 'Partially paid' },
     { key: 'paid',    label: 'Paid' },
   ];
   readonly tab = signal<InvoiceTab>('all');
 
   readonly counts = computed<Record<InvoiceTab, number>>(() => {
-    const c: Record<InvoiceTab, number> = { all: 0, unpaid: 0, partial: 0, paid: 0 };
-    for (const r of this.yearScoped()) { c.all++; c[r.payment_status]++; }
+    const c: Record<InvoiceTab, number> = { all: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0 };
+    for (const r of this.yearScoped()) {
+      c.all++;
+      c[r.payment_status]++;
+      // Counted on its own: overdue is not a payment status, so the indexed increment
+      // above can never produce it.
+      if (r.is_overdue) c.overdue++;
+    }
     return c;
   });
 
-  /** Visible rows: year + payment-status tab, newest invoice number first. */
+  /** Visible rows: year + tab, newest invoice number first. */
   readonly filtered = computed(() => {
     const t = this.tab();
-    return t === 'all' ? this.yearScoped() : this.yearScoped().filter(r => r.payment_status === t);
+    if (t === 'all') return this.yearScoped();
+    // Overdue needs its own arm — it cuts across payment status rather than being one,
+    // so comparing it to `payment_status` would always match nothing.
+    if (t === 'overdue') return this.yearScoped().filter(r => r.is_overdue);
+    return this.yearScoped().filter(r => r.payment_status === t);
   });
 
   // Summary reflects the whole period (year), independent of the active tab.
@@ -96,6 +128,12 @@ export class InvoicesAdminComponent implements OnInit {
     }
     this.invoices.set(await this.data.queryInvoices());
     this.loading.set(false);
+  }
+
+  /** Re-pull the rows. Sending can ISSUE a draft, which gives it a number and changes
+   *  which tab it belongs to — so the list must refresh, not just the dialog. */
+  async reload(): Promise<void> {
+    this.invoices.set(await this.data.queryInvoices());
   }
 
   statusLabel(r: InvoiceListRow): string { return STATUS_LABEL[r.payment_status]; }

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { ServicePricing } from '@booking/core/interfaces/org.interface';
 import { WorkingHoursConfig } from '@booking/core/interfaces/working-hours.interface';
+import { EmailTemplate } from '@booking/core/utils/invoice-email.util';
 
 export interface AdminService {
   id: string;
@@ -76,6 +77,25 @@ export interface InvoiceDetails {
   invoice_footer?: string;  // payment terms / thank-you / bank details
 }
 
+/**
+ * Invoicing BEHAVIOUR and email sending — a SEPARATE column from `invoice_details`.
+ *
+ * This split is load-bearing, not tidiness: `private._invoice_bundle` returns
+ * `invoice_details` wholesale and `get_invoice_by_token` is granted to `anon`, so every
+ * key in that blob is readable by anyone holding a share link. Nothing here is.
+ */
+export interface InvoiceSettings {
+  payment_terms_days?: number;   // default due date = issue date + this
+  email_from?: string;           // a verified "send mail as" alias, e.g. invoices@…
+  email_from_name?: string;
+  email_reply_to?: string;
+  email_bcc_self?: boolean;
+  templates?: {
+    invoice?: EmailTemplate;
+    reminder?: EmailTemplate;
+  };
+}
+
 export interface OrgSettings {
   timezone: string;
   currency: string;
@@ -89,6 +109,7 @@ export interface OrgSettings {
   };
   features?: { work_board?: boolean };
   invoice_details?: InvoiceDetails;
+  invoice_settings?: InvoiceSettings;
 }
 
 // Org-admin CRUD over services / staff / assignments / org settings.
@@ -143,7 +164,7 @@ export class BookingAdminService {
 
   // ── Org settings ──────────────────────────────────────────────────
   async getOrgSettings(orgId: string): Promise<OrgSettings | null> {
-    const { data } = await bookingsDb.from('organizations').select('timezone, currency, booking_params, features, invoice_details').eq('id', orgId).maybeSingle();
+    const { data } = await bookingsDb.from('organizations').select('timezone, currency, booking_params, features, invoice_details, invoice_settings').eq('id', orgId).maybeSingle();
     return (data as OrgSettings) ?? null;
   }
 
@@ -277,6 +298,24 @@ export class BookingAdminService {
     const { data, error } = await bookingsDb.functions.invoke('connect-stripe-status', { body: { orgId } });
     if (error) return { connected: false, chargesEnabled: false, detailsSubmitted: false, error: error.message };
     return data as ConnectStatus;
+  }
+
+  // ── Google / Gmail (per-org sending) ──────────────────────────────
+  /** Start the Google consent flow; returns the URL to redirect the browser to. */
+  async connectGoogleStart(orgId: string): Promise<{ url?: string; error?: string }> {
+    const { data, error } = await bookingsDb.functions.invoke('connect-google-start', { body: { orgId } });
+    if (error) return { error: error.message };
+    return data as { url?: string; error?: string };
+  }
+
+  /**
+   * Revoke at Google and forget the credential.
+   * An Edge Function rather than an RPC because Postgres cannot call Google's revoke
+   * endpoint — dropping the row alone would leave a token live on Google's side.
+   */
+  async disconnectGoogle(orgId: string): Promise<void> {
+    const { error } = await bookingsDb.functions.invoke('disconnect-google', { body: { orgId } });
+    if (error) throw new Error(error.message);
   }
 
   // ── Organizations & members (platform-admin gated where required) ──

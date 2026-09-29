@@ -14,6 +14,7 @@
       <button class="tab" [class.tab--active]="tab() === 'general'"      (click)="setTab('general')">General</button>
       <button class="tab" [class.tab--active]="tab() === 'booking'"      (click)="setTab('booking')">Booking rules</button>
       <button class="tab" [class.tab--active]="tab() === 'company'"      (click)="setTab('company')">Company &amp; Invoicing</button>
+      <button class="tab" [class.tab--active]="tab() === 'email'"        (click)="setTab('email')">Email &amp; sending</button>
       <button class="tab" [class.tab--active]="tab() === 'team'"         (click)="setTab('team')">Team</button>
       <button class="tab" [class.tab--active]="tab() === 'payments'"     (click)="setTab('payments')">Payments</button>
       <button class="tab" [class.tab--active]="tab() === 'integrations'" (click)="setTab('integrations')">Integrations</button>
@@ -125,6 +126,98 @@
       }
 
       <!-- ── Team & organizations ─────────────────────────────────── -->
+      @case ('email') {
+        <div class="card">
+          <h2 class="card__h">Send invoices from your own address</h2>
+          <p class="hint">
+            Connect your Google account and invoices go out from you, with the PDF attached.
+            Without it you can still email them — the message is prepared and opens in your own mail app.
+          </p>
+
+          @if (gmail().connected) {
+            <div class="item">
+              <div class="item__main">
+                <div class="item__name">Connected as {{ gmail().email }}</div>
+                <div class="item__meta">
+                  @if (gmail().can_send) {
+                    Can send email ✓
+                  } @else {
+                    Connected, but the send-email permission is missing — reconnect to grant it.
+                  }
+                </div>
+              </div>
+              <div class="item__actions">
+                <button class="link-btn link-btn--danger" [disabled]="gmailBusy()" (click)="disconnectGoogle()">Disconnect</button>
+              </div>
+            </div>
+            @if (gmail().last_error) {
+              <p class="hint err-hint">Last error: {{ gmail().last_error }}</p>
+            }
+          } @else {
+            <button class="btn btn--primary" [disabled]="gmailBusy()" (click)="connectGoogle()">
+              {{ gmailBusy() ? 'Opening Google…' : 'Connect Google' }}
+            </button>
+          }
+        </div>
+
+        <div class="card">
+          <h2 class="card__h">Sender</h2>
+          <p class="hint">
+            The address clients see. It must be added to your Google account under
+            <strong>Gmail → Settings → Accounts → Send mail as</strong> and verified, or Google
+            will quietly send from your main address instead.
+          </p>
+          <div class="grid">
+            <label class="field"><span>From address</span>
+              <input type="email" [(ngModel)]="emailFrom" placeholder="invoices@yourdomain.com" />
+            </label>
+            <label class="field"><span>From name</span>
+              <input [(ngModel)]="emailFromName" placeholder="e.g. JM Booking" />
+            </label>
+          </div>
+          <div class="grid">
+            <label class="field"><span>Reply-to <span class="opt">(optional)</span></span>
+              <input type="email" [(ngModel)]="emailReplyTo" placeholder="you@yourdomain.com" />
+            </label>
+            <label class="field"><span>Default payment terms</span>
+              <input type="number" min="0" max="180" [(ngModel)]="paymentTermsDays" />
+              <span class="hint">Days after the issue date — sets each invoice's due date. Overridable per invoice.</span>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" [(ngModel)]="emailBccSelf" /> Send me a copy of every invoice email</label>
+        </div>
+
+        <div class="card">
+          <h2 class="card__h">Invoice email</h2>
+          <label class="field"><span>Subject</span><input [(ngModel)]="invoiceSubject" /></label>
+          <label class="field"><span>Message</span>
+            <textarea rows="10" [(ngModel)]="invoiceBody"></textarea>
+          </label>
+          <!-- Rendered FROM the key definitions, never restated here: the invoice footer
+               kept its list in three places and they drifted out of sync. -->
+          <span class="hint hint--keys">
+            Each invoice fills these in:
+            @for (k of emailKeys; track k.key) {
+              <code>{{ k.key }}</code> {{ k.describe }}@if (!$last) { · }
+            }
+          </span>
+        </div>
+
+        <div class="card">
+          <h2 class="card__h">Reminder email</h2>
+          <p class="hint">Used when you chase an unpaid invoice. Same keys — <code>{{ '{daysOverdue}' }}</code> is how late it is.</p>
+          <label class="field"><span>Subject</span><input [(ngModel)]="reminderSubject" /></label>
+          <label class="field"><span>Message</span>
+            <textarea rows="9" [(ngModel)]="reminderBody"></textarea>
+          </label>
+
+          <div class="actions">
+            <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
+            @if (saved()) { <span class="ok-tag">✓ Saved</span> }
+          </div>
+        </div>
+      }
+
       @case ('team') {
         <div class="card">
           <h2 class="card__h">Team</h2>

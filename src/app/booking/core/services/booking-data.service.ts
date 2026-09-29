@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
-import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput } from '@booking/core/interfaces/invoice.interface';
+import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
 import { Earnings } from '@booking/core/interfaces/earnings.interface';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
@@ -233,6 +233,85 @@ export class BookingDataService implements OnDestroy {
     return (data as number) ?? 0;
   }
 
+  // ── Invoice email ────────────────────────────────────────────────────────
+  /** Can this org send through Gmail? Status only — the refresh token never leaves the DB. */
+  async googleStatus(orgId: string): Promise<GoogleConnection> {
+    const { data, error } = await bookingsDb.rpc('google_connection_status', { p_org: orgId });
+    if (error) { console.error('[BookingData] googleStatus:', error.message); return { connected: false }; }
+    return (data as GoogleConnection) ?? { connected: false };
+  }
+
+  /** Everything this invoice has been sent as, newest first. */
+  async listInvoiceSends(invoiceId: string): Promise<InvoiceSend[]> {
+    const { data, error } = await bookingsDb
+      .from('invoice_sends')
+      .select('id, invoice_id, kind, channel, status, to_emails, cc_emails, subject, had_attachment, error, created_at')
+      .eq('invoice_id', invoiceId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[BookingData] listInvoiceSends:', error.message); return []; }
+    return (data ?? []) as InvoiceSend[];
+  }
+
+  /**
+   * Every address this invoice has ever gone to, deduped and lowercased.
+   *
+   * This is what makes a reminder pre-fill with everyone who already holds the invoice —
+   * including an address used only for a one-off resend after the client asked for a copy
+   * to go somewhere else. Failed sends are excluded: nobody received those, so they are
+   * not people who "already have it".
+   */
+  async priorRecipients(invoiceId: string): Promise<string[]> {
+    const seen = new Set<string>();
+    for (const s of await this.listInvoiceSends(invoiceId)) {
+      if (s.status === 'failed') continue;
+      for (const e of [...(s.to_emails ?? []), ...(s.cc_emails ?? [])]) {
+        const t = (e ?? '').trim().toLowerCase();
+        if (t) seen.add(t);
+      }
+    }
+    return [...seen];
+  }
+
+  /** Record a mailto draft. The RPC hardcodes channel/status so the browser can't claim a send. */
+  async logInvoiceDraft(p: {
+    invoiceId: string; kind: 'invoice' | 'reminder';
+    to: string[]; cc: string[]; subject: string; body: string;
+    shareUrl: string | null; attached: boolean;
+  }): Promise<void> {
+    const { error } = await bookingsDb.rpc('log_invoice_draft', {
+      p_invoice: p.invoiceId, p_kind: p.kind, p_to: p.to, p_cc: p.cc,
+      p_subject: p.subject, p_body: p.body, p_share_url: p.shareUrl, p_attached: p.attached,
+    });
+    // Non-fatal by design: the email itself is already on its way to the owner's mail
+    // client. Losing the log entry must not look like a failed send.
+    if (error) console.error('[BookingData] logInvoiceDraft:', error.message);
+  }
+
+  /**
+   * Send through Gmail via the Edge Function.
+   *
+   * Surfaces the function's OWN error code rather than supabase-js's generic
+   * "Edge Function returned a non-2xx status code" — the dialog needs to distinguish
+   * "reconnect Google" from "that From address isn't a verified alias".
+   */
+  async sendInvoiceEmail(payload: Record<string, unknown>): Promise<{
+    ok: boolean; error?: string; alreadySent?: boolean; sendId?: string;
+  }> {
+    try {
+      const { data, error } = await bookingsDb.functions.invoke('send-invoice-email', { body: payload });
+      if (error) {
+        const body = await (error as { context?: { json?: () => Promise<{ error?: string }> } })
+          ?.context?.json?.().catch(() => null);
+        return { ok: false, error: body?.error ?? (error as Error).message };
+      }
+      const d = (data ?? {}) as { ok?: boolean; error?: string; alreadySent?: boolean; sendId?: string };
+      if (d.error) return { ok: false, error: d.error };
+      return { ok: true, alreadySent: d.alreadySent, sendId: d.sendId };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  }
+
   async syncCalendar(): Promise<void> {
     this.syncing.set(true);
     this.syncResult.set(null);
@@ -366,7 +445,7 @@ export class BookingDataService implements OnDestroy {
     // time to type the result, and a concatenated expression degrades to GenericStringError.
     const { data, error } = await bookingsDb
       .from('invoices')
-      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, notes, line_items, status, number_year, number_seq, amount_expenses')
+      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, due_date, notes, line_items, status, number_year, number_seq, amount_expenses')
       .eq('id', id)
       .maybeSingle();
     if (error) { console.error('[BookingData] getInvoiceById:', error); return null; }
@@ -379,7 +458,7 @@ export class BookingDataService implements OnDestroy {
   async getInvoiceByBooking(bookingId: string): Promise<EditableInvoice | null> {
     const { data, error } = await bookingsDb
       .from('invoices')
-      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, notes, line_items, status, number_year, number_seq, amount_expenses')
+      .select('id, org_id, booking_id, client_id, staff_id, service_id, contact_name, title, service_date, issue_date, due_date, notes, line_items, status, number_year, number_seq, amount_expenses')
       .eq('booking_id', bookingId)
       // A booking can carry several invoices (deposit + final, or a supplementary one
       // when scope grows). "The booking's invoice" is always the OLDEST — the original
