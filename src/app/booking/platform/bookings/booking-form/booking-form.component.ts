@@ -64,6 +64,9 @@ export class BookingFormComponent implements OnInit {
   depositMode: 'deposit' | 'full' = 'deposit';
   depositPercent = 30;
   needsProduction = false;   // add to the Work board (editing → delivery)?
+  /** 'minimal' strips money/progress/notes from the Google Calendar event so the job can
+   *  safely have other attendees on it. Defaults to the org setting via the RPC. */
+  calendarDetail: 'full' | 'minimal' = 'full';
   confirmed = false;         // OFF (default) → tentative booking (held, awaits confirmation); ON → booked + calendar now
 
   private orgDefaults = { depositPercent: 30, depositAllowed: true };
@@ -113,6 +116,7 @@ export class BookingFormComponent implements OnInit {
     this.depositMode = (b.deposit_allowed ?? this.orgDefaults.depositAllowed) ? 'deposit' : 'full';
     this.depositPercent = b.deposit_percent ?? this.orgDefaults.depositPercent;
     this.needsProduction = b.needs_production ?? false;
+    this.calendarDetail = b.calendar_detail ?? 'full';
 
     // Seed the picker from the booking's real time blocks (one or more).
     this.prefillSlots = await this.data.getBookingSlots(id);
@@ -134,7 +138,14 @@ export class BookingFormComponent implements OnInit {
     return this.clientMode === 'existing' ? !!this.clientId : this.contactName.trim().length > 0;
   }
   /** The DB slots to persist (one row per chosen block). */
-  get slotsValue(): BookingSlot[] { return this.selectedSlots.map(s => ({ start: s.iso, end: s.endIso })); }
+  get slotsValue(): BookingSlot[] {
+    return this.selectedSlots.map(s => ({
+      start: s.iso, end: s.endIso,
+      // `label` is the block's NAME; `timeLabel` is the derived "Mon 5 Oct · 08:00–09:00"
+      // display string and must never be persisted.
+      label: s.label?.trim() || null,
+    }));
+  }
 
   // ── Change handlers ─────────────────────────────────────────────────
   // Charges (pricing) are decoupled from the calendar — editing items never touches the time blocks.
@@ -181,6 +192,7 @@ export class BookingFormComponent implements OnInit {
         depositAllowed: this.depositMode === 'deposit',
         depositPercent: this.depositPercent,
         needsProduction: this.needsProduction,
+        calendarDetail: this.calendarDetail,
         location: this.location.trim() || null, notes: this.notes.trim() || null,
       };
 
@@ -256,6 +268,7 @@ export class BookingFormComponent implements OnInit {
     this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
     this.depositPercent = this.orgDefaults.depositPercent;
     this.needsProduction = false;
+    this.calendarDetail = 'full';
     this.confirmed = false;
     this.created.set(null); this.errorMsg.set('');
   }

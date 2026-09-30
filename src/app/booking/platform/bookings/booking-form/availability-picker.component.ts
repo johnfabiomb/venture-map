@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { WorkerBusy, BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { CalendarDayCell, CalendarSlotView } from '@booking/core/interfaces/availability.interface';
@@ -6,7 +7,15 @@ import { AvailabilityCalendarComponent } from '@booking/ui/availability-calendar
 import { zonedClockToUtc, utcToZoned } from '@booking/core/utils/timezone.util';
 import { nextRange } from '@booking/core/utils/range-select.util';
 
-export interface PickedSlot { iso: string; endIso: string; hours: number; date: string; label: string; }
+export interface PickedSlot {
+  iso: string; endIso: string; hours: number; date: string;
+  /** Derived display string — "Mon 5 Oct · 08:00–09:00". Not user-editable. Renamed from
+   *  `label` so that name could go to the block's NAME, which is what the DB column is. */
+  timeLabel: string;
+  /** What this block IS — "Pre-shoot planning", "Filming day". Typed by the admin, stored
+   *  on booking_slots.label, and surfaced in the Google Calendar event title. */
+  label: string;
+}
 
 const SLOTS = 48;          // 30-minute granularity
 const SLOT_MIN = 30;
@@ -23,17 +32,32 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
   selector: 'app-availability-picker',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AvailabilityCalendarComponent],
+  imports: [FormsModule, AvailabilityCalendarComponent],
   template: `
     @if (slots().length) {
       <div class="blocks">
         <div class="blocks__head">Time blocks <span class="blocks__count">{{ slots().length }}</span></div>
         @for (s of slots(); track s.iso) {
           <div class="block">
-            <span class="block__label">{{ s.label }}</span>
+            <span class="block__label">{{ s.timeLabel }}</span>
+            <!-- Naming a block is what makes a multi-day job readable in the calendar:
+                 "Pre-shoot planning" and "Filming day" instead of two identical entries
+                 telling you only "(1/2)" and "(2/2)". A datalist suggests the common ones
+                 without limiting you to them. -->
+            <input class="block__name" type="text" list="slotNamePresets"
+                   placeholder="Name this block (optional)"
+                   [ngModel]="s.label" (ngModelChange)="setLabel(s, $event)"
+                   [name]="'slotName' + $index" />
             <button type="button" class="block__x" (click)="removeSlot(s)" aria-label="Remove block">×</button>
           </div>
         }
+        <datalist id="slotNamePresets">
+          <option value="Pre-shoot planning"></option>
+          <option value="Filming"></option>
+          <option value="Tentative filming"></option>
+          <option value="Editing"></option>
+          <option value="Delivery"></option>
+        </datalist>
       </div>
     }
     <app-availability-calendar
@@ -72,7 +96,13 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
       padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; background: #fff;
     }
-    .block__label { font-size: 13.5px; font-weight: 600; color: #111827; }
+    .block__label { font-size: 13.5px; font-weight: 600; color: #111827; white-space: nowrap; }
+    .block__name {
+      flex: 1 1 0; min-width: 0;   /* min-width:0 or the input's intrinsic size widens the row */
+      font-family: inherit; font-size: 13px; color: #111827;
+      border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 8px; background: #fff;
+    }
+    .block__name:focus { outline: none; border-color: #F4A922; }
     .block__x { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; color: #9ca3af; padding: 0 2px; }
     .block__x:hover { color: #dc2626; }
   `],
@@ -119,7 +149,11 @@ export class AvailabilityPickerComponent {
       this.seeded = true;
       const tz = this.timezone();
       untracked(() => {
-        const ps = init.map(s => this.toPicked(s.start, s.end)).sort((a, b) => a.iso.localeCompare(b.iso));
+        // Carry the saved block NAME back in — toPicked only derives the time display, so
+        // without this an edit would silently blank every label the owner had typed.
+        const ps = init
+          .map(s => ({ ...this.toPicked(s.start, s.end), label: s.label ?? '' }))
+          .sort((a, b) => a.iso.localeCompare(b.iso));
         this.slots.set(ps);
         const first = utcToZoned(new Date(ps[0].iso), tz);
         const [yy, mm] = first.dateStr.split('-').map(Number);
@@ -145,7 +179,8 @@ export class AvailabilityPickerComponent {
   private toPicked(startIso: string, endIso: string): PickedSlot {
     const z = utcToZoned(new Date(startIso), this.timezone());
     const hours = (new Date(endIso).getTime() - new Date(startIso).getTime()) / 3_600_000;
-    return { iso: startIso, endIso, hours, date: z.dateStr, label: this.label(startIso, endIso) };
+    return { iso: startIso, endIso, hours, date: z.dateStr,
+             timeLabel: this.label(startIso, endIso), label: '' };
   }
   private label(startIso: string, endIso: string): string {
     const tz = this.timezone();
@@ -245,6 +280,13 @@ export class AvailabilityPickerComponent {
 
   removeSlot(s: PickedSlot): void {
     this.slots.update(list => list.filter(x => x.iso !== s.iso));
+    this.emit();
+  }
+
+  /** Immutable write, matching the editable-list recipe used elsewhere: never mutate an
+   *  element of the bound array in place. */
+  setLabel(s: PickedSlot, value: string): void {
+    this.slots.update(list => list.map(x => x.iso === s.iso ? { ...x, label: value } : x));
     this.emit();
   }
   clearInProgress(): void { this.rangeStart.set(null); this.rangeEnd.set(null); }

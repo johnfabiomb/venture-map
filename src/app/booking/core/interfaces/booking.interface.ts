@@ -60,12 +60,23 @@ export interface EditableBooking {
   deposit_percent: number | null;   // per-booking override; null = inherit org default
   deposit_allowed: boolean | null;  // per-booking override; null = inherit org default
   needs_production: boolean;         // on the Work board (post-production) when true
+  /**
+   * How much the Google Calendar event may say.
+   *   'full'    — client, total, payment state, progress, internal notes.
+   *   'minimal' — work brief, client, service, ref only.
+   * A calendar event has ONE description that every attendee reads, so this is what makes
+   * it safe to invite a second shooter or the client to the event itself.
+   */
+  calendar_detail: 'full' | 'minimal';
 }
 
 /** One time block of a booking (a booking can have several, across days). */
 export interface BookingSlot {
   start: string;   // UTC ISO
   end: string;     // UTC ISO
+  /** What this block is — "Pre-shoot planning", "Filming day". Optional; when set it
+   *  becomes part of the Google Calendar event title so a multi-block job is readable. */
+  label?: string | null;
 }
 
 /** A worker's occupied time range — feeds the admin availability picker's busy slots. */

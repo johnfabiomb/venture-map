@@ -196,6 +196,18 @@ CREATE TABLE public.bookings (
   -- (mirrored onto the linked work_items card for the calendar "Progress" line).
   needs_production  BOOLEAN NOT NULL DEFAULT false,
   production_status TEXT CHECK (production_status IN ('to_edit','editing','to_deliver','delivered')),
+  -- How much this job's Google Calendar event is allowed to say.
+  --   full    — everything: client, total, payment state, progress, internal notes.
+  --   minimal — the work brief, service, location and ref ONLY.
+  -- A Google event has ONE description shared by every attendee, so the moment you invite a
+  -- second shooter or the client to the event they read whatever is in it. 'minimal' is what
+  -- makes that safe. Defaults from organizations.booking_params.calendar_detail.
+  --
+  -- TEXT + CHECK rather than a boolean ON PURPOSE: a boolean cannot grow. Adding a third
+  -- level later (say 'client_facing') is one value in this CHECK, not a column migration on
+  -- data that is already in use.
+  calendar_detail TEXT NOT NULL DEFAULT 'full'
+    CHECK (calendar_detail IN ('full','minimal')),
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
   deleted_at      TIMESTAMPTZ,            -- soft delete (see §18); cascades to children
@@ -214,6 +226,11 @@ CREATE TABLE public.booking_slots (
   start_at   TIMESTAMPTZ NOT NULL,
   end_at     TIMESTAMPTZ NOT NULL,
   blocking   BOOLEAN NOT NULL DEFAULT true,   -- mirrors booking status (reserves the worker)
+  -- What this block IS — "Pre-shoot planning", "Filming day", "Editing". Free text, not an
+  -- enum, deliberately: a fixed list would be wrong the first time a job doesn't fit it, and
+  -- the calendar only needs a human-readable name. Surfaced in the event TITLE, so a job with
+  -- several blocks stops showing as identical "(1/2)" / "(2/2)" entries.
+  label      TEXT,
   google_event_id TEXT,                       -- per-slot Google Calendar event
   created_at TIMESTAMPTZ DEFAULT now(),
   deleted_at TIMESTAMPTZ                       -- soft delete; a deleted slot frees the time
@@ -276,7 +293,8 @@ BEGIN
   IF v_start IS NULL THEN RAISE EXCEPTION 'no_slots'; END IF;
   INSERT INTO bookings (org_id, staff_id, service_id, client_id, contact_name, title, description,
     start_at, end_at, price_total, price_expenses, status, created_by,
-    allow_card, allow_inperson, deposit_allowed, deposit_percent, needs_production, is_external, location, notes)
+    allow_card, allow_inperson, deposit_allowed, deposit_percent, needs_production, is_external, location, notes,
+    calendar_detail)
   VALUES (v_org, v_staff, (p_booking->>'service_id')::uuid, (p_booking->>'client_id')::uuid,
     NULLIF(p_booking->>'contact_name',''),
     p_booking->>'title', p_booking->>'description', v_start, v_end,
@@ -285,11 +303,17 @@ BEGIN
     COALESCE((p_booking->>'allow_card')::boolean, true), COALESCE((p_booking->>'allow_inperson')::boolean, true),
     COALESCE((p_booking->>'deposit_allowed')::boolean, true), COALESCE((p_booking->>'deposit_percent')::int, 30),
     COALESCE((p_booking->>'needs_production')::boolean, false), COALESCE((p_booking->>'is_external')::boolean, false),
-    p_booking->>'location', p_booking->>'notes')
+    p_booking->>'location', p_booking->>'notes',
+    -- Explicit value wins; otherwise the org's default; otherwise 'full' (today's behaviour,
+    -- so nothing changes for a caller that knows nothing about this field).
+    COALESCE(NULLIF(p_booking->>'calendar_detail',''),
+             (SELECT o.booking_params->>'calendar_detail' FROM organizations o WHERE o.id = v_org),
+             'full'))
   RETURNING bookings.id INTO v_id;
   FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
-    INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at)
-    VALUES (v_org, v_id, v_staff, (v_slot->>'start')::timestamptz, (v_slot->>'end')::timestamptz);
+    INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, label)
+    VALUES (v_org, v_id, v_staff, (v_slot->>'start')::timestamptz, (v_slot->>'end')::timestamptz,
+            NULLIF(v_slot->>'label',''));
   END LOOP;
   RETURN QUERY SELECT v_id, b.booking_ref FROM bookings b WHERE b.id = v_id;
 END $$;
@@ -325,11 +349,16 @@ BEGIN
     allow_card=COALESCE((p_booking->>'allow_card')::boolean,true), allow_inperson=COALESCE((p_booking->>'allow_inperson')::boolean,true),
     deposit_allowed=COALESCE((p_booking->>'deposit_allowed')::boolean,true), deposit_percent=COALESCE((p_booking->>'deposit_percent')::int,30),
     needs_production=COALESCE((p_booking->>'needs_production')::boolean,false), is_external=false,
-    location=p_booking->>'location', notes=p_booking->>'notes'
+    location=p_booking->>'location', notes=p_booking->>'notes',
+    -- Patch-style: only overwritten when the caller actually sends a value, so an edit from
+    -- a screen that doesn't know about this field can't silently reset it to 'full' and
+    -- re-expose the money on a job the owner had deliberately made minimal.
+    calendar_detail=COALESCE(NULLIF(p_booking->>'calendar_detail',''), calendar_detail)
   WHERE id=p_booking_id;
   FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
-    INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, google_event_id)
+    INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, label, google_event_id)
     VALUES (v_org, p_booking_id, v_staff, (v_slot->>'start')::timestamptz, (v_slot->>'end')::timestamptz,
+      NULLIF(v_slot->>'label',''),
       (SELECT o->>'g' FROM jsonb_array_elements(v_old) o
         WHERE (o->>'s')::timestamptz = (v_slot->>'start')::timestamptz
           AND (o->>'e')::timestamptz = (v_slot->>'end')::timestamptz

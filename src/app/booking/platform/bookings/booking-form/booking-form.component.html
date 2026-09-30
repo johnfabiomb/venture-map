@@ -107,7 +107,7 @@
           <span class="hint">Pick a worker first — their calendar appears on the right.</span>
         } @else if (selectedSlots.length) {
           @for (s of selectedSlots; track s.iso) {
-            <div class="picked">✓ {{ s.label }}</div>
+            <div class="picked">✓ {{ s.timeLabel }}@if (s.label) { — {{ s.label }}}</div>
           }
           <span class="hint">Add more blocks (even on other days) or remove them on the calendar →</span>
         } @else {
@@ -200,6 +200,19 @@
         <span>
           <strong>Needs post-production</strong>
           <span class="check__hint">Adds this to the Work board (editing → delivery). Leave off for meetings or no-edit jobs.</span>
+        </span>
+      </label>
+
+      <!-- Calendar privacy. A Google event has ONE description and every attendee reads it,
+           so this is the switch that makes it safe to put someone else on the invite. -->
+      <label class="check">
+        <input type="checkbox"
+               [ngModel]="calendarDetail === 'minimal'"
+               (ngModelChange)="calendarDetail = $event ? 'minimal' : 'full'"
+               name="calendarMinimal" />
+        <span>
+          <strong>Keep money off the calendar invite</strong>
+          <span class="check__hint">Tick this if you'll invite anyone else to the event — a second shooter, or the client. They'd otherwise see the total, what's been paid, the progress stage and your private notes. With this on the event still shows the brief, client and service.</span>
         </span>
       </label>
 

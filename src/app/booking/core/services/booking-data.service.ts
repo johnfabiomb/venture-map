@@ -88,6 +88,8 @@ export class BookingDataService implements OnDestroy {
     depositAllowed: boolean; depositPercent: number; needsProduction: boolean;
     confirmed: boolean;
     location?: string | null; notes?: string | null;
+    /** How much the Google Calendar event may disclose. Omit to take the org default. */
+    calendarDetail?: 'full' | 'minimal';
   }): Promise<{ id?: string; ref?: string; error?: string }> {
     const { data, error } = await bookingsDb.rpc('create_booking', {
       p_booking: {
@@ -101,6 +103,8 @@ export class BookingDataService implements OnDestroy {
         deposit_allowed: input.depositAllowed, deposit_percent: input.depositPercent,
         needs_production: input.needsProduction, is_external: false,
         location: input.location ?? null, notes: input.notes ?? null,
+        // Omitted (null) means "use the org default" — create_booking resolves it.
+        calendar_detail: input.calendarDetail ?? null,
       },
       p_slots: input.slots,
     });
@@ -114,7 +118,7 @@ export class BookingDataService implements OnDestroy {
   async getBooking(id: string): Promise<EditableBooking | null> {
     const { data } = await bookingsDb
       .from('bookings')
-      .select('id, org_id, booking_ref, staff_id, service_id, client_id, contact_name, title, description, start_at, end_at, price_total, location, notes, status, allow_card, allow_inperson, deposit_percent, deposit_allowed, needs_production')
+      .select('id, org_id, booking_ref, staff_id, service_id, client_id, contact_name, title, description, start_at, end_at, price_total, location, notes, status, allow_card, allow_inperson, deposit_percent, deposit_allowed, needs_production, calendar_detail')
       .eq('id', id)
       .maybeSingle();
     return (data as EditableBooking) ?? null;
@@ -123,8 +127,11 @@ export class BookingDataService implements OnDestroy {
   /** A booking's time blocks (one or more), earliest first. */
   async getBookingSlots(bookingId: string): Promise<BookingSlot[]> {
     const { data } = await bookingsDb
-      .from('booking_slots').select('start_at, end_at').eq('booking_id', bookingId).order('start_at');
-    return (data ?? []).map(s => ({ start: (s as { start_at: string }).start_at, end: (s as { end_at: string }).end_at }));
+      .from('booking_slots').select('start_at, end_at, label').eq('booking_id', bookingId).order('start_at');
+    return (data ?? []).map(s => {
+      const r = s as { start_at: string; end_at: string; label: string | null };
+      return { start: r.start_at, end: r.end_at, label: r.label };
+    });
   }
 
   /** Update a booking + replace its slots (atomic). Overlap fails with 23P01 → `slot_taken`. */
@@ -134,6 +141,7 @@ export class BookingDataService implements OnDestroy {
     allowCard: boolean; allowInperson: boolean;
     depositAllowed: boolean; depositPercent: number; needsProduction: boolean;
     location?: string | null; notes?: string | null;
+    calendarDetail?: 'full' | 'minimal';
   }): Promise<{ ok?: boolean; error?: string }> {
     const { data, error } = await bookingsDb.rpc('update_booking', {
       p_booking_id: id,
@@ -145,6 +153,9 @@ export class BookingDataService implements OnDestroy {
         deposit_allowed: input.depositAllowed, deposit_percent: input.depositPercent,
         needs_production: input.needsProduction,
         location: input.location ?? null, notes: input.notes ?? null,
+        // update_booking only overwrites this when a value is actually sent, so an edit
+        // from a screen that doesn't expose the field can't reset it to 'full'.
+        calendar_detail: input.calendarDetail ?? null,
       },
       p_slots: input.slots,
     });
