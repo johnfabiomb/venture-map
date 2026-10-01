@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
-import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection } from '@booking/core/interfaces/invoice.interface';
+import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
 import { Earnings } from '@booking/core/interfaces/earnings.interface';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
@@ -242,6 +242,46 @@ export class BookingDataService implements OnDestroy {
     const { data, error } = await bookingsDb.rpc('revoke_invoice_links', { p_invoice: invoiceId });
     if (error) { console.error('[BookingData] revokeInvoiceLinks:', error.message); return 0; }
     return (data as number) ?? 0;
+  }
+
+  // ── Restore (undo a soft delete) ─────────────────────────────────────────
+  /**
+   * Rows for the Deleted tab. NOT served by queryBookings: that reads `booking_summary`,
+   * and no amount of filtering there can surface a deleted row — the RESTRICTIVE
+   * hide_deleted policy removes them before the query sees them.
+   */
+  async listDeletedBookings(): Promise<DeletedBooking[]> {
+    const org = this.auth.orgId();
+    if (!org) return [];
+    const { data, error } = await bookingsDb.rpc('list_deleted_bookings', { p_org: org });
+    if (error) { console.error('[BookingData] listDeletedBookings:', error.message); return []; }
+    return (data ?? []) as DeletedBooking[];
+  }
+
+  async listDeletedInvoices(): Promise<DeletedInvoice[]> {
+    const org = this.auth.orgId();
+    if (!org) return [];
+    const { data, error } = await bookingsDb.rpc('list_deleted_invoices', { p_org: org });
+    if (error) { console.error('[BookingData] listDeletedInvoices:', error.message); return []; }
+    return (data ?? []) as DeletedInvoice[];
+  }
+
+  /**
+   * Bring a booking back, with its slots, invoice, payments and links.
+   * Slots are restored individually — one whose time has since been given to another job
+   * comes back in `slots_conflicted` instead of failing the whole restore.
+   */
+  async restoreBooking(bookingId: string): Promise<RestoreResult & { error?: string }> {
+    const { data, error } = await bookingsDb.rpc('restore_booking', { p_booking: bookingId });
+    if (error) return { restored: false, error: error.message };
+    await this.fetchBookings();
+    return (data ?? { restored: false }) as RestoreResult;
+  }
+
+  async restoreInvoice(invoiceId: string): Promise<RestoreResult & { error?: string }> {
+    const { data, error } = await bookingsDb.rpc('restore_invoice', { p_invoice: invoiceId });
+    if (error) return { restored: false, error: error.message };
+    return (data ?? { restored: false }) as RestoreResult;
   }
 
   // ── Invoice email ────────────────────────────────────────────────────────
@@ -750,6 +790,10 @@ export class BookingDataService implements OnDestroy {
   async queryBookings(tab: BookingTab, search = ''): Promise<BookingSummary[]> {
     const org = this.auth.orgId();
     if (!org) return [];
+    // 'deleted' can never be served from here: this reads `booking_summary`, and the
+    // RESTRICTIVE hide_deleted policy strips deleted rows before any filter applies.
+    // The Deleted tab uses listDeletedBookings() instead.
+    if (tab === 'deleted') return [];
     const nowIso = new Date().toISOString();
     let q = this.applyTabFilter(
       bookingsDb.from('booking_summary').select('*').eq('org_id', org), tab, nowIso);
@@ -763,8 +807,11 @@ export class BookingDataService implements OnDestroy {
 
   /** Per-tab counts (for the tab badges) — one HEAD count query per tab, in parallel. */
   async bookingTabCounts(): Promise<Record<BookingTab, number>> {
+    // `deleted` is present but always 0 here: these are HEAD counts against
+    // booking_summary, which cannot see a deleted row. The caller overlays the real
+    // number from listDeletedBookings().
     const empty: Record<BookingTab, number> =
-      { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0 };
+      { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0, deleted: 0 };
     const org = this.auth.orgId();
     if (!org) return empty;
     const nowIso = new Date().toISOString();

@@ -10,7 +10,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
 import { BookingSummary, BookingTab, PaymentStatus } from '@booking/core/interfaces/booking.interface';
-import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
+import { InvoiceListRow, DeletedBooking } from '@booking/core/interfaces/invoice.interface';
 
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   unpaid: 'Unpaid', partial: 'Deposit paid', paid: 'Paid', external: 'External',
@@ -22,7 +22,7 @@ const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
 // 'external' is intentionally not a selectable tab — those bookings still show under Upcoming/Past/All.
 const TAB_KEYS: BookingTab[] = ['upcoming', 'pending', 'unpaid', 'paid', 'past', 'cancelled', 'all'];
 const EMPTY_COUNTS: Record<BookingTab, number> =
-  { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0 };
+  { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0, deleted: 0 };
 
 const EMPTY_TEXT: Record<BookingTab, string> = {
   upcoming: 'No upcoming bookings. Your schedule is clear.',
@@ -33,6 +33,7 @@ const EMPTY_TEXT: Record<BookingTab, string> = {
   external: 'No imported calendar events. Use “Sync Calendar” to pull them in.',
   cancelled: 'No cancelled bookings.',
   all: 'No bookings match your search.',
+  deleted: 'Nothing deleted. Removed bookings appear here and can be brought back.',
 };
 
 @Component({
@@ -59,7 +60,7 @@ export class BookingListComponent {
   readonly tabGroups: ReadonlyArray<ReadonlyArray<{ key: BookingTab; label: string }>> = [
     [{ key: 'upcoming',  label: 'Upcoming' }, { key: 'past', label: 'Past' }],
     [{ key: 'pending',   label: 'To confirm' }, { key: 'unpaid', label: 'Unpaid' }, { key: 'paid', label: 'Paid' }],
-    [{ key: 'cancelled', label: 'Cancelled' }, { key: 'all', label: 'All' }],
+    [{ key: 'cancelled', label: 'Cancelled' }, { key: 'all', label: 'All' }, { key: 'deleted', label: 'Deleted' }],
   ];
 
   /** Remember the last tab so returning from edit/detail lands you back where you were. */
@@ -103,8 +104,13 @@ export class BookingListComponent {
       const tab = this.tab();
       const q = this.debouncedSearch();
       void this.loadRows(tab, q);
+      // The Deleted tab is served by an RPC, not by loadRows — refresh it when opened so
+      // it reflects anything deleted since the page loaded.
+      if (tab === 'deleted') void this.loadDeleted();
     });
     void this.refreshCounts();
+    // Once up front, so the tab's badge shows a count before it's ever opened.
+    void this.loadDeleted();
   }
 
   /** Navigate to a tab — pushes ?tab=… so it's a real, linkable URL, and remembers it. */
@@ -118,7 +124,46 @@ export class BookingListComponent {
     this.rows.set(await this.data.queryBookings(tab, search));
     this.rowsLoading.set(false);
   }
-  private async refreshCounts(): Promise<void> { this.counts.set(await this.data.bookingTabCounts()); }
+  private async refreshCounts(): Promise<void> {
+    const c = await this.data.bookingTabCounts();
+    // bookingTabCounts runs HEAD counts against booking_summary, which cannot see deleted
+    // rows at all — so that one count is filled from the restore RPC's own list.
+    this.counts.set({ ...c, deleted: this.deletedRows().length });
+  }
+
+  // ── Deleted / restore ───────────────────────────────────────────────────
+  readonly deletedRows = signal<DeletedBooking[]>([]);
+  readonly restoring = signal('');
+
+  async loadDeleted(): Promise<void> {
+    this.deletedRows.set(await this.data.listDeletedBookings());
+    this.counts.update(c => ({ ...c, deleted: this.deletedRows().length }));
+  }
+
+  async restoreBooking(d: DeletedBooking): Promise<void> {
+    if (this.restoring()) return;
+    if (!(await this.confirm.ask({
+      title: 'Restore booking',
+      message: `Bring ${d.booking_ref} back, with its time blocks, invoice and payments?`,
+      confirmLabel: 'Restore',
+    }))) return;
+    this.restoring.set(d.id);
+    try {
+      const res = await this.data.restoreBooking(d.id);
+      if (!res.restored) { this.toast.error(res.error ?? 'Could not restore.'); return; }
+      const clashes = res.slots_conflicted?.length ?? 0;
+      if (clashes) {
+        // Deliberately not a success message: the booking is back but its time is not, and
+        // saying "restored" alone would leave the owner thinking the calendar is correct.
+        this.toast.error(
+          `${d.booking_ref} restored, but ${clashes} time block${clashes > 1 ? 's' : ''} ` +
+          `could not be — that time is now taken. Re-pick them on the booking.`, 9000);
+      } else {
+        this.toast.success(`${d.booking_ref} restored`);
+      }
+      await Promise.all([this.refresh(), this.loadDeleted()]);
+    } finally { this.restoring.set(''); }
+  }
   /** After a mutation, re-pull the current tab's rows + the counts (stay fresh, no local edits). */
   private async refresh(): Promise<void> {
     await Promise.all([this.loadRows(this.tab(), this.debouncedSearch()), this.refreshCounts()]);

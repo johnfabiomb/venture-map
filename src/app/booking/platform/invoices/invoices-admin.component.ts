@@ -6,7 +6,8 @@ import { BookingDataService } from '@booking/core/services/booking-data.service'
 import { BookingAdminService } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
-import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
+import { ConfirmService } from '@booking/ui/confirm/confirm.service';
+import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
@@ -14,7 +15,9 @@ import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 type PaymentStatus = 'unpaid' | 'partial' | 'paid';
 /** `overdue` is a CROSS-CUTTING tab, not a payment status — an overdue invoice is also
  *  unpaid or partial. Kept out of PaymentStatus so the two can never be conflated. */
-type InvoiceTab = 'all' | PaymentStatus | 'overdue';
+/** `deleted` is a different KIND of tab again: its rows come from an RPC (the hide_deleted
+ *  policy blocks a normal read) and carry a different shape, so it renders its own table. */
+type InvoiceTab = 'all' | PaymentStatus | 'overdue' | 'deleted';
 // Keyed on PaymentStatus, NOT on the tab union: statusLabel() renders a row's payment
 // status, and no row's payment status is ever "overdue".
 const STATUS_LABEL: Record<PaymentStatus, string> = {
@@ -40,6 +43,7 @@ export class InvoicesAdminComponent implements OnInit {
   private readonly admin = inject(BookingAdminService);
   private readonly auth = inject(BookingsAuthService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly currency = signal('EUR');
   readonly invoices = signal<InvoiceListRow[]>([]);
@@ -51,6 +55,30 @@ export class InvoicesAdminComponent implements OnInit {
   readonly sendOpen = signal(false);
   readonly sendId = signal('');
   readonly sendKind = signal<InvoiceEmailKind>('invoice');
+
+  // ── Deleted / restore ───────────────────────────────────────────────────
+  readonly deleted = signal<DeletedInvoice[]>([]);
+  readonly restoring = signal('');
+
+  async loadDeleted(): Promise<void> {
+    this.deleted.set(await this.data.listDeletedInvoices());
+  }
+
+  async restore(d: DeletedInvoice): Promise<void> {
+    if (this.restoring()) return;
+    if (!(await this.confirm.ask({
+      title: 'Restore invoice',
+      message: `Bring ${d.invoice_number ?? 'this invoice'} back, with its lines and share links?`,
+      confirmLabel: 'Restore',
+    }))) return;
+    this.restoring.set(d.id);
+    try {
+      const res = await this.data.restoreInvoice(d.id);
+      if (!res.restored) { this.toast.error(res.error ?? 'Could not restore.'); return; }
+      this.toast.success('Invoice restored');
+      await Promise.all([this.reload(), this.loadDeleted()]);
+    } finally { this.restoring.set(''); }
+  }
 
   openSend(r: InvoiceListRow, kind: InvoiceEmailKind): void {
     this.sendId.set(r.id);
@@ -86,11 +114,16 @@ export class InvoicesAdminComponent implements OnInit {
     { key: 'overdue', label: 'Overdue' },
     { key: 'partial', label: 'Partially paid' },
     { key: 'paid',    label: 'Paid' },
+    { key: 'deleted', label: 'Deleted' },
   ];
   readonly tab = signal<InvoiceTab>('all');
 
   readonly counts = computed<Record<InvoiceTab, number>>(() => {
-    const c: Record<InvoiceTab, number> = { all: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0 };
+    const c: Record<InvoiceTab, number> = {
+      all: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0,
+      // Counted from its own list, not from yearScoped — deleted rows never appear there.
+      deleted: this.deleted().length,
+    };
     for (const r of this.yearScoped()) {
       c.all++;
       c[r.payment_status]++;
@@ -104,6 +137,9 @@ export class InvoicesAdminComponent implements OnInit {
   /** Visible rows: year + tab, newest invoice number first. */
   readonly filtered = computed(() => {
     const t = this.tab();
+    // Deleted rows are a different shape and render in their own table; this list stays
+    // strictly the live ones so nothing downstream has to null-check.
+    if (t === 'deleted') return [];
     if (t === 'all') return this.yearScoped();
     // Overdue needs its own arm — it cuts across payment status rather than being one,
     // so comparing it to `payment_status` would always match nothing.
@@ -128,6 +164,9 @@ export class InvoicesAdminComponent implements OnInit {
     }
     this.invoices.set(await this.data.queryInvoices());
     this.loading.set(false);
+    // Not awaited: the Deleted tab is rarely the first thing looked at, so its count can
+    // fill in a moment later rather than holding up the page.
+    void this.loadDeleted();
   }
 
   /** Re-pull the rows. Sending can ISSUE a draft, which gives it a number and changes

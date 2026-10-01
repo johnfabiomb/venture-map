@@ -2457,3 +2457,154 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.google_delete_credentials(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.google_delete_credentials(uuid) TO service_role;
+
+
+-- ── 21. Restore — undoing a soft delete ────────────────────────────────────
+-- Soft delete has always meant nothing is really destroyed (§18), but until now there was
+-- no way back: `hide_deleted` is a RESTRICTIVE SELECT policy, so an admin cannot even SEE
+-- a deleted row, let alone revive one. A job cancelled because the client went quiet was
+-- effectively gone the moment they came back.
+--
+-- THE KEY IDEA: the delete cascade stamps every child with the PARENT'S OWN deleted_at
+-- timestamp. Matching on that timestamp makes restore an exact reverse of one delete —
+-- anything the owner had removed SEPARATELY beforehand carries a different timestamp and
+-- correctly stays deleted. A blanket "un-delete everything under this booking" would
+-- silently resurrect those too.
+--
+-- These are SECURITY DEFINER because they must read and write rows that RLS hides.
+
+CREATE OR REPLACE FUNCTION public.restore_booking(p_booking uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_org uuid; v_deleted timestamptz; v_slot RECORD;
+  v_ok int := 0; v_clash jsonb := '[]'::jsonb;
+BEGIN
+  SELECT org_id, deleted_at INTO v_org, v_deleted FROM bookings WHERE id = p_booking;
+  IF v_org IS NULL THEN RAISE EXCEPTION 'booking not found' USING errcode = '42501'; END IF;
+  IF NOT public.is_org_admin(v_org) THEN RAISE EXCEPTION 'forbidden' USING errcode = '42501'; END IF;
+  IF v_deleted IS NULL THEN
+    RETURN jsonb_build_object('restored', false, 'reason', 'not_deleted');
+  END IF;
+
+  UPDATE bookings SET deleted_at = NULL WHERE id = p_booking;
+
+  -- is_active is reset alongside deleted_at on both link tables: the delete path switched
+  -- it off, and a link that is "not deleted" but still inactive would resolve to nothing.
+  UPDATE booking_links SET deleted_at = NULL, is_active = true
+   WHERE booking_id = p_booking AND deleted_at = v_deleted;
+  UPDATE payments   SET deleted_at = NULL WHERE booking_id = p_booking AND deleted_at = v_deleted;
+  UPDATE deliveries SET deleted_at = NULL WHERE booking_id = p_booking AND deleted_at = v_deleted;
+  UPDATE tasks      SET deleted_at = NULL WHERE booking_id = p_booking AND deleted_at = v_deleted;
+  UPDATE work_items SET deleted_at = NULL WHERE booking_id = p_booking AND deleted_at = v_deleted;
+
+  -- An invoice DETACHED at delete time (delete_booking with "keep the invoice") has
+  -- booking_id NULL and was never stamped, so it is untouched here — correct: it is a
+  -- standalone document now, possibly with its own payments, and must not be re-attached.
+  UPDATE invoices SET deleted_at = NULL WHERE booking_id = p_booking AND deleted_at = v_deleted;
+  UPDATE invoice_lines l SET deleted_at = NULL FROM invoices i
+   WHERE i.booking_id = p_booking AND l.invoice_id = i.id AND l.deleted_at = v_deleted;
+  UPDATE invoice_links k SET deleted_at = NULL, is_active = true FROM invoices i
+   WHERE i.booking_id = p_booking AND k.invoice_id = i.id AND k.deleted_at = v_deleted;
+  UPDATE invoice_sends s SET deleted_at = NULL FROM invoices i
+   WHERE i.booking_id = p_booking AND s.invoice_id = i.id AND s.deleted_at = v_deleted;
+
+  -- Slots go back ONE AT A TIME. That time may have been sold to another job since, and
+  -- booking_slots_no_overlap would abort the entire restore on the first clash. Each slot
+  -- gets its own subtransaction so a conflict is REPORTED rather than silently dropped or
+  -- taking the whole booking down with it.
+  FOR v_slot IN SELECT id, start_at, end_at, label FROM booking_slots
+                 WHERE booking_id = p_booking AND deleted_at = v_deleted
+                 ORDER BY start_at LOOP
+    BEGIN
+      UPDATE booking_slots SET deleted_at = NULL WHERE id = v_slot.id;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN exclusion_violation THEN
+      v_clash := v_clash || jsonb_build_object(
+        'start_at', v_slot.start_at, 'end_at', v_slot.end_at, 'label', v_slot.label);
+    END;
+  END LOOP;
+
+  RETURN jsonb_build_object('restored', true,
+                            'slots_restored', v_ok,
+                            'slots_conflicted', v_clash);
+END $$;
+REVOKE ALL ON FUNCTION public.restore_booking(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.restore_booking(uuid) TO authenticated;
+
+-- Standalone invoice (or one whose booking is staying deleted).
+CREATE OR REPLACE FUNCTION public.restore_invoice(p_invoice uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_org uuid; v_deleted timestamptz;
+BEGIN
+  SELECT org_id, deleted_at INTO v_org, v_deleted FROM invoices WHERE id = p_invoice;
+  IF v_org IS NULL THEN RAISE EXCEPTION 'invoice not found' USING errcode = '42501'; END IF;
+  IF NOT public.is_org_admin(v_org) THEN RAISE EXCEPTION 'forbidden' USING errcode = '42501'; END IF;
+  IF v_deleted IS NULL THEN
+    RETURN jsonb_build_object('restored', false, 'reason', 'not_deleted');
+  END IF;
+
+  UPDATE invoices      SET deleted_at = NULL WHERE id = p_invoice;
+  UPDATE invoice_lines SET deleted_at = NULL WHERE invoice_id = p_invoice AND deleted_at = v_deleted;
+  UPDATE invoice_links SET deleted_at = NULL, is_active = true
+   WHERE invoice_id = p_invoice AND deleted_at = v_deleted;
+  UPDATE invoice_sends SET deleted_at = NULL WHERE invoice_id = p_invoice AND deleted_at = v_deleted;
+
+  -- A restored invoice that never got a due date (it was deleted when §20's backfill ran)
+  -- would sit unpaid forever without ever reading as overdue. Fill it the same way
+  -- save_invoice would, from the org's payment terms.
+  UPDATE invoices SET due_date = COALESCE(issue_date, service_date, created_at::date)
+                    + COALESCE((SELECT (o.invoice_settings->>'payment_terms_days')::int
+                                  FROM organizations o WHERE o.id = v_org), 14)
+   WHERE id = p_invoice AND due_date IS NULL AND status = 'issued';
+
+  RETURN jsonb_build_object('restored', true);
+END $$;
+REVOKE ALL ON FUNCTION public.restore_invoice(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.restore_invoice(uuid) TO authenticated;
+
+-- ── 21a. Reading what is deleted ───────────────────────────────────────────
+-- Needed because `hide_deleted` is RESTRICTIVE: an admin's own SELECT can never return a
+-- deleted row, so the "Deleted" view has to come through a definer function.
+CREATE OR REPLACE FUNCTION public.list_deleted_bookings(p_org uuid)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT public.is_org_admin(p_org) THEN RAISE EXCEPTION 'forbidden' USING errcode = '42501'; END IF;
+  RETURN COALESCE((
+    SELECT jsonb_agg(x ORDER BY x->>'deleted_at' DESC) FROM (
+      SELECT jsonb_build_object(
+        'id', b.id, 'booking_ref', b.booking_ref, 'title', b.title, 'status', b.status,
+        'start_at', b.start_at, 'price_total', b.price_total, 'deleted_at', b.deleted_at,
+        'client_name', COALESCE(c.name, b.contact_name)) AS x
+        FROM bookings b LEFT JOIN clients c ON c.id = b.client_id
+       WHERE b.org_id = p_org AND b.deleted_at IS NOT NULL) s), '[]'::jsonb);
+END $$;
+REVOKE ALL ON FUNCTION public.list_deleted_bookings(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.list_deleted_bookings(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.list_deleted_invoices(p_org uuid)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT public.is_org_admin(p_org) THEN RAISE EXCEPTION 'forbidden' USING errcode = '42501'; END IF;
+  RETURN COALESCE((
+    SELECT jsonb_agg(x ORDER BY x->>'deleted_at' DESC) FROM (
+      SELECT jsonb_build_object(
+        'id', i.id, 'status', i.status, 'title', i.title,
+        'invoice_number', CASE WHEN i.number_seq IS NULL THEN NULL
+          ELSE COALESCE(UPPER(NULLIF(o.invoice_details->>'invoice_prefix','')), 'INV')
+               || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0') END,
+        'service_date', i.service_date, 'deleted_at', i.deleted_at,
+        'has_booking', i.booking_id IS NOT NULL,
+        'client_name', COALESCE(c.name, i.contact_name),
+        'amount_gross', COALESCE((SELECT SUM(l.amount) FROM invoice_lines l
+                                   WHERE l.invoice_id = i.id), 0)) AS x
+        FROM invoices i
+        LEFT JOIN clients c       ON c.id = i.client_id
+        LEFT JOIN organizations o ON o.id = i.org_id
+       WHERE i.org_id = p_org AND i.deleted_at IS NOT NULL) s), '[]'::jsonb);
+END $$;
+REVOKE ALL ON FUNCTION public.list_deleted_invoices(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.list_deleted_invoices(uuid) TO authenticated;

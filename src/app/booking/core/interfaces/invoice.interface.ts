@@ -144,6 +144,45 @@ export interface InvoiceSend {
   created_at: string;
 }
 
+/**
+ * A soft-deleted row, as returned by list_deleted_bookings / list_deleted_invoices.
+ *
+ * These come from SECURITY DEFINER functions rather than a normal query because the
+ * `hide_deleted` RESTRICTIVE policy means an admin's own SELECT can never return a deleted
+ * row — which is exactly why deleted work was unreachable before restore existed.
+ */
+export interface DeletedBooking {
+  id: string;
+  booking_ref: string;
+  title: string | null;
+  status: string;
+  start_at: string;
+  price_total: number;
+  deleted_at: string;
+  client_name: string | null;
+}
+
+export interface DeletedInvoice {
+  id: string;
+  status: InvoiceStatus;
+  title: string | null;
+  invoice_number: string | null;
+  service_date: string | null;
+  deleted_at: string;
+  has_booking: boolean;
+  client_name: string | null;
+  amount_gross: number;
+}
+
+/** Outcome of restore_booking — slots can fail individually, see `slots_conflicted`. */
+export interface RestoreResult {
+  restored: boolean;
+  reason?: string;
+  slots_restored?: number;
+  /** Blocks whose time has since been given to another job; the booking is still restored. */
+  slots_conflicted?: Array<{ start_at: string; end_at: string; label: string | null }>;
+}
+
 /** What Settings is allowed to know about the org's Google connection — never the token. */
 export interface GoogleConnection {
   connected: boolean;

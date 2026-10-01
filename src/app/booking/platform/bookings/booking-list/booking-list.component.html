@@ -74,6 +74,37 @@
 
     @if (rowsLoading()) {
       <div class="loading"><div class="spinner"></div></div>
+    } @else if (tab() === 'deleted') {
+      <!-- Must come BEFORE the empty-rows branch: rows() is always empty on this tab,
+           because deleted bookings can't be read through booking_summary at all. -->
+      @if (deletedRows().length === 0) {
+        <div class="empty-tab">{{ emptyText() }}</div>
+      } @else {
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Ref</th><th>Client</th><th>Job</th><th>When</th><th class="num">Total</th><th>Deleted</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (d of deletedRows(); track d.id) {
+                <tr>
+                  <td class="mono" data-label="Ref">{{ d.booking_ref }}</td>
+                  <td class="ellipsis" data-label="Client">{{ d.client_name ?? '—' }}</td>
+                  <td class="ellipsis" data-label="Job">{{ d.title ?? '—' }}</td>
+                  <td data-label="When">{{ d.start_at | date:'d MMM y' }}</td>
+                  <td class="num" data-label="Total">{{ d.price_total | currency:'EUR':'symbol':'1.0-0' }}</td>
+                  <td data-label="Deleted">{{ d.deleted_at | date:'d MMM y' }}</td>
+                  <td class="cell--actions" data-label="">
+                    <button class="link-btn" [disabled]="restoring() === d.id" (click)="restoreBooking(d)">
+                      {{ restoring() === d.id ? 'Restoring…' : 'Restore' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     } @else if (rows().length === 0) {
       <div class="empty-tab">{{ emptyText() }}</div>
     } @else if (tab() === 'pending') {

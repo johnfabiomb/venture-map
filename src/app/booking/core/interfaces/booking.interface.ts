@@ -3,7 +3,9 @@ export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'external';
 export type PaymentMethod = 'card' | 'cash' | 'revolut' | 'bank' | 'other';
 
 /** The bookings-list tabs — each maps to a server-side filtered query (booking_summary). */
-export type BookingTab = 'upcoming' | 'pending' | 'unpaid' | 'paid' | 'past' | 'external' | 'cancelled' | 'all';
+/** `deleted` is unlike the rest: its rows come from an RPC rather than `booking_summary`,
+ *  because the hide_deleted RESTRICTIVE policy blocks a normal read of a deleted row. */
+export type BookingTab = 'upcoming' | 'pending' | 'unpaid' | 'paid' | 'past' | 'external' | 'cancelled' | 'all' | 'deleted';
 
 /** One payment against a booking. A booking can have many (deposit + partials + final). */
 export interface Payment {
