@@ -38,4 +38,19 @@ export interface CalendarSlotView extends HourSlot {
   unstartable?: boolean;      // free, but a block can't start here (too close to a busy slot / day end)
   mine?: boolean;             // already part of THIS booking's selected blocks (on the shown day)
   busyReason?: string | null; // ADMIN ONLY — who/what occupies this slot; never set for public
+  /** Something is in the owner's Google Calendar here, but it does NOT block: the slot
+   *  stays selectable and picking it asks for confirmation instead. `available` is still
+   *  true for these — only a real JM booking sets it false. */
+  softBusy?: boolean;
+}
+
+/** A live Google Calendar entry, read at pick time (never written to the DB). */
+export interface CalendarBusy {
+  id: string;        // Google event id — used to dedupe against already-imported bookings
+  title: string;
+  start: string;     // ISO instant, or YYYY-MM-DD when allDay
+  end: string;
+  /** All-day entries are surfaced as a note for the day rather than marking all 48
+   *  cells — "Anniversary" should warn, not make the day unbookable. */
+  allDay: boolean;
 }

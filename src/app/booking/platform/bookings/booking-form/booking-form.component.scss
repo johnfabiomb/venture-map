@@ -11,7 +11,40 @@
   @media (max-width: 900px) { grid-template-columns: 1fr; }
 }
 
-.form { display: flex; flex-direction: column; gap: 16px; }
+.form { display: flex; flex-direction: column; gap: 20px; }
+
+// ── Sections ────────────────────────────────────────────────────────────
+// The form was one flat run of fields, so nothing signalled where "the job" ended and
+// "what it costs" began. A rule between groups does that without adding any words.
+.sec {
+  display: flex; flex-direction: column; gap: 14px;
+  & + & { border-top: 1px solid $border; padding-top: 20px; }
+  &__title {
+    margin: 0; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em; color: $text-3;
+  }
+}
+
+// Label + its (i). min-height keeps rows with and without an icon on the same baseline.
+.field__top {
+  display: flex; align-items: center; gap: 4px; min-height: 20px;
+  label { font-size: 12px; font-weight: 600; color: $text-2; }
+}
+
+// Short contextual lines only — anything explanatory belongs behind the (i).
+// Scoped under .field because admin.shared's `.field span` would otherwise outrank it.
+.field .note {
+  font-size: 11.5px; font-weight: 500; color: $text-3; line-height: 1.45;
+  &--warn { color: #b45309; }
+}
+
+// Live arithmetic, not instruction: it answers "so what does the client actually pay?",
+// which is why it stays on screen instead of hiding behind an (i).
+.calc {
+  margin: 0; padding: 9px 12px; font-size: 12.5px; color: $text-2;
+  background: $bg; border: 1px solid $border; border-radius: $radius-md;
+  strong { color: $text; font-weight: 700; }
+}
 
 // Client select + inline "New" button
 .client-row {
@@ -22,25 +55,35 @@
 
 // Segmented toggle: existing client vs one-off name
 .seg {
-  display: inline-flex; gap: 0; margin-bottom: 8px;
+  display: inline-flex; gap: 0;
   border: 1px solid $border; border-radius: $radius-md; overflow: hidden;
   &__btn {
-    padding: 7px 14px; font-size: 12.5px; font-weight: 600; font-family: inherit;
+    padding: 9px 14px; font-size: 12.5px; font-weight: 600; font-family: inherit;
     background: $card; color: $text-2; border: none; cursor: pointer; transition: $transition;
     & + & { border-left: 1px solid $border; }
     &:hover:not(&--on) { background: $bg; }
-    &--on { background: $accent; color: #fff; }
+    &--on { background: $accent; color: #000; }
+  }
+  // Full width on a phone so each half is a comfortable tap target.
+  @media (max-width: 480px) {
+    display: flex;
+    &__btn { flex: 1 1 0; }
   }
 }
 
+// Checkbox + its (i) on one row. The icon sits OUTSIDE the <label> so tapping it opens
+// the help instead of toggling the box.
+.opt-row { display: flex; align-items: center; gap: 6px; }
 .check {
-  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
-  input { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; cursor: pointer; accent-color: $accent; }
-  strong { display: block; font-size: 13.5px; color: $text; }
-  &__hint { display: block; font-size: 11.5px; color: $text-3; margin-top: 2px; }
+  display: flex; align-items: center; gap: 9px; cursor: pointer; flex: 1 1 auto; min-width: 0;
+  input { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: $accent; }
+  span { font-size: 13.5px; font-weight: 500; color: $text; }
 }
-.field label { font-size: 12px; font-weight: 600; color: $text-2; }
-.form__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+
+.form__actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;
+  @media (max-width: 560px) { .btn { flex: 1 1 0; justify-content: center; } }
+}
 
 .row2 {
   display: grid;
@@ -49,23 +92,23 @@
   @media (max-width: 560px) { grid-template-columns: 1fr; }
 }
 
-.opt { color: $text-3; font-weight: 400; }
+.opt { color: $text-3; font-weight: 400; font-size: 11px; }
 .req { color: #dc2626; font-weight: 600; }
 
-.hint {
-  display: inline-block;
-  font-size: 11.5px; color: $text-3; margin-top: 5px;
-  &--warn { color: #dc2626; }
-  &--ok { color: #16a34a; font-weight: 600; }
-  &.err { color: #dc2626; }
-  &--link { background: none; border: none; padding: 0; cursor: pointer; color: $accent; font-weight: 600; font-family: inherit; }
-}
-
-// Chosen-slot confirmation in the Start field
+// ── Chosen time blocks ──────────────────────────────────────────────────
 .picked {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 6px;
-  font-size: 14px; font-weight: 700; color: #16a34a;
-  &__tz { font-size: 11px; font-weight: 600; color: $text-3; }
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  &__row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 11px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: $radius-md;
+  }
+  &__tick { color: #16a34a; font-weight: 700; font-size: 13px; }
+  &__time { font-size: 13px; font-weight: 700; color: #14532d; }
+  &__name {
+    font-size: 11.5px; font-weight: 700; color: #166534;
+    background: #dcfce7; padding: 2px 8px; border-radius: 10px;
+  }
 }
 
 // Right-side availability panel
@@ -98,12 +141,13 @@
 .done__title { font-size: 18px; font-weight: 800; color: $text; margin: 0 0 4px; }
 .done__sub { font-size: 13.5px; color: $text-2; margin: 0 0 18px; }
 .done__invoice { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
-.done__actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+.done__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
 
 .linkbox {
   display: flex; gap: 8px; max-width: 460px; margin: 0 auto 6px;
   &__input {
-    flex: 1; padding: 10px 12px; font-size: 13px; color: $text;
+    flex: 1; min-width: 0;   // or the monospace value sets an intrinsic floor and overflows
+    padding: 10px 12px; font-size: 13px; color: $text;
     border: 1px solid $border; border-radius: $radius-md; background: $bg;
     font-family: 'SF Mono', 'Fira Mono', monospace;
   }

@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
+import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { WorkerBusy, BookingSlot } from '@booking/core/interfaces/booking.interface';
-import { CalendarDayCell, CalendarSlotView } from '@booking/core/interfaces/availability.interface';
+import { CalendarBusy, CalendarDayCell, CalendarSlotView } from '@booking/core/interfaces/availability.interface';
 import { AvailabilityCalendarComponent } from '@booking/ui/availability-calendar/availability-calendar.component';
 import { zonedClockToUtc, utcToZoned } from '@booking/core/utils/timezone.util';
 import { nextRange } from '@booking/core/utils/range-select.util';
@@ -60,6 +61,22 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
         </datalist>
       </div>
     }
+    <!-- What is already in the owner's real diary for the chosen day. A failed check is
+         stated outright: showing nothing would read as "nothing booked", which is the
+         exact silence that let a clash through in the first place. -->
+    @if (selectedDate()) {
+      @switch (gcalState()) {
+        @case ('loading') { <div class="gcal">Checking your Google Calendar…</div> }
+        @case ('failed') {
+          <div class="gcal gcal--warn">Couldn't reach your Google Calendar — times below may already be taken.</div>
+        }
+        @default {
+          @if (gcalAllDay().length) {
+            <div class="gcal gcal--allday">All day: {{ allDayLabel() }}</div>
+          }
+        }
+      }
+    }
     <app-availability-calendar
       dayLabel="Choose a day"
       [timeLabel]="slots().length ? 'Add another block' : 'Choose a time'"
@@ -92,23 +109,44 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
       background: #F4A922; color: #000; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
       display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
     }
+    /* Two rows, always: time + remove on the first, the name input across the second.
+       As a single flex line the nowrap time label took ~155px of the ~275px a phone has
+       here (the 380px aside goes full width under 900px, inside page + card padding),
+       and the name input — the only growable child — was squeezed to nothing. */
     .block {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; background: #fff;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; background: #fff;
     }
-    .block__label { font-size: 13.5px; font-weight: 600; color: #111827; white-space: nowrap; }
+    .block__label { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 600; color: #111827; }
+    .block__x {
+      flex: 0 0 auto; order: 2;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; margin: -6px -6px -6px 0;   /* 32px target, no taller row */
+      background: none; border: none; cursor: pointer; font-size: 19px; line-height: 1; color: #9ca3af;
+    }
+    .block__x:hover { color: #dc2626; }
     .block__name {
-      flex: 1 1 0; min-width: 0;   /* min-width:0 or the input's intrinsic size widens the row */
+      flex: 1 1 100%; order: 3; min-width: 0; box-sizing: border-box;
       font-family: inherit; font-size: 13px; color: #111827;
-      border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 8px; background: #fff;
+      border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 9px; background: #fff;
     }
     .block__name:focus { outline: none; border-color: #F4A922; }
-    .block__x { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; color: #9ca3af; padding: 0 2px; }
-    .block__x:hover { color: #dc2626; }
+    /* Below 16px iOS Safari zooms the page in when the field takes focus, and never zooms
+       back out — which is what makes a form feel broken on a phone. */
+    @media (max-width: 560px) { .block__name { font-size: 16px; } }
+
+    .gcal {
+      font-size: 11.5px; font-weight: 600; line-height: 1.45;
+      padding: 7px 10px; border-radius: 7px; margin-bottom: 10px;
+      background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+    }
+    .gcal--allday { background: rgba(245,158,11,0.1); color: #b45309; border-color: rgba(217,119,6,0.3); }
+    .gcal--warn { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
   `],
 })
 export class AvailabilityPickerComponent {
   private readonly data = inject(BookingDataService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly staffId = input.required<string>();
   readonly timezone = input<string>('Europe/Malta');
@@ -127,6 +165,24 @@ export class AvailabilityPickerComponent {
   readonly loading = signal(false);
   private loadedStaff = '';
   private seeded = false;
+
+  // ── Live Google Calendar for the selected day ───────────────────────
+  // Read at pick time rather than relying on the manual Sync Calendar import, which can
+  // be weeks stale. These WARN, they never block: the owner is allowed to double-book
+  // knowingly. (Public availability blocks on the same data — a customer is not.)
+  readonly gcal = signal<CalendarBusy[]>([]);
+  readonly gcalState = signal<'idle' | 'loading' | 'ok' | 'failed'>('idle');
+  private readonly gcalCache = new Map<string, CalendarBusy[]>();
+
+  /** Timed entries the DB does not already account for — an imported or pushed event is
+   *  already a booking row, and counting it twice would warn about the job itself. */
+  private readonly gcalTimed = computed(() => {
+    const known = new Set(this.busy().map(b => b.googleEventId).filter((x): x is string => !!x));
+    return this.gcal().filter(e => !e.allDay && !known.has(e.id));
+  });
+
+  readonly gcalAllDay = computed(() => this.gcal().filter(e => e.allDay));
+  readonly allDayLabel = computed(() => this.gcalAllDay().map(e => e.title).join(' · '));
 
   constructor() {
     // Reload the worker's busy ranges on worker/month change; clear blocks when the worker changes.
@@ -158,6 +214,9 @@ export class AvailabilityPickerComponent {
         const first = utcToZoned(new Date(ps[0].iso), tz);
         const [yy, mm] = first.dateStr.split('-').map(Number);
         this.viewYear.set(yy); this.viewMonth.set(mm - 1); this.selectedDate.set(first.dateStr);
+        // Editing lands straight on a day without going through onDay(), so the diary has
+        // to be fetched here too — otherwise an edit shows no warnings at all.
+        void this.loadCalendarDay(first.dateStr);
         this.emit();
       });
     });
@@ -224,16 +283,24 @@ export class AvailabilityPickerComponent {
       const from = z.hour * 2 + (z.minute >= SLOT_MIN ? 1 : 0);
       return { from, to: from + Math.round(s.hours / 0.5) - 1 };
     });
+    const gcal = this.gcalTimed().map(e => ({
+      title: e.title, from: new Date(e.start).getTime(), to: new Date(e.end).getTime(),
+    }));
     return Array.from({ length: SLOTS }, (_, i) => {
       const start = this.slotStart(date, i);
+      const slotEnd = start.getTime() + SLOT_MIN * 60_000;
       const occupying = this.bookingAt(start);
       const isMine = mine.some(r => i >= r.from && i <= r.to);
       const inRange = a !== null && (b !== null ? i >= a && i <= b : i === a);
+      const diary = gcal.find(g => start.getTime() < g.to && slotEnd > g.from);
       return {
         start: start.toISOString(), hour: i, label: hm(i),
+        // `available` deliberately ignores the diary: a Google entry is a warning, not a
+        // wall, so the cell stays clickable and selection can span it.
         available: !occupying && !isMine,
         mine: isMine,
-        busyReason: occupying ? reason(occupying) : null,
+        softBusy: !!diary && !occupying && !isMine,
+        busyReason: occupying ? reason(occupying) : (diary ? diary.title : null),
         inRange, isStart: i === a, isEnd: i === (b ?? a),
       } satisfies CalendarSlotView;
     });
@@ -252,30 +319,73 @@ export class AvailabilityPickerComponent {
     if (!cell.date) return;
     this.selectedDate.set(cell.date);
     this.rangeStart.set(null); this.rangeEnd.set(null);
+    void this.loadCalendarDay(cell.date);
+  }
+
+  /** Ask Google what is on this day. Cached per date so re-tapping a day is instant. */
+  private async loadCalendarDay(date: string): Promise<void> {
+    const cached = this.gcalCache.get(date);
+    if (cached) { this.gcal.set(cached); this.gcalState.set('ok'); return; }
+
+    this.gcal.set([]);
+    this.gcalState.set('loading');
+    const from = this.slotStart(date, 0).toISOString();
+    const to = new Date(this.slotStart(date, SLOTS - 1).getTime() + SLOT_MIN * 60_000).toISOString();
+    const events = await this.data.getCalendarBusy(from, to);
+
+    // The owner may have moved to another day while this was in flight; a late response
+    // must not paint one day's events onto another.
+    if (this.selectedDate() !== date) return;
+    if (!events) { this.gcalState.set('failed'); return; }
+    this.gcalCache.set(date, events);
+    this.gcal.set(events);
+    this.gcalState.set('ok');
   }
 
   /** Tap a start slot, then an end slot → adds that block to the list (then pick more). */
-  onSlot(slot: CalendarSlotView): void {
+  async onSlot(slot: CalendarSlotView): Promise<void> {
     if (!slot.available) return;
     const free = (i: number) => this.gridSlots().some(s => s.hour === i && s.available);
     const r = nextRange({ start: this.rangeStart(), end: this.rangeEnd() }, slot.hour, free, SLOTS);
     if (r.start !== null && r.end !== null) {
-      this.addBlock(r.start, r.end);
+      // Cleared BEFORE the dialog: an in-progress range left highlighted behind a modal
+      // reads as though the block was already added.
       this.rangeStart.set(null); this.rangeEnd.set(null);
+      await this.addBlock(r.start, r.end);
     } else {
       this.rangeStart.set(r.start); this.rangeEnd.set(r.end);
     }
   }
 
-  private addBlock(a: number, b: number): void {
+  private async addBlock(a: number, b: number): Promise<void> {
     const date = this.selectedDate();
     if (!date) return;
     const hours = (b - a + 1) * (SLOT_MIN / 60);
     const start = this.slotStart(date, a);
     const end = new Date(start.getTime() + hours * 3_600_000);
+    if (!(await this.confirmAgainstDiary(start.getTime(), end.getTime()))) return;
     const ps = this.toPicked(start.toISOString(), end.toISOString());
     this.slots.update(list => [...list, ps].sort((x, y) => x.iso.localeCompare(y.iso)));
     this.emit();
+  }
+
+  /** Nothing in the way → true without a dialog. Otherwise name what clashes and let the
+   *  owner decide: they often genuinely want both (a client meeting inside a shoot day). */
+  private async confirmAgainstDiary(startMs: number, endMs: number): Promise<boolean> {
+    const hits = this.gcalTimed().filter(e =>
+      startMs < new Date(e.end).getTime() && endMs > new Date(e.start).getTime());
+    if (!hits.length) return true;
+
+    const tz = this.timezone();
+    const t = (iso: string) => new Date(iso).toLocaleTimeString('en-GB',
+      { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz });
+    const list = hits.map(h => `“${h.title}” ${t(h.start)}–${t(h.end)}`).join('; ');
+
+    return this.confirm.ask({
+      title: 'Already in your calendar',
+      message: `Your Google Calendar already has ${list} at this time. Add this block anyway?`,
+      confirmLabel: 'Add anyway',
+    });
   }
 
   removeSlot(s: PickedSlot): void {

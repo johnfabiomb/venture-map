@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { listBusyEvents } from '../_shared/google-calendar.ts';
 
 // Public, read-only availability for ONE worker offering ONE service.
 // Window = that staff↔service pairing's working_hours (staff_services) minus the
@@ -51,6 +52,21 @@ Deno.serve(async (req) => {
     const { staffId, serviceId, from, to } = await req.json();
     if (!staffId || !serviceId || !from || !to) return json({ error: 'staffId, serviceId, from, to required' }, 400);
 
+    // This endpoint is anonymous and the window is caller-supplied. Until now an absurd
+    // range only cost a long local loop; it now also drives a Google Calendar query, so
+    // an unbounded window would let anyone burn the owner's API quota — and once Google
+    // rate-limits, start-card-booking's live pre-charge check starts failing too.
+    // The UI never asks for more than a month.
+    const DAY_MS = 86_400_000;
+    const MAX_WINDOW_DAYS = 62;
+    const fromMs = Date.parse(`${from}T00:00:00Z`);
+    const toMsRaw = Date.parse(`${to}T00:00:00Z`);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMsRaw) || toMsRaw < fromMs) {
+      return json({ error: 'invalid date range' }, 400);
+    }
+    const toDate = new Date(Math.min(toMsRaw, fromMs + MAX_WINDOW_DAYS * DAY_MS))
+      .toISOString().slice(0, 10);
+
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: pairing } = await sb.from('staff_services')
@@ -69,15 +85,43 @@ Deno.serve(async (req) => {
     const hours = (pairing.working_hours ?? { default: [{ start: 0, end: 24 }] }) as WorkingHoursConfig;
 
     const winStart = `${from}T00:00:00Z`;
-    const winEnd = new Date(new Date(`${to}T00:00:00Z`).getTime() + 86_400_000).toISOString();
+    const winEnd = new Date(new Date(`${toDate}T00:00:00Z`).getTime() + DAY_MS).toISOString();
     const { data: busyRows } = await sb.rpc('get_busy_ranges', { p_staff_id: staffId, range_start: winStart, range_end: winEnd });
     const busy = ((busyRows ?? []) as Array<{ start_at: string; end_at: string }>).map(b => ({
       start: new Date(b.start_at).getTime() - bufferMs, end: new Date(b.end_at).getTime() + bufferMs,
     }));
 
+    // The owner's real diary also blocks a public booking. The DB only knows about Google
+    // entries that `sync-calendar` has imported, and that runs by hand — so without this a
+    // customer is offered times the owner is already committed to, and only finds out when
+    // start-card-booking's live check rejects them after they have entered card details.
+    //
+    // Only for the org that owns the shared calendar; other tenants have their own diaries
+    // and must not be filtered by this one.
+    const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
+    if (!calendarOrg || staff.org_id === calendarOrg) {
+      try {
+        for (const e of await listBusyEvents(winStart, winEnd)) {
+          // All-day entries carry a plain date. They are a note for the owner, not a
+          // closure — blocking the whole day on "Anniversary" would cost real bookings,
+          // and the owner sees those as a warning in the admin picker instead.
+          if (e.allDay) continue;
+          busy.push({
+            start: new Date(e.start).getTime() - bufferMs,
+            end: new Date(e.end).getTime() + bufferMs,
+          });
+        }
+      } catch (err) {
+        // Fail OPEN, deliberately: Google being unreachable must not take the booking page
+        // down. start-card-booking re-checks live before any money moves, so the worst case
+        // is a rejection at checkout rather than a double booking.
+        console.error('google busy lookup failed, showing DB availability only:', (err as Error).message);
+      }
+    }
+
     const now = Date.now();
     const days: Array<{ date: string; slots: Array<{ start: string; hour: number; label: string; available: boolean }> }> = [];
-    for (const dateStr of eachDate(from, to)) {
+    for (const dateStr of eachDate(from, toDate)) {
       const [y, mo, d] = dateStr.split('-').map(Number);
       const rule = ruleForDate(hours, dateStr, dowInTz(dateStr, tz));
       const slots: Array<{ start: string; hour: number; label: string; available: boolean }> = [];

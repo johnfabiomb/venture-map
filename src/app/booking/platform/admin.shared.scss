@@ -46,6 +46,12 @@
     &:focus { outline: none; border-color: $accent; }
   }
   textarea { resize: vertical; }
+  // iOS Safari zooms the viewport in whenever a focused field's font-size is under 16px,
+  // and does not zoom back out on blur — the page is then stuck wider than the screen.
+  // 14px is right on desktop, so this only lifts it where the trap exists.
+  @media (max-width: 560px) {
+    input, select, textarea { font-size: 16px; }
+  }
   select {
     appearance: none; cursor: pointer; padding-right: 32px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");

@@ -89,6 +89,10 @@ export interface WorkerBusy {
   title: string;
   status: BookingStatus;
   clientName: string | null;
+  /** Set when this slot has already been pushed to (or imported from) Google. Used to
+   *  dedupe a live Google read against what the DB already knows, so one event is never
+   *  counted twice. */
+  googleEventId: string | null;
 }
 
 export interface Client {

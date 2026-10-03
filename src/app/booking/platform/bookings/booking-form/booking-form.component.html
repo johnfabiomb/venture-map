@@ -6,7 +6,9 @@
         {{ isEditing ? 'Update the details of this booking.' : 'Create a booking and send the client a link to confirm or pay.' }}
       </p>
     </div>
-    <a class="btn btn--ghost" routerLink="/bookings/list">Back to list</a>
+    <div class="head-actions">
+      <a class="btn btn--ghost" routerLink="/bookings/list">Back to list</a>
+    </div>
   </div>
 
   @if (loading()) {
@@ -57,164 +59,221 @@
     <div class="form-layout">
     <form class="card form" (ngSubmit)="submit()">
 
-      <!-- Customer — an existing client (reusable, invoiceable) or a one-off quick name -->
-      <div class="field">
-        <label>Customer</label>
-        <div class="seg">
-          <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'existing'"
-                  (click)="clientMode = 'existing'">Existing client</button>
-          <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'quick'"
-                  (click)="clientMode = 'quick'">Just a name</button>
+      <!-- ══ Job ══════════════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Job</h2>
+
+        <div class="field">
+          <div class="field__top"><label for="bf-title">Title</label></div>
+          <input id="bf-title" [(ngModel)]="title" name="title"
+                 placeholder="e.g. Interview filming — Clinica Joia" required />
         </div>
 
-        @if (clientMode === 'existing') {
-          <div class="client-row">
-            <select [(ngModel)]="clientId" name="clientId">
-              <option value="" disabled>Select a client…</option>
-              @for (c of data.clients(); track c.id) {
-                <option [value]="c.id">{{ c.name }}{{ c.company ? ' · ' + c.company : '' }}</option>
-              }
-            </select>
-            <button type="button" class="btn btn--ghost btn--sm" (click)="openClientEditor()">+ New</button>
+        <div class="field">
+          <div class="field__top">
+            <label>Customer</label>
+            <app-info-hint label="Customer">
+              <strong>Existing client</strong> is a saved record with company, VAT and billing
+              address, so the invoice is VAT-ready and you can reuse it.
+              <strong>Just a name</strong> is a one-off, never saved, and bills to that name only.
+            </app-info-hint>
           </div>
-          @if (selectedClient && !selectedClient.vat_number && !selectedClient.billing_address) {
-            <span class="hint">Tip: add this client's VAT &amp; billing address in Clients for VAT-ready invoices.</span>
-          }
-        } @else {
-          <input [(ngModel)]="contactName" name="contactName" placeholder="e.g. John from Sliema" />
-          <span class="hint">A one-off name — not saved to Clients. The invoice bills to this name only (no company / VAT). Use an existing client if you need a VAT-ready invoice.</span>
-        }
-      </div>
-
-      <!-- Worker -->
-      <div class="field">
-        <label>Worker</label>
-        <select [(ngModel)]="staffId" name="staffId" required>
-          <option value="" disabled>Select a worker…</option>
-          @for (w of workers; track w.id) {
-            <option [value]="w.id">{{ w.name }}</option>
-          }
-        </select>
-        @if (workers.length === 0) {
-          <span class="hint hint--warn">No bookable workers yet (Staff tab).</span>
-        }
-      </div>
-
-      <!-- When — one or more time blocks, chosen from the worker's calendar on the right -->
-      <div class="field">
-        <label>Time blocks</label>
-        @if (!staffId) {
-          <span class="hint">Pick a worker first — their calendar appears on the right.</span>
-        } @else if (selectedSlots.length) {
-          @for (s of selectedSlots; track s.iso) {
-            <div class="picked">✓ {{ s.timeLabel }}@if (s.label) { — {{ s.label }}}</div>
-          }
-          <span class="hint">Add more blocks (even on other days) or remove them on the calendar →</span>
-        } @else {
-          <span class="hint hint--warn">Tap a start &amp; end time on the worker's calendar → — add as many blocks as you need.</span>
-        }
-      </div>
-
-      <!-- Title -->
-      <div class="field">
-        <label>Title</label>
-        <input [(ngModel)]="title" name="title" placeholder="e.g. Wedding shoot — Sliema" required />
-      </div>
-
-      <!-- Charges — invoice line items are the source of truth for the total -->
-      <div class="field">
-        <label>Charges <span class="req">*</span></label>
-        <app-line-items-editor [items]="lineItems" (itemsChange)="onItemsChange($event)"
-                               [currency]="currency()" [services]="services()" />
-        <span class="hint">Add a charge: pick one of your services (and how many hours) to pre-fill it, or a custom charge. The total is what the client pays — and it becomes the invoice.</span>
-      </div>
-
-      <!-- Location -->
-      <div class="field">
-        <label>Location <span class="opt">(optional)</span></label>
-        <input [(ngModel)]="location" name="location" placeholder="Address or venue" />
-      </div>
-
-      <!-- Payment options on the link -->
-      <div class="field">
-        <label>Payment options on the link</label>
-        <select [(ngModel)]="paymentMode" name="paymentMode">
-          <option value="both">Card or pay later (cash / Revolut / bank)</option>
-          <option value="card">Card only</option>
-          <option value="later">Pay later only — client just confirms the booking</option>
-        </select>
-        <span class="hint">
-          @switch (paymentMode) {
-            @case ('both') { Client can pay by card now, or ask to pay later (you approve that request). }
-            @case ('card') { Client must pay by card to confirm. }
-            @case ('later') { No online payment — the client confirms the booking and agrees to pay by cash / Revolut / bank transfer. Books straight away. }
-          }
-        </span>
-      </div>
-
-      <!-- Deposit (only relevant when the client can pay by card) -->
-      @if (paymentMode !== 'later') {
-        <div class="row2">
-          <div class="field">
-            <label>Deposit</label>
-            <select [(ngModel)]="depositMode" name="depositMode">
-              <option value="deposit">Allow a deposit</option>
-              <option value="full">Require full payment</option>
-            </select>
-            <span class="hint">Prefilled from your default — change it for this booking if needed.</span>
+          <div class="seg">
+            <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'existing'"
+                    (click)="clientMode = 'existing'">Existing client</button>
+            <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'quick'"
+                    (click)="clientMode = 'quick'">Just a name</button>
           </div>
-          @if (depositMode === 'deposit') {
-            <div class="field">
-              <label>Deposit %</label>
-              <input type="number" [(ngModel)]="depositPercent" name="depositPercent" min="1" max="100" step="1" />
-              @if (priceTotal != null && priceTotal > 0) {
-                <span class="hint">Client pays {{ (priceTotal * depositPercent / 100) | currency:'EUR':'symbol':'1.0-2' }} now, {{ (priceTotal * (100 - depositPercent) / 100) | currency:'EUR':'symbol':'1.0-2' }} later.</span>
-              }
+
+          @if (clientMode === 'existing') {
+            <div class="client-row">
+              <select [(ngModel)]="clientId" name="clientId">
+                <option value="" disabled>Select a client…</option>
+                @for (c of data.clients(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}{{ c.company ? ' · ' + c.company : '' }}</option>
+                }
+              </select>
+              <button type="button" class="btn btn--ghost btn--sm" (click)="openClientEditor()">+ New</button>
             </div>
+            @if (selectedClient && !selectedClient.vat_number && !selectedClient.billing_address) {
+              <span class="note">No VAT or billing address on this client — add them in Clients for a VAT-ready invoice.</span>
+            }
+          } @else {
+            <input [(ngModel)]="contactName" name="contactName" placeholder="e.g. John from Sliema" />
           }
         </div>
-      }
 
-      <!-- Notes -->
-      <div class="field">
-        <label>Notes <span class="opt">(optional, internal)</span></label>
-        <textarea [(ngModel)]="notes" name="notes" rows="2" placeholder="Anything to remember about this job"></textarea>
-      </div>
+        <div class="field">
+          <div class="field__top"><label>Worker</label></div>
+          <select [(ngModel)]="staffId" name="staffId" required>
+            <option value="" disabled>Select a worker…</option>
+            @for (w of workers; track w.id) {
+              <option [value]="w.id">{{ w.name }}</option>
+            }
+          </select>
+          @if (workers.length === 0) {
+            <span class="note note--warn">No bookable workers yet — add one in Staff.</span>
+          }
+        </div>
 
-      <!-- Confirmed vs tentative (new bookings only; edits keep their status) -->
-      @if (!isEditing) {
-        <label class="check">
-          <input type="checkbox" [(ngModel)]="confirmed" name="confirmed" />
-          <span>
-            <strong>This booking is already confirmed</strong>
-            <span class="check__hint">
-              Leave unchecked to send it as a <strong>request</strong>: the slot is held for you, the client sees their invoice and can pay or ask to pay later, and it lands in your <em>To confirm</em> list to accept. Check it if it's already agreed — it's added to your Google Calendar now and the client just gets the invoice.
-            </span>
-          </span>
-        </label>
-      }
+        <div class="field">
+          <div class="field__top"><label for="bf-loc">Location <span class="opt">optional</span></label></div>
+          <input id="bf-loc" [(ngModel)]="location" name="location" placeholder="Address or venue" />
+        </div>
+      </section>
 
-      <!-- Work board -->
-      <label class="check">
-        <input type="checkbox" [(ngModel)]="needsProduction" name="needsProduction" />
-        <span>
-          <strong>Needs post-production</strong>
-          <span class="check__hint">Adds this to the Work board (editing → delivery). Leave off for meetings or no-edit jobs.</span>
-        </span>
-      </label>
+      <!-- ══ Schedule ═════════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Schedule</h2>
 
-      <!-- Calendar privacy. A Google event has ONE description and every attendee reads it,
-           so this is the switch that makes it safe to put someone else on the invite. -->
-      <label class="check">
-        <input type="checkbox"
-               [ngModel]="calendarDetail === 'minimal'"
-               (ngModelChange)="calendarDetail = $event ? 'minimal' : 'full'"
-               name="calendarMinimal" />
-        <span>
-          <strong>Keep money off the calendar invite</strong>
-          <span class="check__hint">Tick this if you'll invite anyone else to the event — a second shooter, or the client. They'd otherwise see the total, what's been paid, the progress stage and your private notes. With this on the event still shows the brief, client and service.</span>
-        </span>
-      </label>
+        <div class="field">
+          <div class="field__top">
+            <label>Time blocks</label>
+            <app-info-hint label="Time blocks">
+              A job can span several blocks, even across different days — a planning call on
+              one day and the shoot on another. Name each one and the calendar shows
+              <strong>“Pre-shoot planning”</strong> rather than two identical entries.
+            </app-info-hint>
+          </div>
+          @if (!staffId) {
+            <span class="note">Pick a worker first to see their calendar.</span>
+          } @else if (selectedSlots.length) {
+            <ul class="picked">
+              @for (s of selectedSlots; track s.iso) {
+                <li class="picked__row">
+                  <span class="picked__tick" aria-hidden="true">✓</span>
+                  <span class="picked__time">{{ s.timeLabel }}</span>
+                  @if (s.label) { <span class="picked__name">{{ s.label }}</span> }
+                </li>
+              }
+            </ul>
+          } @else {
+            <span class="note note--warn">Tap a start and an end time on the worker's calendar.</span>
+          }
+        </div>
+      </section>
+
+      <!-- ══ Charges & payment ════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Charges &amp; payment</h2>
+
+        <div class="field">
+          <div class="field__top">
+            <label>Charges <span class="req">*</span></label>
+            <app-info-hint label="Charges">
+              Pick one of your services (and how many hours) to pre-fill a line, or add a
+              custom one. The total here is what the client pays, and it becomes the invoice.
+            </app-info-hint>
+          </div>
+          <app-line-items-editor [items]="lineItems" (itemsChange)="onItemsChange($event)"
+                                 [currency]="currency()" [services]="services()" />
+        </div>
+
+        <div class="field">
+          <div class="field__top">
+            <label>Payment options</label>
+            <app-info-hint label="Payment options">
+              <strong>Card or pay later</strong> — the client pays by card now, or asks to pay
+              later and you approve that request.
+              <strong>Card only</strong> — they must pay to confirm.
+              <strong>Pay later only</strong> — no online payment; they confirm and agree to pay
+              by cash, Revolut or bank, and it books straight away.
+            </app-info-hint>
+          </div>
+          <select [(ngModel)]="paymentMode" name="paymentMode">
+            <option value="both">Card or pay later (cash / Revolut / bank)</option>
+            <option value="card">Card only</option>
+            <option value="later">Pay later only — client just confirms</option>
+          </select>
+        </div>
+
+        @if (paymentMode !== 'later') {
+          <div class="row2">
+            <div class="field">
+              <div class="field__top">
+                <label>Deposit</label>
+                <app-info-hint label="Deposit">
+                  Prefilled from your organisation default. Changing it here affects this
+                  booking only.
+                </app-info-hint>
+              </div>
+              <select [(ngModel)]="depositMode" name="depositMode">
+                <option value="deposit">Allow a deposit</option>
+                <option value="full">Require full payment</option>
+              </select>
+            </div>
+            @if (depositMode === 'deposit') {
+              <div class="field">
+                <div class="field__top"><label for="bf-dep">Deposit %</label></div>
+                <input id="bf-dep" type="number" [(ngModel)]="depositPercent" name="depositPercent"
+                       min="1" max="100" step="1" />
+              </div>
+            }
+          </div>
+          <!-- Live consequence of the two controls above, so it stays visible rather than
+               hiding behind an (i): it is the answer, not an explanation. -->
+          @if (depositMode === 'deposit' && priceTotal > 0) {
+            <p class="calc">
+              Client pays <strong>{{ priceTotal * depositPercent / 100 | currency:'EUR':'symbol':'1.0-2' }}</strong> now,
+              {{ priceTotal * (100 - depositPercent) / 100 | currency:'EUR':'symbol':'1.0-2' }} later.
+            </p>
+          }
+        }
+      </section>
+
+      <!-- ══ Options ══════════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Options</h2>
+
+        @if (!isEditing) {
+          <div class="opt-row">
+            <label class="check">
+              <input type="checkbox" [(ngModel)]="confirmed" name="confirmed" />
+              <span>This booking is already confirmed</span>
+            </label>
+            <app-info-hint label="Already confirmed">
+              Leave it off to send this as a <strong>request</strong>: the slot is held, the
+              client sees their invoice and can pay or ask to pay later, and it lands in your
+              <strong>To confirm</strong> list. Turn it on if it is already agreed — it goes
+              into Google Calendar now and the client just gets the invoice.
+            </app-info-hint>
+          </div>
+        }
+
+        <div class="opt-row">
+          <label class="check">
+            <input type="checkbox" [(ngModel)]="needsProduction" name="needsProduction" />
+            <span>Needs post-production</span>
+          </label>
+          <app-info-hint label="Needs post-production">
+            Adds this to the Work board (editing through to delivery). Leave it off for
+            meetings and no-edit jobs.
+          </app-info-hint>
+        </div>
+
+        <!-- Calendar privacy. A Google event has ONE description and every attendee reads it,
+             so this is the switch that makes it safe to put someone else on the invite. -->
+        <div class="opt-row">
+          <label class="check">
+            <input type="checkbox"
+                   [ngModel]="calendarDetail === 'minimal'"
+                   (ngModelChange)="calendarDetail = $event ? 'minimal' : 'full'"
+                   name="calendarMinimal" />
+            <span>Keep money off the calendar invite</span>
+          </label>
+          <app-info-hint label="Keep money off the calendar invite">
+            Turn this on if you will invite anyone else to the event — a second shooter, or
+            the client. They would otherwise see the total, what has been paid, the progress
+            stage and your private notes. The event still shows the brief, client and service.
+          </app-info-hint>
+        </div>
+
+        <div class="field">
+          <div class="field__top"><label for="bf-notes">Internal notes <span class="opt">optional</span></label></div>
+          <textarea id="bf-notes" [(ngModel)]="notes" name="notes" rows="2"
+                    placeholder="Anything to remember about this job — never shown to the client"></textarea>
+        </div>
+      </section>
 
       @if (errorMsg()) { <p class="error">{{ errorMsg() }}</p> }
 

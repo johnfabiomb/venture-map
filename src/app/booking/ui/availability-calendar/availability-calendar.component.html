@@ -53,6 +53,7 @@
         @for (s of slots(); track s.hour) {
           <button type="button" class="slot"
             [class.slot--busy]="!s.available && !s.mine"
+            [class.slot--soft]="s.softBusy && s.available && !s.mine"
             [class.slot--mine]="s.mine"
             [class.slot--unstartable]="s.unstartable"
             [class.slot--range]="s.inRange"
@@ -61,7 +62,10 @@
             [disabled]="!s.available || s.unstartable"
             (click)="slotSelected.emit(s)">
             <span class="slot__time">{{ s.label }}</span>
-            @if (showBusyReason() && !s.available && s.busyReason) {
+            <!-- A soft-busy slot is still selectable, so its reason must show even though
+                 `available` is true — otherwise the one thing the owner needs to see before
+                 double-booking is the one thing that stays hidden. -->
+            @if (showBusyReason() && s.busyReason && (!s.available || s.softBusy)) {
               <span class="slot__reason">{{ s.busyReason }}</span>
             }
           </button>

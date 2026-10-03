@@ -3,6 +3,7 @@ import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
+import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
 import { Earnings } from '@booking/core/interfaces/earnings.interface';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
@@ -181,7 +182,7 @@ export class BookingDataService implements OnDestroy {
   async getWorkerBusy(staffId: string, fromIso: string, toIso: string): Promise<WorkerBusy[]> {
     const { data, error } = await bookingsDb
       .from('booking_slots')
-      .select('booking_id, start_at, end_at, bookings!inner(title, status, clients(name))')
+      .select('booking_id, start_at, end_at, google_event_id, bookings!inner(title, status, clients(name))')
       .eq('staff_id', staffId)
       .eq('blocking', true)
       .lt('start_at', toIso)
@@ -189,13 +190,30 @@ export class BookingDataService implements OnDestroy {
       .order('start_at');
     if (error) { console.error('[BookingData] getWorkerBusy:', error); return []; }
     return (data ?? []).map(r => {
-      const row = r as unknown as { booking_id: string; start_at: string; end_at: string;
+      const row = r as unknown as { booking_id: string; start_at: string; end_at: string; google_event_id: string | null;
         bookings: { title: string; status: string; clients: { name: string } | { name: string }[] | null }
                 | { title: string; status: string; clients: { name: string } | { name: string }[] | null }[] };
       const bk = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
       const client = Array.isArray(bk.clients) ? bk.clients[0] : bk.clients;
-      return { id: row.booking_id, start_at: row.start_at, end_at: row.end_at, title: bk.title, status: bk.status as WorkerBusy['status'], clientName: client?.name ?? null };
+      return { id: row.booking_id, start_at: row.start_at, end_at: row.end_at, title: bk.title, status: bk.status as WorkerBusy['status'], clientName: client?.name ?? null, googleEventId: row.google_event_id ?? null };
     });
+  }
+
+  /**
+   * Live Google Calendar entries in a range — what is actually in the owner's diary,
+   * without waiting for a manual Sync Calendar.
+   *
+   * Returns `null` when the check could NOT be made. Callers must render that as
+   * "unknown", never as "free": silently showing a failed lookup as empty is exactly
+   * how a double booking slips through unnoticed.
+   */
+  async getCalendarBusy(fromIso: string, toIso: string): Promise<CalendarBusy[] | null> {
+    const { data, error } = await bookingsDb.functions
+      .invoke('calendar-busy', { body: { from: fromIso, to: toIso } });
+    if (error) { console.warn('[BookingData] getCalendarBusy:', error.message); return null; }
+    const payload = data as { events?: CalendarBusy[]; error?: string } | null;
+    if (!payload || payload.error) { console.warn('[BookingData] getCalendarBusy:', payload?.error); return null; }
+    return payload.events ?? [];
   }
 
   /** Mint a booking-link token (anon-accessible) for this booking. */

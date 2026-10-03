@@ -99,6 +99,60 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
   }
 }
 
+/** One Google entry that actually occupies the owner's time. */
+export interface GoogleBusyEvent {
+  id: string;
+  title: string;
+  start: string;      // ISO instant, or YYYY-MM-DD when allDay
+  end: string;
+  allDay: boolean;
+}
+
+interface RawGoogleEvent {
+  id?: string;
+  status?: string;
+  summary?: string;
+  transparency?: string;
+  eventType?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  attendees?: Array<{ self?: boolean; responseStatus?: string }>;
+}
+
+/** Does this event really take the owner's time, or is it just sitting on the calendar? */
+function occupiesTime(e: RawGoogleEvent): boolean {
+  if (e.status === 'cancelled') return false;
+  // "Show as Free" — the owner has explicitly said this does not block them.
+  if (e.transparency === 'transparent') return false;
+  // Google's pseudo-events. workingLocation spans the whole day, so without this every
+  // day would come back fully busy.
+  if (e.eventType === 'workingLocation' || e.eventType === 'focusTime') return false;
+  // An invitation that was turned down is not a commitment.
+  if (e.attendees?.some(a => a.self && a.responseStatus === 'declined')) return false;
+  return true;
+}
+
+/**
+ * Entries on the owner's calendar in [timeMin, timeMax) that occupy their time.
+ *
+ * Shared deliberately: the admin picker uses this to WARN (the owner may double-book
+ * knowingly) and public availability uses it to BLOCK (a customer may not). Both must
+ * agree on what "busy" means, or the two views contradict each other.
+ */
+export async function listBusyEvents(timeMin: string, timeMax: string): Promise<GoogleBusyEvent[]> {
+  const items = await listEvents(timeMin, timeMax) as RawGoogleEvent[];
+  return items
+    .filter(occupiesTime)
+    .map(e => ({
+      id: e.id ?? '',
+      title: (e.summary ?? '(untitled)').trim(),
+      allDay: !e.start?.dateTime,
+      start: e.start?.dateTime ?? e.start?.date ?? '',
+      end: e.end?.dateTime ?? e.end?.date ?? '',
+    }))
+    .filter(e => e.start && e.end);
+}
+
 export async function listEvents(timeMin: string, timeMax: string): Promise<unknown[]> {
   const token = await getAccessToken();
   const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);

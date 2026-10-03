@@ -11,11 +11,12 @@ import { Client, BookingSlot } from '@booking/core/interfaces/booking.interface'
 import { AvailabilityPickerComponent, PickedSlot } from './availability-picker.component';
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
+import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
 
 @Component({
   selector: 'app-booking-form',
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent],
+  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent, InfoHintComponent],
   templateUrl: './booking-form.component.html',
   styleUrl: './booking-form.component.scss',
 })
