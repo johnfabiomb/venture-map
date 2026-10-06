@@ -8,6 +8,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { BookingSummary } from '@booking/core/interfaces/booking.interface';
 import { Earnings, EarningsBasis } from '@booking/core/interfaces/earnings.interface';
+import { Profit } from '@booking/core/interfaces/profit.interface';
 
 @Component({
   selector: 'app-dashboard',
@@ -34,6 +35,22 @@ export class DashboardComponent implements OnInit {
   readonly who = signal<string>('');
   /** Cash received (by payment date) vs work done (by job date). */
   readonly basis = signal<EarningsBasis>('cash');
+
+  // ── Year-to-date profit (get_profit: income vs what it cost) ───────
+  // Deliberately NOT filtered by `who`: overheads belong to the business, not to a
+  // worker, so splitting them per person would invent a number nobody can act on.
+  readonly profit = signal<Profit | null>(null);
+  readonly taxYear = new Date().getFullYear();
+  readonly ytdIncome   = computed(() => this.profit()?.totals.income ?? 0);
+  readonly ytdExpenses = computed(() => this.profit()?.totals.expenses ?? 0);
+  readonly ytdProfit   = computed(() => this.profit()?.totals.profit ?? 0);
+  /** Only worth showing once there is something to subtract — otherwise it is a second,
+   *  quieter copy of the income figure directly above it. */
+  readonly hasExpenses = computed(() => this.ytdExpenses() > 0);
+  readonly margin = computed(() => {
+    const inc = this.ytdIncome();
+    return inc > 0 ? Math.round((this.ytdProfit() / inc) * 100) : 0;
+  });
 
   private readonly CONFIRMED = ['booked', 'in_progress', 'done'];
   private readonly confirmed = computed(() =>
@@ -108,7 +125,7 @@ export class DashboardComponent implements OnInit {
     await this.auth.initialize();
     const org = this.auth.orgId();
     if (org) this.staff.set(await this.admin.listStaff(org));
-    await Promise.all([this.loadProduction(), this.loadEarnings()]);
+    await Promise.all([this.loadProduction(), this.loadEarnings(), this.loadProfit()]);
   }
 
   private async loadProduction(): Promise<void> {
@@ -126,6 +143,14 @@ export class DashboardComponent implements OnInit {
     this.earnings.set(await this.data.getEarnings(org, this.who() || null));
   }
   async onWhoChange(id: string): Promise<void> { this.who.set(id); await this.loadEarnings(); }
+
+  /** Year to date, org-wide. */
+  private async loadProfit(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org) return;
+    const y = this.taxYear;
+    this.profit.set(await this.data.getProfit(org, `${y}-01-01`, `${y}-12-31`));
+  }
 
   barHeight(total: number): string { return `${Math.round((total / this.maxMonth()) * 100)}%`; }
 

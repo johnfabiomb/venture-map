@@ -1,0 +1,110 @@
+@use '../admin.shared' as *;
+@use '../table-cards' as tc;
+
+// Four summary cards plus wide tables; 1200px squeezed the month/profit columns.
+.page { max-width: 1400px; }
+
+.year-select {
+  padding: 8px 30px 8px 12px; border: 1.5px solid $border; border-radius: $radius-md;
+  font-size: 13px; font-weight: 600; font-family: inherit; color: $text; background: $card;
+  appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+
+.summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+  &__card {
+    background: $card; border: 1px solid $border; border-radius: $radius-lg; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 3px;
+    // Profit is the answer the page exists for, so it is the one that is emphasised.
+    &--hero { border-color: $accent; box-shadow: 0 2px 10px rgba(244, 169, 34, 0.14); }
+  }
+  &__label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: $text-3; }
+  &__val   { font-size: 21px; font-weight: 800; color: $text; letter-spacing: -0.02em; }
+  &__val--ok   { color: #16a34a; }
+  &__val--due  { color: $red; }
+  &__val--cost { color: $red; }
+  &__note { font-size: 10.5px; color: $text-3; font-weight: 600; }
+}
+
+.card {
+  background: $card; border: 1px solid $border; border-radius: $radius-lg;
+  padding: 18px 20px; margin-bottom: 16px;
+  &__head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  &__title { font-size: 14px; font-weight: 800; color: $text; margin: 0; }
+}
+
+// Month table and category bars sit together on desktop, stack on a phone.
+.cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;
+  @media (max-width: 980px) { grid-template-columns: 1fr; }
+  .card { margin-bottom: 0; }
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────
+.exform__grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px;
+  .field--wide { grid-column: span 2; @media (max-width: 620px) { grid-column: span 1; } }
+}
+.exform__actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.opt { color: $text-3; font-weight: 400; font-size: 11px; }
+.check--inline {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  font-size: 12.5px; color: $text-2; cursor: pointer;
+  input { width: 16px; height: 16px; accent-color: $accent; cursor: pointer; }
+}
+
+// ── Tables ─────────────────────────────────────────────────────────────────
+.table-wrap { overflow-x: auto; }
+.table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th {
+    text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: $text-3; padding: 0 10px 8px; white-space: nowrap;
+  }
+  td { padding: 10px; border-top: 1px solid $border; color: $text; vertical-align: middle; }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .num--cost  { color: $red; }
+  .num--total { font-weight: 800; color: #16a34a; }
+  .num--loss  { color: $red; }
+  // Needs a max-width or ellipsis never fires in an auto table layout.
+  .ellipsis { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  // text-align, NOT display:flex — a flex <td> leaves the table's column model entirely.
+  .cell--actions { text-align: right; white-space: nowrap; }
+}
+
+.chip {
+  display: inline-block; font-size: 10.5px; font-weight: 700;
+  background: #eef2f6; color: $text-2; padding: 2px 8px; border-radius: 10px;
+  &--bill { background: #dcfce7; color: #166534; margin-left: 6px; }
+}
+.joblink { color: $accent; font-weight: 700; text-decoration: none; &:hover { text-decoration: underline; } }
+
+// ── Category bars ──────────────────────────────────────────────────────────
+.cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.cat {
+  &__top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  &__name { font-size: 13px; font-weight: 600; color: $text; }
+  &__amt  { font-size: 13px; font-weight: 800; color: $text; font-variant-numeric: tabular-nums; }
+  &__bar  { height: 7px; background: $bg; border-radius: 4px; overflow: hidden; }
+  &__fill { height: 100%; background: $accent; border-radius: 4px; }
+}
+
+.empty-line { font-size: 13px; color: $text-3; margin: 0; }
+.muted { color: $text-3; font-size: 12px; }
+
+.loading { display: flex; justify-content: center; padding: 60px; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 2.5px solid $border; border-top-color: $accent; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// Every <td> carries data-label, so the mixin can restack the tables as cards on a phone.
+@include tc.table-cards;

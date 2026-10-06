@@ -126,7 +126,10 @@
 }
 .cell--client { font-size: 13px; font-weight: 500; color: $text-2; }
 .cell--date {
-  .when__abs { display: block; color: $text; }
+  .when__abs { display: block; color: $text; white-space: nowrap; }
+  // The end time is the quieter half of "Wed 7 Oct, 13:00–14:00": the start is what you
+  // scan for, the duration is what you check once you've found it.
+  .when__to { color: $text-2; font-weight: 600; }
   .when__rel { display: block; font-size: 11.5px; color: $text-3; margin-top: 1px; }
   .when__blocks {
     display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 6px;

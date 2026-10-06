@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CalendarDayCell, CalendarSlotView } from '@booking/core/interfaces/availability.interface';
 
 /**
@@ -43,4 +43,33 @@ export class AvailabilityCalendarComponent {
   readonly clearSelection = output<void>();
 
   readonly dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  /** Fold the small hours away behind a toggle. The admin picker renders a full 24 hours
+   *  at 30-minute steps — 48 pills, two columns on a phone, roughly 1300px of scrolling
+   *  before the owner reaches anything else. The public page already receives only the
+   *  worker's working hours, so it leaves this off. */
+  readonly collapseQuietHours = input(false);
+  readonly showAllHours = signal(false);
+
+  /** Hour from the pill's own label. `hour` cannot be used: the admin picker numbers it
+   *  0–47 (half-hour index) while the public page uses the wall-clock hour, and the label
+   *  is the one thing both spell the same way. */
+  private labelHour(label: string): number { return Number.parseInt(label.slice(0, 2), 10); }
+
+  /** Quiet only when there is genuinely nothing to see: anything busy, selected or part
+   *  of this booking stays visible no matter the hour, so folding can never hide a clash
+   *  or a block the owner already picked. */
+  private isQuiet(s: CalendarSlotView): boolean {
+    if (s.mine || s.inRange || s.softBusy || !s.available) return false;
+    const h = this.labelHour(s.label);
+    return Number.isFinite(h) && (h < 6 || h >= 23);
+  }
+
+  readonly visibleSlots = computed<CalendarSlotView[]>(() => {
+    const all = this.slots();
+    if (!this.collapseQuietHours() || this.showAllHours()) return all;
+    return all.filter(s => !this.isQuiet(s));
+  });
+
+  readonly hiddenCount = computed(() => this.slots().length - this.visibleSlots().length);
 }

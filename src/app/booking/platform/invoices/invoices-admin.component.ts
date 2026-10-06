@@ -149,7 +149,12 @@ export class InvoicesAdminComponent implements OnInit {
 
   // Summary reflects the whole period (year), independent of the active tab.
   readonly totalBilled = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_gross, 0));
+  // Kept because invoice_list still exposes amount_net; no longer surfaced on this page.
+  // See the comment on the summary block in the template for why.
   readonly totalNet    = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_net, 0));
+  /** Money that is late, not merely unpaid — the balance on invoices past their due date. */
+  readonly overdueTotal = computed(() =>
+    this.yearScoped().reduce((s, r) => s + (r.is_overdue ? r.balance_due : 0), 0));
   readonly totalPaid   = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_paid, 0));
   // Summed PER INVOICE (already floored at zero in SQL): one client's overpayment must
   // never cancel out what another client still owes.

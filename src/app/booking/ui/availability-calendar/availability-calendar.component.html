@@ -23,6 +23,8 @@
             <button type="button" class="cell"
               [class.cell--available]="cell.available"
               [class.cell--selected]="cell.date === selectedDate()"
+              [class.cell--today]="cell.isToday"
+              [attr.aria-current]="cell.isToday ? 'date' : null"
               [disabled]="!cell.available || (cell.isPast && !allowPast())"
               (click)="daySelected.emit(cell)">
               {{ cell.day }}
@@ -50,7 +52,7 @@
       <p class="cal__empty">{{ emptyText() }}</p>
     } @else {
       <div class="slots">
-        @for (s of slots(); track s.hour) {
+        @for (s of visibleSlots(); track s.hour) {
           <button type="button" class="slot"
             [class.slot--busy]="!s.available && !s.mine"
             [class.slot--soft]="s.softBusy && s.available && !s.mine"
@@ -71,6 +73,13 @@
           </button>
         }
       </div>
+      @if (hiddenCount() > 0) {
+        <button type="button" class="more" (click)="showAllHours.set(true)">
+          Show {{ hiddenCount() }} more {{ hiddenCount() === 1 ? 'time' : 'times' }} (early morning &amp; late night)
+        </button>
+      } @else if (showAllHours() && collapseQuietHours()) {
+        <button type="button" class="more" (click)="showAllHours.set(false)">Show fewer times</button>
+      }
     }
   </section>
 }

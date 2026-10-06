@@ -49,6 +49,15 @@
   &--selected { background: $accent !important; color: #fff; }
   &:disabled { cursor: default; }
 
+  /* Today. An outline rather than a fill, so it still reads clearly when the day is also
+     available (amber fill) or selected (solid amber) — three states can overlap on one
+     cell and a second fill colour would make them indistinguishable. */
+  &--today {
+    box-shadow: inset 0 0 0 1.5px $text-2;
+    font-weight: 800; color: $text;
+  }
+  &--today#{&}--selected { box-shadow: inset 0 0 0 1.5px $text; }
+
   &__dot {
     position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
     width: 4px; height: 4px; border-radius: 50%; background: $accent;
@@ -57,7 +66,21 @@
 }
 
 /* Hour slots — pill grid with a solid filled selection range */
-.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 7px; }
+.slots {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 7px;
+  // Three narrower columns on a phone instead of two wide ones: a free pill is just
+  // "08:00" and does not need 112px, and the extra column cuts the run of 48 half-hour
+  // slots by a third of its height.
+  @media (max-width: 560px) { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+}
+
+// Reveals the folded early/late hours.
+.more {
+  display: block; width: 100%; margin-top: 10px; padding: 10px;
+  background: $bg; border: 1px dashed $border; border-radius: $radius-md;
+  font-family: inherit; font-size: 12px; font-weight: 700; color: $text-2; cursor: pointer;
+  &:hover { border-color: $accent; color: $text; }
+}
 .slot {
   display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
   min-height: 50px; padding: 11px 12px; text-align: left;

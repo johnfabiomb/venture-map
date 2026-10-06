@@ -174,8 +174,23 @@ export class BookingListComponent {
     await Promise.all([this.loadRows(this.tab(), this.debouncedSearch()), this.refreshCounts()]);
   }
 
-  private startMs(b: BookingSummary): number { return new Date(b.start_at).getTime(); }
-  private endMs(b: BookingSummary): number { return new Date(b.end_at).getTime(); }
+  // Both key off the block that matters NOW. start_at/end_at span the whole booking, so a
+  // job with planning on Tuesday and filming on Friday kept reporting Tuesday all week.
+  private startMs(b: BookingSummary): number { return new Date(b.next_start_at ?? b.start_at).getTime(); }
+  private endMs(b: BookingSummary): number { return new Date(b.next_end_at ?? b.end_at).getTime(); }
+
+  /**
+   * Date format for the When column. The year appears only when it is not the current
+   * one: BK-2026-116 is a 2027 job and rendered as "Thu 9 Sep, 16:00", which reads as
+   * this September and looks badly out of order in a list sorted by date.
+   */
+  whenFmt(iso: string): string {
+    return new Date(iso).getFullYear() === new Date().getFullYear()
+      ? 'EEE d MMM, HH:mm' : 'EEE d MMM y, HH:mm';
+  }
+
+  /** Blocks after this one that are still to come. 0 once the job is finished. */
+  blocksLeft(b: BookingSummary): number { return Math.max(0, (b.upcoming_slot_count ?? 0) - 1); }
 
   /** The soonest still-to-come booking (real or external) — highlighted as "NEXT". */
   readonly nextId = computed<string | null>(() => {

@@ -93,6 +93,10 @@ export const bookingRoutes: Routes = [
             loadComponent: () => import('@booking/platform/bookings/booking-form/booking-form.component').then(m => m.BookingFormComponent),
           },
           {
+            path: 'expenses',
+            loadComponent: () => import('@booking/platform/expenses/expenses-admin.component').then(m => m.ExpensesAdminComponent),
+          },
+          {
             path: 'organizations',
             loadComponent: () => import('@booking/platform/organizations/organizations.component').then(m => m.OrganizationsComponent),
           },

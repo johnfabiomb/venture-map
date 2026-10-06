@@ -11,6 +11,7 @@ import { LinksEditorComponent } from '@booking/ui/links-editor/links-editor.comp
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink, isDeliveryUrl } from '@booking/core/interfaces/delivery.interface';
+import { Expense, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.interface';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: 'Card', cash: 'Cash', revolut: 'Revolut', bank: 'Bank transfer', other: 'Other',
@@ -50,6 +51,22 @@ export class BookingDetailComponent implements OnInit {
   deliveryMessage = '';
   deliveryLinks: DeliveryLink[] = [];
 
+  // ── Costs ───────────────────────────────────────────────────────────────
+  readonly expenses = signal<Expense[]>([]);
+  readonly addingExpense = signal(false);
+  readonly categories = EXPENSE_CATEGORIES;
+  expAmount: number | null = null;
+  expCategory = 'Travel';
+  expDescription = '';
+  expBillable = false;
+  expDate = new Date().toISOString().slice(0, 10);
+
+  /** What the client is being charged. Read from the booking, never re-derived from the
+   *  invoice lines — the booking total is the figure the rest of the app agrees on. */
+  readonly chargedTotal = computed(() => this.booking()?.price_total ?? 0);
+  readonly expensesTotal = computed(() => this.expenses().reduce((t, e) => t + Number(e.amount), 0));
+  readonly profit = computed(() => this.chargedTotal() - this.expensesTotal());
+
   // Add-payment form
   payAmount: number | null = null;
   payMethod: PaymentMethod = 'cash';
@@ -79,15 +96,17 @@ export class BookingDetailComponent implements OnInit {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.id) {
       await this.auth.initialize();   // idempotent; needed for orgId() when saving a delivery
-      const [payments, slots, items, delivery, invoices, card] = await Promise.all([
+      const [payments, slots, items, delivery, invoices, card, expenses] = await Promise.all([
         this.data.getPayments(this.id),
         this.data.getBookingSlots(this.id),
         this.data.getInvoiceItems(this.id),
         this.data.getDelivery(this.id),
         this.data.listInvoicesForBooking(this.id),
         this.admin.workItemForBooking(this.id),
+        this.data.getExpenses(this.id),
       ]);
       this.payments.set(payments);
+      this.expenses.set(expenses);
       this.slots.set(slots);
       this.lineItems.set(items);
       this.invoices.set(invoices);
@@ -155,6 +174,44 @@ export class BookingDetailComponent implements OnInit {
   methodLabel(m: string): string { return METHOD_LABEL[m as PaymentMethod] ?? m; }
 
   prefillBalance(): void { this.payAmount = this.balance(); }
+
+  async addExpense(): Promise<void> {
+    const amount = Number(this.expAmount);
+    if (!isFinite(amount) || amount <= 0) { this.toast.error('Enter a valid amount.'); return; }
+    if (!this.expDescription.trim()) { this.toast.error('Say what the cost was for.'); return; }
+    const org = this.auth.orgId();
+    if (!org) { this.toast.error('No organization context.'); return; }
+
+    this.addingExpense.set(true);
+    try {
+      const res = await this.data.saveExpense(org, {
+        bookingId: this.id,
+        category: this.expCategory,
+        description: this.expDescription,
+        amount,
+        spentOn: this.expDate,
+        vendor: null,
+        billable: this.expBillable,
+      });
+      if (res.error) { this.toast.error('Could not save the cost.'); return; }
+      this.expenses.set(await this.data.getExpenses(this.id));
+      this.toast.success(`€${amount.toFixed(2)} cost added`);
+      this.expAmount = null; this.expDescription = ''; this.expBillable = false;
+    } finally {
+      this.addingExpense.set(false);
+    }
+  }
+
+  async deleteExpense(e: Expense): Promise<void> {
+    if (!(await this.confirm.ask({
+      title: 'Remove cost',
+      message: `Remove “${e.description}” (€${Number(e.amount).toFixed(2)})?`,
+      confirmLabel: 'Remove', danger: true,
+    }))) return;
+    await this.data.deleteExpense(e.id);
+    this.expenses.set(await this.data.getExpenses(this.id));
+    this.toast.success('Cost removed');
+  }
 
   async addPayment(): Promise<void> {
     const amount = Number(this.payAmount);

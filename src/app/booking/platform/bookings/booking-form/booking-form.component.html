@@ -287,6 +287,9 @@
       @if (errorMsg()) { <p class="error">{{ errorMsg() }}</p> }
 
       <div class="form__actions">
+        @if (!saving() && blockedReason) {
+          <span class="form__blocked">{{ blockedReason }}</span>
+        }
         <button type="button" class="btn btn--ghost" (click)="goToList()">Cancel</button>
         <button type="submit" class="btn btn--primary" [disabled]="!canSubmit">
           {{ saving() ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save changes' : 'Create booking') }}

@@ -55,7 +55,7 @@ export class BookingCalendarComponent implements OnInit {
     for (let i = 0; i < firstDow; i++) cells.push({ date: null, day: 0, available: false, isPast: false });
     for (let d = 1; d <= dim; d++) {
       const date = toDateStr(new Date(y, m, d));
-      cells.push({ date, day: d, available: avail.has(date), isPast: date < todayStr });
+      cells.push({ date, day: d, available: avail.has(date), isPast: date < todayStr, isToday: date === todayStr });
     }
     return cells;
   });

@@ -201,6 +201,18 @@ export class BookingFormComponent implements OnInit {
       && itemsOk && this.title.trim().length > 0;
   }
 
+  /** The first thing still missing, in the order the form asks for it. Empty when the
+   *  booking is ready to save. Surfaced next to a disabled Create button so the reason is
+   *  never off-screen — the time blocks in particular are picked far below it on a phone. */
+  get blockedReason(): string {
+    if (!this.hasCustomer) return 'Pick a customer';
+    if (!this.staffId) return 'Pick a worker';
+    if (!this.title.trim()) return 'Add a title';
+    if (!this.lineItems.length || this.priceTotal <= 0) return 'Add a charge';
+    if (!this.selectedSlots.length) return 'Pick a time block';
+    return '';
+  }
+
   async submit(): Promise<void> {
     if (!this.canSubmit) return;
     const org = this.auth.orgId();

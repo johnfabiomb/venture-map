@@ -255,6 +255,89 @@
       </form>
     </div>
 
+    <!-- Costs. Deliberately on the same column as payments: money in and money out read
+         together, and profit means nothing with only one of them on screen. -->
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title">Costs</h2>
+        <span class="muted">{{ expenses().length }} item{{ expenses().length === 1 ? '' : 's' }}</span>
+      </div>
+
+      @if (expenses().length === 0) {
+        <p class="empty-line">No costs recorded. Add what this job cost you to see its real profit.</p>
+      } @else {
+        <ul class="pays">
+          @for (e of expenses(); track e.id) {
+            <li class="pay">
+              <div class="pay__amount pay__amount--cost">−{{ e.amount | currency:'EUR':'symbol':'1.2-2' }}</div>
+              <div class="pay__main">
+                <span class="pay__method">{{ e.category }}</span>
+                <span class="pay__note">· {{ e.description }}</span>
+                @if (e.vendor) { <span class="pay__note">· {{ e.vendor }}</span> }
+                @if (e.billable) { <span class="pay__tag">rebilled</span> }
+              </div>
+              <div class="pay__date">{{ e.spent_on | date:'d MMM y' }}</div>
+              <button class="pay__del" title="Remove cost" (click)="deleteExpense(e)">✕</button>
+            </li>
+          }
+        </ul>
+
+        <!-- The whole point of the card. Shown only once there is something to subtract,
+             so an untouched booking is not cluttered with "profit = total". -->
+        <div class="profit">
+          <div class="profit__row">
+            <span>Charged</span><span>{{ chargedTotal() | currency:'EUR':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="profit__row profit__row--cost">
+            <span>Costs</span><span>−{{ expensesTotal() | currency:'EUR':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="profit__row profit__row--total" [class.profit__row--loss]="profit() < 0">
+            <span>Profit</span><span>{{ profit() | currency:'EUR':'symbol':'1.2-2' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Add a cost -->
+    <div class="card">
+      <div class="card__head"><h2 class="card__title">Add a cost</h2></div>
+
+      <form class="payform" (ngSubmit)="addExpense()">
+        <div class="payform__grid">
+          <div class="field">
+            <label>Amount (€)</label>
+            <input type="number" [(ngModel)]="expAmount" name="expAmount" min="0" step="0.01" placeholder="0.00" required />
+          </div>
+          <div class="field">
+            <label>Category</label>
+            <!-- A datalist, not a select: the column is free text so a cost nobody
+                 predicted is never blocked from being recorded. -->
+            <input [(ngModel)]="expCategory" name="expCategory" list="expenseCategories" placeholder="Travel" />
+            <datalist id="expenseCategories">
+              @for (c of categories; track c) { <option [value]="c"></option> }
+            </datalist>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" [(ngModel)]="expDate" name="expDate" />
+          </div>
+          <div class="field field--note">
+            <label>What was it?</label>
+            <input [(ngModel)]="expDescription" name="expDescription" placeholder="e.g. Fuel to Zebbug, second shooter" required />
+          </div>
+        </div>
+        <label class="check check--inline">
+          <input type="checkbox" [(ngModel)]="expBillable" name="expBillable" />
+          <span>Rebilled to the client on the invoice</span>
+        </label>
+        <div class="payform__actions">
+          <button type="submit" class="btn btn--primary" [disabled]="addingExpense()">
+            {{ addingExpense() ? 'Saving…' : 'Add cost' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
     </div><!-- /detail-col (right: payments) -->
     </div><!-- /detail-grid -->
     }

@@ -122,3 +122,30 @@
   display: block; font-size: 12px; font-weight: 600; color: $text-2; margin: 14px 0 6px;
 }
 .tag--live { background: #dcfce7; color: #166534; }
+
+// ── Costs ─────────────────────────────────────────────────────────────────
+// Money out, styled as the mirror of money in: red and signed, so a glance down the
+// column never confuses a cost for a payment.
+.pay__amount--cost { color: $red; }
+
+.profit {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid $border;
+  display: flex; flex-direction: column; gap: 5px;
+  &__row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; color: $text-2;
+    &--cost { color: $red; }
+    &--total {
+      margin-top: 4px; padding-top: 8px; border-top: 1px solid $border;
+      font-size: 15px; font-weight: 800; color: #16a34a;
+    }
+    // A job can genuinely lose money; it must not read as a gain.
+    &--loss { color: $red; }
+  }
+}
+
+.check--inline {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+  font-size: 12.5px; color: $text-2; cursor: pointer;
+  input { width: 16px; height: 16px; accent-color: $accent; cursor: pointer; }
+}

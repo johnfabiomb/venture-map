@@ -23,14 +23,22 @@
   } @else if (invoices().length === 0) {
     <p class="muted">No invoices yet.</p>
   } @else {
-    <!-- Summary (whole period). Gross and net are shown side by side and labelled:
-         they're equal until expenses are recorded, and that should be visible, not hidden. -->
+    <!-- Summary (whole period).
+         "Net of expenses" used to sit here. It was removed rather than fixed: expenses
+         attach to a JOB, this page lists DOCUMENTS, and the two don't line up — one job
+         can carry several invoices (double counting), a standalone invoice has no job at
+         all, and an overhead like software belongs to no invoice ever. No arithmetic on
+         this page could answer "what did I keep". That lives on the P&L and per job.
+         Overdue replaces it: a question an invoice list genuinely can answer. -->
     <div class="summary">
       <div class="summary__card"><span class="summary__label">Invoices</span><span class="summary__val">{{ counts().all }}</span></div>
       <div class="summary__card"><span class="summary__label">Billed (gross)</span><span class="summary__val">{{ totalBilled() | currency:currency():'symbol':'1.0-2' }}</span></div>
-      <div class="summary__card"><span class="summary__label">Net of expenses</span><span class="summary__val">{{ totalNet() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Collected</span><span class="summary__val summary__val--ok">{{ totalPaid() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Outstanding</span><span class="summary__val summary__val--due">{{ outstanding() | currency:currency():'symbol':'1.0-2' }}</span></div>
+      <div class="summary__card">
+        <span class="summary__label">Overdue</span>
+        <span class="summary__val" [class.summary__val--due]="overdueTotal() > 0">{{ overdueTotal() | currency:currency():'symbol':'1.0-2' }}</span>
+      </div>
     </div>
 
     <!-- Status tabs -->

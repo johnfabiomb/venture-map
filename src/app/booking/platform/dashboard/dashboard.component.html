@@ -47,6 +47,35 @@
       }
     </div>
 
+    <!-- Year to date: income against what it cost. Shown only once a cost exists —
+         before that, "profit" would just be a quieter duplicate of income. -->
+    @if (hasExpenses()) {
+      <section class="card pl">
+        <div class="card__head">
+          <h2 class="card__title">Profit · {{ taxYear }} to date</h2>
+          <a class="card__link" routerLink="/bookings/expenses">Costs &amp; profit</a>
+        </div>
+        <div class="pl__row">
+          <div class="pl__stat">
+            <span class="pl__val">{{ ytdIncome() | currency:'EUR':'symbol':'1.0-0' }}</span>
+            <span class="pl__label">Income</span>
+          </div>
+          <span class="pl__op">−</span>
+          <div class="pl__stat">
+            <span class="pl__val pl__val--cost">{{ ytdExpenses() | currency:'EUR':'symbol':'1.0-0' }}</span>
+            <span class="pl__label">Costs</span>
+          </div>
+          <span class="pl__op">=</span>
+          <div class="pl__stat pl__stat--hero">
+            <span class="pl__val" [class.pl__val--ok]="ytdProfit() >= 0" [class.pl__val--loss]="ytdProfit() < 0">
+              {{ ytdProfit() | currency:'EUR':'symbol':'1.0-0' }}
+            </span>
+            <span class="pl__label">Profit · {{ margin() }}% margin</span>
+          </div>
+        </div>
+      </section>
+    }
+
     <!-- Earnings trend — two readings of the same period, so one control, not two cards. -->
     <section class="card chart">
       <div class="card__head">

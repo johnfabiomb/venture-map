@@ -31,6 +31,18 @@ export interface BookingSummary {
   status: BookingStatus;
   payment_status: PaymentStatus;
   slot_count: number;        // number of time blocks (>1 = split across times/days)
+  /** The block that matters NOW: the first one that hasn't finished, or the last one once
+   *  they all have. `start_at`/`end_at` span the whole booking, so on a multi-block job
+   *  they keep pointing at the first block long after it has been and gone. Display and
+   *  sorting both use these. */
+  next_start_at: string;
+  next_end_at: string;
+  /** Blocks still to come — 0 once the job is over. The "+N more" badge uses this; it
+   *  cannot use slot_count, which never shrinks. */
+  upcoming_slot_count: number;
+  /** What this job cost — sum of its `expenses` rows. `price_revenue` is price_total
+   *  minus this, so the two always agree. */
+  expenses_total: number;
   total_paid: number;
   client_name: string | null;
   client_email: string | null;

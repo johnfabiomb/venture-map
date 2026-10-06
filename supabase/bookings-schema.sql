@@ -588,14 +588,35 @@ SELECT
          AND b.price_total > 0 THEN 'paid'
     WHEN COALESCE(SUM(p.amount) FILTER (WHERE p.status='completed' AND p.deleted_at IS NULL),0) > 0 THEN 'partial'
     ELSE 'unpaid'
-  END AS payment_status
+  END AS payment_status,
+  -- The block that MATTERS NOW. start_at/end_at span the whole booking, so a job with
+  -- planning on Tuesday and filming on Friday reported Tuesday all week — the list showed
+  -- "Today 08:00" for a commitment three days off, and sorted it there too.
+  -- Falls back to the booking's own span when it has no slot rows.
+  COALESCE(ns.start_at, b.start_at) AS next_start_at,
+  COALESCE(ns.end_at,   b.end_at)   AS next_end_at,
+  -- Blocks still to come. The "+N more" badge needs this; slot_count never shrinks and so
+  -- kept promising another block after they had all happened.
+  (SELECT COUNT(*) FROM public.booking_slots bs
+     WHERE bs.booking_id = b.id AND bs.deleted_at IS NULL AND bs.end_at > now()) AS upcoming_slot_count
 FROM public.bookings b
 LEFT JOIN public.staff    st ON st.id = b.staff_id
 LEFT JOIN public.services s  ON s.id  = b.service_id
 LEFT JOIN public.clients  c  ON c.id  = b.client_id
 LEFT JOIN public.payments p  ON p.booking_id = b.id
+LEFT JOIN LATERAL (
+  SELECT bs.start_at, bs.end_at
+    FROM public.booking_slots bs
+   WHERE bs.booking_id = b.id AND bs.deleted_at IS NULL
+   -- First block that has not finished yet; when every block is past, the LAST one,
+   -- because that is when the job actually ended.
+   ORDER BY (bs.end_at > now()) DESC,
+            CASE WHEN bs.end_at > now() THEN bs.start_at END ASC,
+            bs.start_at DESC
+   LIMIT 1
+) ns ON TRUE
 WHERE (public.is_org_admin(b.org_id) OR public.is_platform_admin()) AND b.deleted_at IS NULL
-GROUP BY b.id, st.id, s.id, c.id;
+GROUP BY b.id, st.id, s.id, c.id, ns.start_at, ns.end_at;
 
 
 -- ── 10. Row-Level Security ─────────────────────────────────────────────────
@@ -2132,7 +2153,7 @@ BEGIN
   -- wire a delete button to it — an upsert(onConflict:booking_id) can't resolve its conflict
   -- target against a soft-deleted row (hide_deleted hides it), so "Remove" clears in place.
   IF p_table NOT IN ('bookings','payments','services','staff','work_items','tasks',
-                     'deliveries','invoices','invoice_lines','invoice_sends') THEN
+                     'deliveries','invoices','invoice_lines','invoice_sends','expenses') THEN
     RAISE EXCEPTION 'soft_delete: table % not allowed', p_table USING errcode = '42501';
   END IF;
   EXECUTE format('SELECT org_id FROM public.%I WHERE id = $1 AND deleted_at IS NULL', p_table)
@@ -2608,3 +2629,161 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.list_deleted_invoices(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.list_deleted_invoices(uuid) TO authenticated;
+
+
+-- ═══ 22. Expenses — what the work COST ══════════════════════════════════════
+-- bookings.price_expenses and invoices.amount_expenses have existed since the start with
+-- no way to put a number in either, so every "net of expenses" figure on screen was
+-- identical to the gross figure beside it. This is the table behind them.
+--
+-- ONE table for both kinds, booking_id nullable:
+--   * linked     — a cost incurred FOR a job (second shooter, fuel, parking, props)
+--   * standalone — an overhead belonging to no job (software, insurance, gear)
+-- Two tables would mean two answers to "what did I spend in October", and they would
+-- drift the first time one was written without the other.
+CREATE TABLE IF NOT EXISTS public.expenses (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  -- ON DELETE SET NULL, never CASCADE: money really spent stays in the P&L even if the
+  -- job it was for is removed. A cancelled shoot's parking ticket was still paid.
+  booking_id  UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
+  category    TEXT NOT NULL DEFAULT 'Other',
+  description TEXT NOT NULL,
+  amount      NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+  -- The date the money left, which is what a P&L buckets by — not when the row was typed.
+  spent_on    DATE NOT NULL DEFAULT CURRENT_DATE,
+  vendor      TEXT,
+  notes       TEXT,
+  -- Rebilled to the client on the invoice? Lets profit-per-job separate a cost absorbed
+  -- from one passed on.
+  billable    BOOLEAN NOT NULL DEFAULT false,
+  created_by  UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at  TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS expenses_org_date_idx ON public.expenses(org_id, spent_on DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS expenses_booking_idx  ON public.expenses(booking_id)            WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS expenses_category_idx ON public.expenses(org_id, category)      WHERE deleted_at IS NULL;
+
+DROP TRIGGER IF EXISTS expenses_updated ON public.expenses;
+CREATE TRIGGER expenses_updated BEFORE UPDATE ON public.expenses
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+
+-- Admin only, and NOTHING to anon. An expense row states what you paid your second
+-- shooter and therefore what your margin is; get_invoice_by_token is granted to anon, so
+-- a client holding a share link must never be able to reach this table.
+-- WITH CHECK column names are TABLE-QUALIFIED on purpose: an unqualified `org_id` in the
+-- subquery binds to the INNER table and silently becomes a tautology (see §20a).
+DROP POLICY IF EXISTS exp_admin ON public.expenses;
+CREATE POLICY exp_admin ON public.expenses FOR ALL
+  USING (public.is_org_admin(org_id))
+  WITH CHECK (public.is_org_admin(org_id)
+              AND (expenses.booking_id IS NULL
+                   OR EXISTS (SELECT 1 FROM public.bookings b
+                               WHERE b.id = expenses.booking_id
+                                 AND b.org_id = expenses.org_id)));
+
+-- Declared here, not in the §18 array loop: that loop runs before this table exists on a
+-- from-scratch build. Same RESTRICTIVE semantics.
+DROP POLICY IF EXISTS hide_deleted ON public.expenses;
+CREATE POLICY hide_deleted ON public.expenses
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.expenses TO authenticated;
+GRANT ALL ON public.expenses TO service_role;
+
+
+-- ── 22b. get_profit — income vs what it cost ───────────────────────────────
+-- Companion to get_earnings, which answers "what did I bill". This answers "what did I
+-- keep", which needs the expenses table and therefore could not exist before §22.
+--
+-- Income uses the WORK-DONE basis (issued invoices by service_date) because expenses are
+-- bucketed by spent_on. Pairing accrual income against cash-dated costs would make every
+-- month wrong in both directions.
+CREATE OR REPLACE FUNCTION public.get_profit(
+  p_org  uuid,
+  p_from date DEFAULT NULL,
+  p_to   date DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_result jsonb;
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  WITH inc AS (
+    SELECT i.id, i.service_date AS d, b.client_id,
+           COALESCE((SELECT SUM(l.amount) FROM invoice_lines l
+                      WHERE l.invoice_id = i.id AND l.deleted_at IS NULL), 0) AS amount
+      FROM invoices i
+      LEFT JOIN bookings b ON b.id = i.booking_id
+     WHERE i.org_id = p_org AND i.deleted_at IS NULL AND i.status = 'issued'
+       AND (p_from IS NULL OR i.service_date >= p_from)
+       AND (p_to   IS NULL OR i.service_date <= p_to)
+  ),
+  exp AS (
+    -- A standalone expense has no booking and therefore no client: it lands in the
+    -- Unattributed bucket rather than being dropped, because an overhead is still money
+    -- that left the business.
+    SELECT e.id, e.spent_on AS d, e.category, e.amount, e.billable, b.client_id
+      FROM expenses e
+      LEFT JOIN bookings b ON b.id = e.booking_id
+     WHERE e.org_id = p_org AND e.deleted_at IS NULL
+       AND (p_from IS NULL OR e.spent_on >= p_from)
+       AND (p_to   IS NULL OR e.spent_on <= p_to)
+  ),
+  months AS (
+    SELECT m, SUM(i_amt) AS income, SUM(e_amt) AS expenses
+      FROM (
+        SELECT to_char(date_trunc('month', d),'YYYY-MM') AS m, amount AS i_amt, 0::numeric AS e_amt
+          FROM inc WHERE d IS NOT NULL
+        UNION ALL
+        SELECT to_char(date_trunc('month', d),'YYYY-MM'), 0::numeric, amount FROM exp
+      ) u
+     GROUP BY m
+  )
+  SELECT jsonb_build_object(
+    'totals', jsonb_build_object(
+      'income',   COALESCE((SELECT SUM(amount) FROM inc), 0),
+      'expenses', COALESCE((SELECT SUM(amount) FROM exp), 0),
+      'profit',   COALESCE((SELECT SUM(amount) FROM inc), 0) - COALESCE((SELECT SUM(amount) FROM exp), 0),
+      -- Costs rebilled to the client. Already counted inside `income` as invoice lines,
+      -- so this is REPORTED separately and never subtracted again.
+      'billable_expenses', COALESCE((SELECT SUM(amount) FROM exp WHERE billable), 0)
+    ),
+    'by_month', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'month', m, 'income', income, 'expenses', expenses, 'profit', income - expenses
+             ) ORDER BY m) FROM months), '[]'::jsonb),
+    'by_category', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('category', category, 'amount', amt) ORDER BY amt DESC)
+        FROM (SELECT category, SUM(amount) AS amt FROM exp GROUP BY category) t), '[]'::jsonb),
+    'by_client', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+               'client_id', cid, 'client_name', cname,
+               'income', cinc, 'expenses', cexp, 'profit', cinc - cexp
+             ) ORDER BY (cinc - cexp) DESC)
+        FROM (
+          SELECT k.cid, COALESCE(c.name, 'Unattributed') AS cname,
+                 COALESCE((SELECT SUM(amount) FROM inc WHERE inc.client_id IS NOT DISTINCT FROM k.cid), 0) AS cinc,
+                 COALESCE((SELECT SUM(amount) FROM exp WHERE exp.client_id IS NOT DISTINCT FROM k.cid), 0) AS cexp
+            FROM (SELECT client_id AS cid FROM inc UNION SELECT client_id FROM exp) k
+            LEFT JOIN clients c ON c.id = k.cid
+        ) t), '[]'::jsonb)
+  ) INTO v_result;
+
+  RETURN v_result;
+END $$;
+
+-- SECURITY DEFINER over the whole org's money. Every new function here starts life as
+-- EXECUTE TO PUBLIC, so anon could call it; the is_org_admin gate above would reject it,
+-- but the grant is removed rather than relied upon.
+REVOKE ALL ON FUNCTION public.get_profit(uuid, date, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_profit(uuid, date, date) TO authenticated;

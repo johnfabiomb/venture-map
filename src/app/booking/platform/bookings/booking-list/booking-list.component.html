@@ -145,8 +145,12 @@
                 <td class="cell--title" data-label="Job">{{ b.title }}</td>
                 <td class="cell--client" data-label="Client">{{ b.client_name ?? '—' }}</td>
                 <td class="cell--date" data-label="When">
-                  <span class="when__abs">{{ b.start_at | date:'EEE d MMM, HH:mm' }}</span>
-                  @if (b.slot_count > 1) { <span class="when__blocks" title="Split into multiple time blocks">+{{ b.slot_count - 1 }} block{{ b.slot_count > 2 ? 's' : '' }}</span> }
+                  <span class="when__abs">
+                    {{ b.next_start_at | date:whenFmt(b.next_start_at) }}<span class="when__to">–{{ b.next_end_at | date:'HH:mm' }}</span>
+                  </span>
+                  @if (blocksLeft(b) > 0) {
+                    <span class="when__blocks" title="This job has more time blocks after this one">+{{ blocksLeft(b) }} more block{{ blocksLeft(b) > 1 ? 's' : '' }}</span>
+                  }
                   @if (relative(b)) { <span class="when__rel">{{ relative(b) }}</span> }
                 </td>
                 <td data-label="Total">{{ b.price_total | currency:'EUR':'symbol':'1.0-0' }}</td>

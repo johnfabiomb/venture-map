@@ -4,6 +4,8 @@ import { BookingsAuthService } from '@booking/core/services/bookings-auth.servic
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
+import { Expense, ExpenseInput, ExpenseRow } from '@booking/core/interfaces/expense.interface';
+import { Profit } from '@booking/core/interfaces/profit.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
 import { Earnings } from '@booking/core/interfaces/earnings.interface';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
@@ -466,6 +468,87 @@ export class BookingDataService implements OnDestroy {
     await this.fetchBookings();
   }
 
+  // ── Expenses ────────────────────────────────────────────────────────────
+  // What the work COST. RLS (exp_admin) restricts these to org admins and nothing is
+  // granted to anon, so an expense can never be reached through a client share link.
+
+  /** A job's costs, oldest first. */
+  async getExpenses(bookingId: string): Promise<Expense[]> {
+    const { data, error } = await bookingsDb
+      .from('expenses')
+      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, created_at')
+      .eq('booking_id', bookingId)
+      .order('spent_on', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (error) { console.error('[BookingData] getExpenses:', error); return []; }
+    return (data ?? []) as Expense[];
+  }
+
+  /** Insert or update one cost. */
+  async saveExpense(orgId: string, e: ExpenseInput): Promise<{ error?: string }> {
+    const row = {
+      booking_id: e.bookingId,
+      category: e.category.trim() || 'Other',
+      description: e.description.trim(),
+      amount: e.amount,
+      spent_on: e.spentOn,
+      vendor: e.vendor?.trim() || null,
+      billable: e.billable,
+    };
+    const { error } = e.id
+      ? await bookingsDb.from('expenses').update(row).eq('id', e.id)
+      : await bookingsDb.from('expenses').insert({ org_id: orgId, ...row });
+    if (error) { console.error('[BookingData] saveExpense:', error); return { error: error.message }; }
+    // price_revenue is derived from these rows, so the cached list is now stale.
+    await this.fetchBookings();
+    return {};
+  }
+
+  /** Soft delete — the row is kept, exactly like a removed payment. */
+  async deleteExpense(expenseId: string): Promise<void> {
+    await bookingsDb.rpc('soft_delete', { p_table: 'expenses', p_id: expenseId });
+    await this.fetchBookings();
+  }
+
+  /**
+   * Every cost in a date range, job-linked and standalone alike, newest first.
+   * The booking join is a LEFT one by nature: an overhead has no job, and dropping those
+   * rows would quietly remove exactly the costs the P&L exists to surface.
+   */
+  async listExpenses(orgId: string, from?: string, to?: string): Promise<ExpenseRow[]> {
+    let q = bookingsDb
+      .from('expenses')
+      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, created_at, bookings(booking_ref, title, clients(name))')
+      .eq('org_id', orgId);
+    if (from) q = q.gte('spent_on', from);
+    if (to) q = q.lte('spent_on', to);
+    const { data, error } = await q.order('spent_on', { ascending: false }).order('created_at', { ascending: false });
+    if (error) { console.error('[BookingData] listExpenses:', error); return []; }
+    return (data ?? []).map(r => {
+      const row = r as unknown as Expense & {
+        bookings: { booking_ref: string; title: string; clients: { name: string } | { name: string }[] | null }
+                | { booking_ref: string; title: string; clients: { name: string } | { name: string }[] | null }[] | null;
+      };
+      const bk = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
+      const cl = bk && (Array.isArray(bk.clients) ? bk.clients[0] : bk.clients);
+      return {
+        ...row,
+        booking_ref: bk?.booking_ref ?? null,
+        booking_title: bk?.title ?? null,
+        client_name: cl?.name ?? null,
+      } as ExpenseRow;
+    });
+  }
+
+  /** Income vs costs for a period: totals, by month, by category, by client. */
+  async getProfit(orgId: string, from?: string, to?: string): Promise<Profit | null> {
+    const { data, error } = await bookingsDb.rpc('get_profit', {
+      p_org: orgId, p_from: from ?? null, p_to: to ?? null,
+    });
+    if (error) { console.error('[BookingData] getProfit:', error); return null; }
+    return (data ?? null) as Profit | null;
+  }
+
   /** Shortcut: record the full outstanding balance as a cash payment. */
   async recordCashPayment(bookingId: string, amount: number): Promise<void> {
     await this.addPayment(bookingId, { amount, method: 'cash', note: 'Marked as paid' });
@@ -780,7 +863,7 @@ export class BookingDataService implements OnDestroy {
       .from('booking_summary')
       .select('*')
       .eq('org_id', org)
-      .order('start_at', { ascending: false });
+      .order('next_start_at', { ascending: false });
     if (error) console.error('[BookingData] fetchBookings:', error);
     this.bookings.set((data ?? []) as BookingSummary[]);
   }
@@ -793,14 +876,14 @@ export class BookingDataService implements OnDestroy {
     const A = BookingDataService.ACTIVE;
     switch (tab) {
       // Upcoming = happening now or still to come (real OR external), soonest first.
-      case 'upcoming':  return q.in('status', ['booked', 'in_progress']).gte('end_at', nowIso).order('start_at', { ascending: true });
-      case 'past':      return q.eq('is_external', false).in('status', A).lt('end_at', nowIso).order('start_at', { ascending: false });
-      case 'pending':   return q.eq('status', 'pending').order('start_at', { ascending: true });
-      case 'unpaid':    return q.eq('is_external', false).in('status', A).in('payment_status', ['unpaid', 'partial']).order('start_at', { ascending: true });
-      case 'paid':      return q.eq('is_external', false).in('status', A).eq('payment_status', 'paid').order('start_at', { ascending: false });
-      case 'external':  return q.eq('is_external', true).order('start_at', { ascending: true });
-      case 'cancelled': return q.in('status', ['cancelled', 'expired']).order('start_at', { ascending: false });
-      case 'all':       return q.order('start_at', { ascending: false });
+      case 'upcoming':  return q.in('status', ['booked', 'in_progress']).gte('end_at', nowIso).order('next_start_at', { ascending: true });
+      case 'past':      return q.eq('is_external', false).in('status', A).lt('end_at', nowIso).order('next_start_at', { ascending: false });
+      case 'pending':   return q.eq('status', 'pending').order('next_start_at', { ascending: true });
+      case 'unpaid':    return q.eq('is_external', false).in('status', A).in('payment_status', ['unpaid', 'partial']).order('next_start_at', { ascending: true });
+      case 'paid':      return q.eq('is_external', false).in('status', A).eq('payment_status', 'paid').order('next_start_at', { ascending: false });
+      case 'external':  return q.eq('is_external', true).order('next_start_at', { ascending: true });
+      case 'cancelled': return q.in('status', ['cancelled', 'expired']).order('next_start_at', { ascending: false });
+      case 'all':       return q.order('next_start_at', { ascending: false });
     }
   }
 

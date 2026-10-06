@@ -83,6 +83,7 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
       timeHint="tap start, then end · adds a block · pick other days too"
       emptyText="No times on this day."
       [showBusyReason]="true"
+      [collapseQuietHours]="true"
       [monthLabel]="monthLabel()"
       [canGoPrev]="canGoPrev()"
       [cells]="cells()"
@@ -268,7 +269,7 @@ export class AvailabilityPickerComponent {
     for (let i = 0; i < firstDow; i++) cells.push({ date: null, day: 0, available: false, isPast: false });
     for (let d = 1; d <= dim; d++) {
       const date = toDateStr(new Date(y, m, d));
-      cells.push({ date, day: d, available: true, isPast: date < todayStr });
+      cells.push({ date, day: d, available: true, isPast: date < todayStr, isToday: date === todayStr });
     }
     return cells;
   });

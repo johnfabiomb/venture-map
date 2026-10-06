@@ -28,6 +28,9 @@ export interface CalendarDayCell {
   day: number;
   available: boolean;
   isPast: boolean;
+  /** Today in the viewer's local date. Without it the month grid is a wall of numbers
+   *  with no anchor, which is disorienting when picking a date a week or two out. */
+  isToday?: boolean;
 }
 
 /** A decorated hour pill. The container fills in the styling/selection flags. */
