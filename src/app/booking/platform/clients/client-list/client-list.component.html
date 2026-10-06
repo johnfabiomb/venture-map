@@ -29,7 +29,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (c of data.clients(); track c.id) {
+          @for (c of paged.items(); track c.id) {
             <tr class="row" (click)="openEdit(c)">
               <td class="cell--client" data-label="Name">{{ c.name }}</td>
               <td data-label="Email">{{ c.email ?? '—' }}</td>
@@ -43,6 +43,8 @@
         </tbody>
       </table>
     </div>
+    <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
+                   [total]="paged.total()" (pageChange)="paged.setPage($event)" />
   }
 </div>
 

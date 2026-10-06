@@ -9,6 +9,8 @@ import { BookingDataService } from '@booking/core/services/booking-data.service'
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
+import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
+import { paginate } from '@booking/core/utils/pagination.util';
 import { BookingSummary, BookingTab, PaymentStatus } from '@booking/core/interfaces/booking.interface';
 import { InvoiceListRow, DeletedBooking } from '@booking/core/interfaces/invoice.interface';
 
@@ -20,7 +22,10 @@ const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
 };
 
 // 'external' is intentionally not a selectable tab — those bookings still show under Upcoming/Past/All.
-const TAB_KEYS: BookingTab[] = ['upcoming', 'pending', 'unpaid', 'paid', 'past', 'cancelled', 'all'];
+// 'deleted' IS selectable and must be listed: this array is the allowlist the ?tab= param
+// is validated against, so leaving it out made clicking Deleted write the URL and then
+// bounce straight back to the persisted tab.
+const TAB_KEYS: BookingTab[] = ['upcoming', 'pending', 'unpaid', 'paid', 'past', 'cancelled', 'all', 'deleted'];
 const EMPTY_COUNTS: Record<BookingTab, number> =
   { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0, deleted: 0 };
 
@@ -39,7 +44,7 @@ const EMPTY_TEXT: Record<BookingTab, string> = {
 @Component({
   selector: 'app-booking-list',
   standalone: true,
-  imports: [RouterLink, NgClass, DatePipe, CurrencyPipe, CdkMenuTrigger, CdkMenu, CdkMenuItem, FormsModule, ModalComponent],
+  imports: [RouterLink, NgClass, DatePipe, CurrencyPipe, CdkMenuTrigger, CdkMenu, CdkMenuItem, FormsModule, ModalComponent, PaginatorComponent],
   templateUrl: './booking-list.component.html',
   styleUrl: './booking-list.component.scss',
 })
@@ -108,6 +113,7 @@ export class BookingListComponent {
     effect(() => {
       const tab = this.tab();
       const q = this.debouncedSearch();
+      this.paged.reset();
       void this.loadRows(tab, q);
       // The Deleted tab is served by an RPC, not by loadRows — refresh it when opened so
       // it reflects anything deleted since the page loaded.
@@ -124,6 +130,12 @@ export class BookingListComponent {
     this.router.navigate([], { queryParams: { tab }, queryParamsHandling: 'merge' });
   }
 
+  // ── Paging ──────────────────────────────────────────────────────────────
+  // Rows arrive per-tab from the server already; this pages what came back. The
+  // paginator only sees page/pageCount/total, so moving to a server range later is a
+  // change to this helper alone.
+  readonly paged = paginate(this.rows);
+
   private async loadRows(tab: BookingTab, search: string): Promise<void> {
     this.rowsLoading.set(true);
     this.rows.set(await this.data.queryBookings(tab, search));
@@ -138,6 +150,7 @@ export class BookingListComponent {
 
   // ── Deleted / restore ───────────────────────────────────────────────────
   readonly deletedRows = signal<DeletedBooking[]>([]);
+  readonly pagedDeleted = paginate(this.deletedRows);
   readonly restoring = signal('');
 
   async loadDeleted(): Promise<void> {

@@ -1,6 +1,10 @@
 import {
   ClientEditorComponent
 } from "./chunk-UT2S5O7U.js";
+import {
+  PaginatorComponent,
+  paginate
+} from "./chunk-32VX3ME2.js";
 import "./chunk-5MZRX563.js";
 import {
   BookingDataService
@@ -49,8 +53,8 @@ function ClientListComponent_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 8);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 11);
-    \u0275\u0275element(2, "circle", 12)(3, "path", 13);
+    \u0275\u0275elementStart(1, "svg", 10);
+    \u0275\u0275element(2, "circle", 11)(3, "path", 12);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(4, "p");
@@ -60,33 +64,33 @@ function ClientListComponent_Conditional_12_Template(rf, ctx) {
 }
 function ClientListComponent_Conditional_13_For_19_Template(rf, ctx) {
   if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 16);
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr", 17);
     \u0275\u0275listener("click", function ClientListComponent_Conditional_13_For_19_Template_tr_click_0_listener() {
-      const c_r2 = \u0275\u0275restoreView(_r1).$implicit;
-      const ctx_r2 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r2.openEdit(c_r2));
+      const c_r3 = \u0275\u0275restoreView(_r2).$implicit;
+      const ctx_r3 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r3.openEdit(c_r3));
     });
-    \u0275\u0275elementStart(1, "td", 17);
+    \u0275\u0275elementStart(1, "td", 18);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 18);
+    \u0275\u0275elementStart(3, "td", 19);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 19);
+    \u0275\u0275elementStart(5, "td", 20);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "td", 20);
+    \u0275\u0275elementStart(7, "td", 21);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 21);
+    \u0275\u0275elementStart(9, "td", 22);
     \u0275\u0275text(10);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 22);
+    \u0275\u0275elementStart(11, "td", 23);
     \u0275\u0275text(12);
     \u0275\u0275pipe(13, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 23)(15, "span", 24);
+    \u0275\u0275elementStart(14, "td", 24)(15, "span", 25);
     \u0275\u0275text(16, "Edit");
     \u0275\u0275elementEnd()()();
   }
@@ -95,24 +99,25 @@ function ClientListComponent_Conditional_13_For_19_Template(rf, ctx) {
     let tmp_13_0;
     let tmp_14_0;
     let tmp_15_0;
-    const c_r2 = ctx.$implicit;
+    const c_r3 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(c_r2.name);
+    \u0275\u0275textInterpolate(c_r3.name);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((tmp_12_0 = c_r2.email) !== null && tmp_12_0 !== void 0 ? tmp_12_0 : "\u2014");
+    \u0275\u0275textInterpolate((tmp_12_0 = c_r3.email) !== null && tmp_12_0 !== void 0 ? tmp_12_0 : "\u2014");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((tmp_13_0 = c_r2.phone) !== null && tmp_13_0 !== void 0 ? tmp_13_0 : "\u2014");
+    \u0275\u0275textInterpolate((tmp_13_0 = c_r3.phone) !== null && tmp_13_0 !== void 0 ? tmp_13_0 : "\u2014");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((tmp_14_0 = c_r2.company) !== null && tmp_14_0 !== void 0 ? tmp_14_0 : "\u2014");
+    \u0275\u0275textInterpolate((tmp_14_0 = c_r3.company) !== null && tmp_14_0 !== void 0 ? tmp_14_0 : "\u2014");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((tmp_15_0 = c_r2.vat_number) !== null && tmp_15_0 !== void 0 ? tmp_15_0 : "\u2014");
+    \u0275\u0275textInterpolate((tmp_15_0 = c_r3.vat_number) !== null && tmp_15_0 !== void 0 ? tmp_15_0 : "\u2014");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(13, 6, c_r2.created_at, "d MMM yy"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(13, 6, c_r3.created_at, "d MMM yy"));
   }
 }
 function ClientListComponent_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 9)(1, "table", 14)(2, "thead")(3, "tr")(4, "th");
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 13)(1, "table", 14)(2, "thead")(3, "tr")(4, "th");
     \u0275\u0275text(5, "Name");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "th");
@@ -135,16 +140,26 @@ function ClientListComponent_Conditional_13_Template(rf, ctx) {
     \u0275\u0275elementStart(17, "tbody");
     \u0275\u0275repeaterCreate(18, ClientListComponent_Conditional_13_For_19_Template, 17, 9, "tr", 15, _forTrack0);
     \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(20, "app-paginator", 16);
+    \u0275\u0275listener("pageChange", function ClientListComponent_Conditional_13_Template_app_paginator_pageChange_20_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r3 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r3.paged.setPage($event));
+    });
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const ctx_r2 = \u0275\u0275nextContext();
+    const ctx_r3 = \u0275\u0275nextContext();
     \u0275\u0275advance(18);
-    \u0275\u0275repeater(ctx_r2.data.clients());
+    \u0275\u0275repeater(ctx_r3.paged.items());
+    \u0275\u0275advance(2);
+    \u0275\u0275property("page", ctx_r3.paged.page())("pageCount", ctx_r3.paged.pageCount())("total", ctx_r3.paged.total());
   }
 }
 var ClientListComponent = class _ClientListComponent {
   constructor() {
     this.data = inject(BookingDataService);
+    this.paged = paginate(this.data.clients);
     this.editorOpen = signal(false);
     this.editClient = signal(null);
   }
@@ -162,7 +177,7 @@ var ClientListComponent = class _ClientListComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ClientListComponent, selectors: [["app-client-list"]], decls: 15, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], [1, "btn", "btn--primary", 3, "click"], ["viewBox", "0 0 16 16", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], ["d", "M8 3v10M3 8h10"], [1, "empty"], [1, "table-wrap"], [3, "openChange", "open", "client"], ["viewBox", "0 0 48 48", "fill", "none", "stroke", "currentColor", "stroke-width", "1.5"], ["cx", "18", "cy", "18", "r", "8"], ["d", "M6 42c0-7 5-11 12-11s12 4 12 11"], [1, "table"], [1, "row"], [1, "row", 3, "click"], ["data-label", "Name", 1, "cell--client"], ["data-label", "Email"], ["data-label", "Phone"], ["data-label", "Company"], ["data-label", "VAT"], ["data-label", "Since", 1, "cell--date"], ["data-label", "", 1, "cell--edit"], [1, "link"]], template: function ClientListComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ClientListComponent, selectors: [["app-client-list"]], decls: 15, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], [1, "btn", "btn--primary", 3, "click"], ["viewBox", "0 0 16 16", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], ["d", "M8 3v10M3 8h10"], [1, "empty"], [3, "openChange", "open", "client"], ["viewBox", "0 0 48 48", "fill", "none", "stroke", "currentColor", "stroke-width", "1.5"], ["cx", "18", "cy", "18", "r", "8"], ["d", "M6 42c0-7 5-11 12-11s12 4 12 11"], [1, "table-wrap"], [1, "table"], [1, "row"], [3, "pageChange", "page", "pageCount", "total"], [1, "row", 3, "click"], ["data-label", "Name", 1, "cell--client"], ["data-label", "Email"], ["data-label", "Phone"], ["data-label", "Company"], ["data-label", "VAT"], ["data-label", "Since", 1, "cell--date"], ["data-label", "", 1, "cell--edit"], [1, "link"]], template: function ClientListComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div")(3, "h1", 2);
         \u0275\u0275text(4, "Clients");
@@ -180,10 +195,10 @@ var ClientListComponent = class _ClientListComponent {
         \u0275\u0275elementEnd();
         \u0275\u0275text(11, " New client ");
         \u0275\u0275elementEnd()()();
-        \u0275\u0275template(12, ClientListComponent_Conditional_12_Template, 6, 0, "div", 8)(13, ClientListComponent_Conditional_13_Template, 20, 0, "div", 9);
+        \u0275\u0275template(12, ClientListComponent_Conditional_12_Template, 6, 0, "div", 8)(13, ClientListComponent_Conditional_13_Template, 21, 3);
         \u0275\u0275elementEnd();
         \u0275\u0275namespaceHTML();
-        \u0275\u0275elementStart(14, "app-client-editor", 10);
+        \u0275\u0275elementStart(14, "app-client-editor", 9);
         \u0275\u0275twoWayListener("openChange", function ClientListComponent_Template_app_client_editor_openChange_14_listener($event) {
           \u0275\u0275twoWayBindingSet(ctx.editorOpen, $event) || (ctx.editorOpen = $event);
           return $event;
@@ -197,7 +212,7 @@ var ClientListComponent = class _ClientListComponent {
         \u0275\u0275twoWayProperty("open", ctx.editorOpen);
         \u0275\u0275property("client", ctx.editClient());
       }
-    }, dependencies: [DatePipe, ClientEditorComponent], styles: [`
+    }, dependencies: [DatePipe, ClientEditorComponent, PaginatorComponent], styles: [`
 
 .page[_ngcontent-%COMP%] {
   padding: 32px 40px;
@@ -602,9 +617,9 @@ var ClientListComponent = class _ClientListComponent {
   }
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ClientListComponent, { className: "ClientListComponent", filePath: "src/app/booking/platform/clients/client-list/client-list.component.ts", lineNumber: 14 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ClientListComponent, { className: "ClientListComponent", filePath: "src/app/booking/platform/clients/client-list/client-list.component.ts", lineNumber: 16 });
 })();
 export {
   ClientListComponent
 };
-//# sourceMappingURL=chunk-37PEVWFY.js.map
+//# sourceMappingURL=chunk-HV2BR5EW.js.map

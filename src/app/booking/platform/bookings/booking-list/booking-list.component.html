@@ -86,7 +86,7 @@
               <tr><th>Ref</th><th>Client</th><th>Job</th><th>When</th><th class="num">Total</th><th>Deleted</th><th></th></tr>
             </thead>
             <tbody>
-              @for (d of deletedRows(); track d.id) {
+              @for (d of pagedDeleted.items(); track d.id) {
                 <tr>
                   <td class="mono" data-label="Ref">{{ d.booking_ref }}</td>
                   <td class="ellipsis" data-label="Client">{{ d.client_name ?? '—' }}</td>
@@ -104,13 +104,15 @@
             </tbody>
           </table>
         </div>
+        <app-paginator [page]="pagedDeleted.page()" [pageCount]="pagedDeleted.pageCount()"
+                       [total]="pagedDeleted.total()" (pageChange)="pagedDeleted.setPage($event)" />
       }
     } @else if (rows().length === 0) {
       <div class="empty-tab">{{ emptyText() }}</div>
     } @else if (tab() === 'pending') {
       <!-- Cash requests awaiting approval -->
       <div class="requests">
-        @for (b of rows(); track b.id) {
+        @for (b of paged.items(); track b.id) {
           <div class="request">
             <div class="request__main">
               <div class="request__who">{{ b.client_name ?? '—' }}</div>
@@ -126,6 +128,8 @@
           </div>
         }
       </div>
+      <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
+                     [total]="paged.total()" (pageChange)="paged.setPage($event)" />
     } @else {
       <div class="table-wrap">
         <table class="table">
@@ -136,7 +140,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (b of rows(); track b.id) {
+            @for (b of paged.items(); track b.id) {
               <tr [class.row--external]="b.is_external" [class.row--next]="b.id === nextId()">
                 <td class="cell--mono" data-label="Ref">
                   <button class="ref-link" (click)="goDetail(b)">{{ b.booking_ref }}</button>
@@ -206,6 +210,8 @@
           </tbody>
         </table>
       </div>
+      <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
+                     [total]="paged.total()" (pageChange)="paged.setPage($event)" />
     }
   }
 

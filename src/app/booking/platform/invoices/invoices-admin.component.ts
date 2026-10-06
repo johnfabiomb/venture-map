@@ -10,6 +10,8 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
+import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
+import { paginate } from '@booking/core/utils/pagination.util';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
 /** What a row's money actually is. */
@@ -35,7 +37,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -157,6 +159,14 @@ export class InvoicesAdminComponent implements OnInit {
     if (t === 'overdue') return this.yearScoped().filter(r => r.is_overdue);
     return this.yearScoped().filter(r => r.payment_status === t);
   });
+
+  // Paging. `filtered` already reflects the year + tab, so switching either changes the
+  // set and must return to page one — hence reset() in setTab/setYear below.
+  readonly paged = paginate(this.filtered);
+  readonly pagedDeleted = paginate(this.deleted);
+
+  setTab(t: InvoiceTab): void { this.tab.set(t); this.paged.reset(); }
+  setYear(y: string): void { this.year.set(y); this.paged.reset(); }
 
   // Summary reflects the whole period (year), independent of the active tab.
   readonly totalBilled = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_gross, 0));

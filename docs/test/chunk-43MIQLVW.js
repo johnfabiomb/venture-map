@@ -1,6 +1,10 @@
 import {
   ExpenseDialogComponent
 } from "./chunk-KCTYYQKX.js";
+import {
+  PaginatorComponent,
+  paginate
+} from "./chunk-32VX3ME2.js";
 import "./chunk-5MZRX563.js";
 import {
   ConfirmService
@@ -348,36 +352,36 @@ function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const r_r8 = \u0275\u0275nextContext().$implicit;
+    const r_r9 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("\xB7 ", r_r8.vendor, "");
+    \u0275\u0275textInterpolate1("\xB7 ", r_r9.vendor, "");
   }
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 44);
+    \u0275\u0275elementStart(0, "span", 45);
     \u0275\u0275text(1, "charged");
     \u0275\u0275elementEnd();
   }
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_11_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 45);
+    \u0275\u0275elementStart(0, "span", 46);
     \u0275\u0275text(1, "to charge");
     \u0275\u0275elementEnd();
   }
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 47);
+    \u0275\u0275elementStart(0, "a", 48);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const r_r8 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c0, r_r8.booking_id));
+    const r_r9 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275property("routerLink", \u0275\u0275pureFunction1(2, _c0, r_r9.booking_id));
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(r_r8.booking_ref);
+    \u0275\u0275textInterpolate(r_r9.booking_ref);
   }
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_14_Template(rf, ctx) {
@@ -389,62 +393,63 @@ function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Template(rf, ctx) {
   if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr")(1, "td", 40);
+    const _r8 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "tr")(1, "td", 41);
     \u0275\u0275text(2);
     \u0275\u0275pipe(3, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "td", 41)(5, "span", 42);
+    \u0275\u0275elementStart(4, "td", 42)(5, "span", 43);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "td", 43);
+    \u0275\u0275elementStart(7, "td", 44);
     \u0275\u0275text(8);
-    \u0275\u0275template(9, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_9_Template, 2, 1, "span", 20)(10, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_10_Template, 2, 0, "span", 44)(11, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_11_Template, 2, 0, "span", 45);
+    \u0275\u0275template(9, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_9_Template, 2, 1, "span", 20)(10, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_10_Template, 2, 0, "span", 45)(11, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_11_Template, 2, 0, "span", 46);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "td", 46);
-    \u0275\u0275template(13, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_13_Template, 2, 4, "a", 47)(14, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_14_Template, 2, 0, "span", 20);
+    \u0275\u0275elementStart(12, "td", 47);
+    \u0275\u0275template(13, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_13_Template, 2, 4, "a", 48)(14, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Conditional_14_Template, 2, 0, "span", 20);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 48);
+    \u0275\u0275elementStart(15, "td", 49);
     \u0275\u0275text(16);
     \u0275\u0275pipe(17, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "td", 49)(19, "button", 50);
+    \u0275\u0275elementStart(18, "td", 50)(19, "button", 51);
     \u0275\u0275listener("click", function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Template_button_click_19_listener() {
-      const r_r8 = \u0275\u0275restoreView(_r7).$implicit;
+      const r_r9 = \u0275\u0275restoreView(_r8).$implicit;
       const ctx_r2 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r2.openDialog(r_r8));
+      return \u0275\u0275resetView(ctx_r2.openDialog(r_r9));
     });
     \u0275\u0275text(20, "Edit");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "button", 51);
+    \u0275\u0275elementStart(21, "button", 52);
     \u0275\u0275listener("click", function ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Template_button_click_21_listener() {
-      const r_r8 = \u0275\u0275restoreView(_r7).$implicit;
+      const r_r9 = \u0275\u0275restoreView(_r8).$implicit;
       const ctx_r2 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r2.remove(r_r8));
+      return \u0275\u0275resetView(ctx_r2.remove(r_r9));
     });
     \u0275\u0275text(22, "Remove");
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
-    const r_r8 = ctx.$implicit;
+    const r_r9 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(3, 7, r_r8.spent_on, "d MMM y"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(3, 7, r_r9.spent_on, "d MMM y"));
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(r_r8.category);
+    \u0275\u0275textInterpolate(r_r9.category);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1(" ", r_r8.description, " ");
+    \u0275\u0275textInterpolate1(" ", r_r9.description, " ");
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r8.vendor ? 9 : -1);
+    \u0275\u0275conditional(r_r9.vendor ? 9 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(r_r8.invoice_id ? 10 : r_r8.billable ? 11 : -1);
+    \u0275\u0275conditional(r_r9.invoice_id ? 10 : r_r9.billable ? 11 : -1);
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(r_r8.booking_ref ? 13 : 14);
+    \u0275\u0275conditional(r_r9.booking_ref ? 13 : 14);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1("\u2212", \u0275\u0275pipeBind4(17, 10, r_r8.amount, "EUR", "symbol", "1.2-2"), "");
+    \u0275\u0275textInterpolate1("\u2212", \u0275\u0275pipeBind4(17, 10, r_r9.amount, "EUR", "symbol", "1.2-2"), "");
   }
 }
 function ExpensesAdminComponent_Conditional_16_Conditional_29_Template(rf, ctx) {
   if (rf & 1) {
+    const _r7 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 18)(1, "table", 27)(2, "thead")(3, "tr")(4, "th");
     \u0275\u0275text(5, "Date");
     \u0275\u0275elementEnd();
@@ -465,11 +470,20 @@ function ExpensesAdminComponent_Conditional_16_Conditional_29_Template(rf, ctx) 
     \u0275\u0275elementStart(15, "tbody");
     \u0275\u0275repeaterCreate(16, ExpensesAdminComponent_Conditional_16_Conditional_29_For_17_Template, 23, 15, "tr", null, _forTrack3);
     \u0275\u0275elementEnd()()();
+    \u0275\u0275elementStart(18, "app-paginator", 40);
+    \u0275\u0275listener("pageChange", function ExpensesAdminComponent_Conditional_16_Conditional_29_Template_app_paginator_pageChange_18_listener($event) {
+      \u0275\u0275restoreView(_r7);
+      const ctx_r2 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r2.paged.setPage($event));
+    });
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(16);
-    \u0275\u0275repeater(ctx_r2.rows());
+    \u0275\u0275repeater(ctx_r2.paged.items());
+    \u0275\u0275advance(2);
+    \u0275\u0275property("page", ctx_r2.paged.page())("pageCount", ctx_r2.paged.pageCount())("total", ctx_r2.paged.total());
   }
 }
 function ExpensesAdminComponent_Conditional_16_Template(rf, ctx) {
@@ -499,7 +513,7 @@ function ExpensesAdminComponent_Conditional_16_Template(rf, ctx) {
     \u0275\u0275elementStart(26, "span", 20);
     \u0275\u0275text(27);
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(28, ExpensesAdminComponent_Conditional_16_Conditional_28_Template, 2, 1, "p", 17)(29, ExpensesAdminComponent_Conditional_16_Conditional_29_Template, 18, 0, "div", 18);
+    \u0275\u0275template(28, ExpensesAdminComponent_Conditional_16_Conditional_28_Template, 2, 1, "p", 17)(29, ExpensesAdminComponent_Conditional_16_Conditional_29_Template, 19, 3);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -535,6 +549,7 @@ var ExpensesAdminComponent = class _ExpensesAdminComponent {
         seen.add(r.spent_on.slice(0, 4));
       return [...seen].sort((a, b) => b.localeCompare(a));
     });
+    this.paged = paginate(this.rows);
     this.dialogOpen = signal(false);
     this.editing = signal(null);
     this.totals = computed(() => this.profit()?.totals ?? null);
@@ -584,6 +599,7 @@ var ExpensesAdminComponent = class _ExpensesAdminComponent {
   setYear(y) {
     return __async(this, null, function* () {
       this.year.set(y);
+      this.paged.reset();
       this.loading.set(true);
       yield this.reload();
       this.loading.set(false);
@@ -638,7 +654,7 @@ var ExpensesAdminComponent = class _ExpensesAdminComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ExpensesAdminComponent, selectors: [["app-expenses-admin"]], decls: 18, vars: 5, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["name", "year", 1, "year-select", 3, "ngModelChange", "ngModel"], [3, "value"], [1, "btn", "btn--ghost", 3, "click", "disabled"], [1, "btn", "btn--primary", 3, "click"], [1, "loading"], [3, "openChange", "saved", "open", "expense"], [1, "spinner"], [1, "summary"], [1, "cols"], [1, "card"], [1, "card__head"], [1, "card__title"], [1, "empty-line"], [1, "table-wrap"], [1, "cats"], [1, "muted"], [1, "summary__card"], [1, "summary__label"], [1, "summary__val"], [1, "summary__val", "summary__val--cost"], [1, "summary__card", "summary__card--hero"], [1, "summary__note"], [1, "table"], [1, "num"], ["data-label", "Month"], ["data-label", "Income", 1, "num"], ["data-label", "Costs", 1, "num", "num--cost"], ["data-label", "Profit", 1, "num", "num--total"], [1, "cat"], [1, "cat__top"], [1, "cat__name"], [1, "cat__amt"], [1, "cat__bar"], [1, "cat__fill"], ["data-label", "Client"], ["data-label", "Date"], ["data-label", "Category"], [1, "chip"], ["data-label", "What", 1, "ellipsis"], [1, "chip", "chip--bill"], [1, "chip", "chip--todo"], ["data-label", "Job"], [1, "joblink", 3, "routerLink"], ["data-label", "Amount", 1, "num", "num--cost"], ["data-label", "", 1, "cell--actions"], [1, "link-btn", 3, "click"], [1, "link-btn", "link-btn--danger", 3, "click"]], template: function ExpensesAdminComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ExpensesAdminComponent, selectors: [["app-expenses-admin"]], decls: 18, vars: 5, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["name", "year", 1, "year-select", 3, "ngModelChange", "ngModel"], [3, "value"], [1, "btn", "btn--ghost", 3, "click", "disabled"], [1, "btn", "btn--primary", 3, "click"], [1, "loading"], [3, "openChange", "saved", "open", "expense"], [1, "spinner"], [1, "summary"], [1, "cols"], [1, "card"], [1, "card__head"], [1, "card__title"], [1, "empty-line"], [1, "table-wrap"], [1, "cats"], [1, "muted"], [1, "summary__card"], [1, "summary__label"], [1, "summary__val"], [1, "summary__val", "summary__val--cost"], [1, "summary__card", "summary__card--hero"], [1, "summary__note"], [1, "table"], [1, "num"], ["data-label", "Month"], ["data-label", "Income", 1, "num"], ["data-label", "Costs", 1, "num", "num--cost"], ["data-label", "Profit", 1, "num", "num--total"], [1, "cat"], [1, "cat__top"], [1, "cat__name"], [1, "cat__amt"], [1, "cat__bar"], [1, "cat__fill"], ["data-label", "Client"], [3, "pageChange", "page", "pageCount", "total"], ["data-label", "Date"], ["data-label", "Category"], [1, "chip"], ["data-label", "What", 1, "ellipsis"], [1, "chip", "chip--bill"], [1, "chip", "chip--todo"], ["data-label", "Job"], [1, "joblink", 3, "routerLink"], ["data-label", "Amount", 1, "num", "num--cost"], ["data-label", "", 1, "cell--actions"], [1, "link-btn", 3, "click"], [1, "link-btn", "link-btn--danger", 3, "click"]], template: function ExpensesAdminComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div")(3, "h1", 2);
         \u0275\u0275text(4, "Costs & profit");
@@ -688,7 +704,7 @@ var ExpensesAdminComponent = class _ExpensesAdminComponent {
         \u0275\u0275twoWayProperty("open", ctx.dialogOpen);
         \u0275\u0275property("expense", ctx.editing());
       }
-    }, dependencies: [DatePipe, CurrencyPipe, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, SelectControlValueAccessor, NgControlStatus, NgModel, RouterLink, ExpenseDialogComponent], styles: [`
+    }, dependencies: [DatePipe, CurrencyPipe, FormsModule, NgSelectOption, \u0275NgSelectMultipleOption, SelectControlValueAccessor, NgControlStatus, NgModel, RouterLink, ExpenseDialogComponent, PaginatorComponent], styles: [`
 
 .page[_ngcontent-%COMP%] {
   padding: 32px 40px;
@@ -1243,9 +1259,9 @@ var ExpensesAdminComponent = class _ExpensesAdminComponent {
   }
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ExpensesAdminComponent, { className: "ExpensesAdminComponent", filePath: "src/app/booking/platform/expenses/expenses-admin.component.ts", lineNumber: 30 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ExpensesAdminComponent, { className: "ExpensesAdminComponent", filePath: "src/app/booking/platform/expenses/expenses-admin.component.ts", lineNumber: 32 });
 })();
 export {
   ExpensesAdminComponent
 };
-//# sourceMappingURL=chunk-C3CQHYTP.js.map
+//# sourceMappingURL=chunk-43MIQLVW.js.map

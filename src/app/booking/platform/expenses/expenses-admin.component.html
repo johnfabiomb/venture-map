@@ -133,7 +133,7 @@
               <tr><th>Date</th><th>Category</th><th>What</th><th>Job</th><th class="num">Amount</th><th></th></tr>
             </thead>
             <tbody>
-              @for (r of rows(); track r.id) {
+              @for (r of paged.items(); track r.id) {
                 <tr>
                   <td data-label="Date">{{ r.spent_on | date:'d MMM y' }}</td>
                   <td data-label="Category"><span class="chip">{{ r.category }}</span></td>
@@ -162,6 +162,8 @@
             </tbody>
           </table>
         </div>
+        <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
+                       [total]="paged.total()" (pageChange)="paged.setPage($event)" />
       }
     </div>
   }
