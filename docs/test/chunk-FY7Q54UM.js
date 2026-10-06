@@ -414,11 +414,11 @@ function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_2
     \u0275\u0275elementEnd();
   }
 }
-function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_6_Template(rf, ctx) {
+function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     const _r16 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "button", 82);
-    \u0275\u0275listener("click", function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_6_Template_button_click_0_listener() {
+    \u0275\u0275listener("click", function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_8_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r16);
       const b_r12 = \u0275\u0275nextContext(3).$implicit;
       const ctx_r3 = \u0275\u0275nextContext(3);
@@ -450,23 +450,32 @@ function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_2
     });
     \u0275\u0275text(5, "Edit booking");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(6, BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_6_Template, 2, 0, "button", 81);
-    \u0275\u0275elementStart(7, "button", 82);
-    \u0275\u0275listener("click", function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Template_button_click_7_listener() {
+    \u0275\u0275elementStart(6, "button", 79);
+    \u0275\u0275listener("click", function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Template_button_click_6_listener() {
+      \u0275\u0275restoreView(_r14);
+      const b_r12 = \u0275\u0275nextContext(2).$implicit;
+      const ctx_r3 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r3.goDuplicate(b_r12));
+    });
+    \u0275\u0275text(7, "Duplicate booking\u2026");
+    \u0275\u0275elementEnd();
+    \u0275\u0275template(8, BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Conditional_8_Template, 2, 0, "button", 81);
+    \u0275\u0275elementStart(9, "button", 82);
+    \u0275\u0275listener("click", function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Template_button_click_9_listener() {
       \u0275\u0275restoreView(_r14);
       const b_r12 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r3 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r3.askDelete(b_r12));
     });
-    \u0275\u0275text(8, "Delete booking");
+    \u0275\u0275text(10, "Delete booking");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
     const b_r12 = \u0275\u0275nextContext(2).$implicit;
     \u0275\u0275advance(3);
     \u0275\u0275conditional(b_r12.payment_status !== "paid" && b_r12.payment_status !== "external" ? 3 : -1);
-    \u0275\u0275advance(3);
-    \u0275\u0275conditional(b_r12.status !== "cancelled" ? 6 : -1);
+    \u0275\u0275advance(5);
+    \u0275\u0275conditional(b_r12.status !== "cancelled" ? 8 : -1);
   }
 }
 function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_Template(rf, ctx) {
@@ -486,7 +495,7 @@ function BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_2
     \u0275\u0275elementStart(4, "svg", 74);
     \u0275\u0275element(5, "circle", 75)(6, "circle", 76)(7, "circle", 77);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275template(8, BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Template, 9, 2, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+    \u0275\u0275template(8, BookingListComponent_Conditional_37_Conditional_13_For_21_Conditional_27_ng_template_8_Template, 11, 2, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
   }
   if (rf & 2) {
     const rowMenu_r17 = \u0275\u0275reference(9);
@@ -808,6 +817,11 @@ var EMPTY_TEXT = {
 var BookingListComponent = class _BookingListComponent {
   goEdit(b) {
     this.router.navigate(["/bookings", b.id, "edit"]);
+  }
+  /** Clone this job into a new booking — same client, charges and settings, no times.
+   *  Lands on /bookings/new because the result is a new booking, not an edit of this one. */
+  goDuplicate(b) {
+    this.router.navigate(["/bookings/new"], { queryParams: { from: b.id } });
   }
   goDetail(b) {
     this.router.navigate(["/bookings", b.id]);
@@ -2089,4 +2103,4 @@ var BookingListComponent = class _BookingListComponent {
 export {
   BookingListComponent
 };
-//# sourceMappingURL=chunk-GYMF4YNS.js.map
+//# sourceMappingURL=chunk-FY7Q54UM.js.map

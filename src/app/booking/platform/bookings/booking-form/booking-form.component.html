@@ -59,6 +59,15 @@
     <div class="form-layout">
     <form class="card form" (ngSubmit)="submit()">
 
+      <!-- Says plainly that the empty Schedule is intentional. Without it a prefilled form
+           with no times reads as a bug. -->
+      @if (copiedFrom(); as src) {
+        <p class="cloned">
+          Copied from <strong>{{ src }}</strong>. Everything carried over except the
+          times — pick new time blocks below.
+        </p>
+      }
+
       <!-- ══ Job ══════════════════════════════════════════════════════ -->
       <section class="sec">
         <h2 class="sec__title">Job</h2>

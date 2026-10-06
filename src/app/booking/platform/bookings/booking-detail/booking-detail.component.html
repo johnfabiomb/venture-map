@@ -21,6 +21,7 @@
         <button class="btn btn--ghost" (click)="copyInvoiceLink()">Copy invoice link</button>
         <a class="btn btn--ghost" [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
         <button class="btn btn--ghost" (click)="goEdit()">Edit</button>
+        <a class="btn btn--ghost" routerLink="/bookings/new" [queryParams]="{ from: id }">Duplicate</a>
       </div>
     </div>
 

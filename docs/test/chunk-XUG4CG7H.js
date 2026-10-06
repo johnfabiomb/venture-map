@@ -762,9 +762,24 @@ function BookingFormComponent_Conditional_11_Template(rf, ctx) {
     \u0275\u0275conditional((tmp_1_0 = ctx_r2.created()) ? 0 : -1, tmp_1_0);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_26_For_5_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 36);
+    \u0275\u0275elementStart(0, "p", 24);
+    \u0275\u0275text(1, " Copied from ");
+    \u0275\u0275elementStart(2, "strong");
+    \u0275\u0275text(3);
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(4, ". Everything carried over except the times \u2014 pick new time blocks below. ");
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    \u0275\u0275advance(3);
+    \u0275\u0275textInterpolate(ctx);
+  }
+}
+function BookingFormComponent_Conditional_12_Conditional_27_For_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "option", 37);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -775,37 +790,37 @@ function BookingFormComponent_Conditional_12_Conditional_26_For_5_Template(rf, c
     \u0275\u0275textInterpolate2("", c_r8.name, "", c_r8.company ? " \xB7 " + c_r8.company : "", "");
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_26_Conditional_8_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_27_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 42);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, "No VAT or billing address on this client \u2014 add them in Clients for a VAT-ready invoice.");
     \u0275\u0275elementEnd();
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_26_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_27_Template(rf, ctx) {
   if (rf & 1) {
     const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 70)(1, "select", 71);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_26_Template_select_ngModelChange_1_listener($event) {
+    \u0275\u0275elementStart(0, "div", 71)(1, "select", 72);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_27_Template_select_ngModelChange_1_listener($event) {
       \u0275\u0275restoreView(_r7);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.clientId, $event) || (ctx_r2.clientId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(2, "option", 35);
+    \u0275\u0275elementStart(2, "option", 36);
     \u0275\u0275text(3, "Select a client\u2026");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(4, BookingFormComponent_Conditional_12_Conditional_26_For_5_Template, 2, 3, "option", 36, _forTrack02);
+    \u0275\u0275repeaterCreate(4, BookingFormComponent_Conditional_12_Conditional_27_For_5_Template, 2, 3, "option", 37, _forTrack02);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "button", 72);
-    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Conditional_26_Template_button_click_6_listener() {
+    \u0275\u0275elementStart(6, "button", 73);
+    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Conditional_27_Template_button_click_6_listener() {
       \u0275\u0275restoreView(_r7);
       const ctx_r2 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r2.openClientEditor());
     });
     \u0275\u0275text(7, "+ New");
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, BookingFormComponent_Conditional_12_Conditional_26_Conditional_8_Template, 2, 0, "span", 42);
+    \u0275\u0275template(8, BookingFormComponent_Conditional_12_Conditional_27_Conditional_8_Template, 2, 0, "span", 43);
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(2);
@@ -817,11 +832,11 @@ function BookingFormComponent_Conditional_12_Conditional_26_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.selectedClient && !ctx_r2.selectedClient.vat_number && !ctx_r2.selectedClient.billing_address ? 8 : -1);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_27_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_28_Template(rf, ctx) {
   if (rf & 1) {
     const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "input", 73);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_27_Template_input_ngModelChange_0_listener($event) {
+    \u0275\u0275elementStart(0, "input", 74);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_28_Template_input_ngModelChange_0_listener($event) {
       \u0275\u0275restoreView(_r9);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.contactName, $event) || (ctx_r2.contactName = $event);
@@ -834,9 +849,9 @@ function BookingFormComponent_Conditional_12_Conditional_27_Template(rf, ctx) {
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.contactName);
   }
 }
-function BookingFormComponent_Conditional_12_For_36_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_For_37_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 36);
+    \u0275\u0275elementStart(0, "option", 37);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -847,23 +862,23 @@ function BookingFormComponent_Conditional_12_For_36_Template(rf, ctx) {
     \u0275\u0275textInterpolate(w_r10.name);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_37_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_38_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 37);
+    \u0275\u0275elementStart(0, "span", 38);
     \u0275\u0275text(1, "No bookable workers yet \u2014 add one in Staff.");
     \u0275\u0275elementEnd();
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_57_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_58_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 42);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1, "Pick a worker first to see their calendar.");
     \u0275\u0275elementEnd();
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_58_For_2_Conditional_5_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_59_For_2_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 77);
+    \u0275\u0275elementStart(0, "span", 78);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -873,15 +888,15 @@ function BookingFormComponent_Conditional_12_Conditional_58_For_2_Conditional_5_
     \u0275\u0275textInterpolate(s_r11.label);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_58_For_2_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_59_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 74)(1, "span", 75);
+    \u0275\u0275elementStart(0, "li", 75)(1, "span", 76);
     \u0275\u0275text(2, "\u2713");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 76);
+    \u0275\u0275elementStart(3, "span", 77);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(5, BookingFormComponent_Conditional_12_Conditional_58_For_2_Conditional_5_Template, 2, 1, "span", 77);
+    \u0275\u0275template(5, BookingFormComponent_Conditional_12_Conditional_59_For_2_Conditional_5_Template, 2, 1, "span", 78);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -892,10 +907,10 @@ function BookingFormComponent_Conditional_12_Conditional_58_For_2_Template(rf, c
     \u0275\u0275conditional(s_r11.label ? 5 : -1);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_58_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_59_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "ul", 43);
-    \u0275\u0275repeaterCreate(1, BookingFormComponent_Conditional_12_Conditional_58_For_2_Template, 6, 2, "li", 74, _forTrack1);
+    \u0275\u0275elementStart(0, "ul", 44);
+    \u0275\u0275repeaterCreate(1, BookingFormComponent_Conditional_12_Conditional_59_For_2_Template, 6, 2, "li", 75, _forTrack1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -904,21 +919,21 @@ function BookingFormComponent_Conditional_12_Conditional_58_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r2.selectedSlots);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_59_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_60_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 37);
+    \u0275\u0275elementStart(0, "span", 38);
     \u0275\u0275text(1, "Tap a start and an end time on the worker's calendar.");
     \u0275\u0275elementEnd();
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_93_Conditional_12_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_94_Conditional_12_Template(rf, ctx) {
   if (rf & 1) {
     const _r13 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 26)(1, "div", 27)(2, "label", 84);
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 28)(2, "label", 85);
     \u0275\u0275text(3, "Deposit %");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(4, "input", 85);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_93_Conditional_12_Template_input_ngModelChange_4_listener($event) {
+    \u0275\u0275elementStart(4, "input", 86);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_94_Conditional_12_Template_input_ngModelChange_4_listener($event) {
       \u0275\u0275restoreView(_r13);
       const ctx_r2 = \u0275\u0275nextContext(3);
       \u0275\u0275twoWayBindingSet(ctx_r2.depositPercent, $event) || (ctx_r2.depositPercent = $event);
@@ -932,9 +947,9 @@ function BookingFormComponent_Conditional_12_Conditional_93_Conditional_12_Templ
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.depositPercent);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_93_Conditional_13_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_94_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 83);
+    \u0275\u0275elementStart(0, "p", 84);
     \u0275\u0275text(1, " Client pays ");
     \u0275\u0275elementStart(2, "strong");
     \u0275\u0275text(3);
@@ -952,31 +967,31 @@ function BookingFormComponent_Conditional_12_Conditional_93_Conditional_13_Templ
     \u0275\u0275textInterpolate1(" now, ", \u0275\u0275pipeBind4(6, 7, ctx_r2.priceTotal * (100 - ctx_r2.depositPercent) / 100, "EUR", "symbol", "1.0-2"), " later. ");
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_93_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_94_Template(rf, ctx) {
   if (rf & 1) {
     const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 78)(1, "div", 26)(2, "div", 27)(3, "label");
+    \u0275\u0275elementStart(0, "div", 79)(1, "div", 27)(2, "div", 28)(3, "label");
     \u0275\u0275text(4, "Deposit");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "app-info-hint", 79);
+    \u0275\u0275elementStart(5, "app-info-hint", 80);
     \u0275\u0275text(6, " Prefilled from your organisation default. Changing it here affects this booking only. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "select", 80);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_93_Template_select_ngModelChange_7_listener($event) {
+    \u0275\u0275elementStart(7, "select", 81);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_94_Template_select_ngModelChange_7_listener($event) {
       \u0275\u0275restoreView(_r12);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.depositMode, $event) || (ctx_r2.depositMode = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(8, "option", 81);
+    \u0275\u0275elementStart(8, "option", 82);
     \u0275\u0275text(9, "Allow a deposit");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "option", 82);
+    \u0275\u0275elementStart(10, "option", 83);
     \u0275\u0275text(11, "Require full payment");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275template(12, BookingFormComponent_Conditional_12_Conditional_93_Conditional_12_Template, 5, 1, "div", 26);
+    \u0275\u0275template(12, BookingFormComponent_Conditional_12_Conditional_94_Conditional_12_Template, 5, 1, "div", 27);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(13, BookingFormComponent_Conditional_12_Conditional_93_Conditional_13_Template, 7, 12, "p", 83);
+    \u0275\u0275template(13, BookingFormComponent_Conditional_12_Conditional_94_Conditional_13_Template, 7, 12, "p", 84);
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(2);
@@ -988,11 +1003,11 @@ function BookingFormComponent_Conditional_12_Conditional_93_Template(rf, ctx) {
     \u0275\u0275conditional(ctx_r2.depositMode === "deposit" && ctx_r2.priceTotal > 0 ? 13 : -1);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_97_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_98_Template(rf, ctx) {
   if (rf & 1) {
     const _r14 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 52)(1, "label", 53)(2, "input", 86);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_97_Template_input_ngModelChange_2_listener($event) {
+    \u0275\u0275elementStart(0, "div", 53)(1, "label", 54)(2, "input", 87);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_98_Template_input_ngModelChange_2_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.confirmed, $event) || (ctx_r2.confirmed = $event);
@@ -1002,7 +1017,7 @@ function BookingFormComponent_Conditional_12_Conditional_97_Template(rf, ctx) {
     \u0275\u0275elementStart(3, "span");
     \u0275\u0275text(4, "This booking is already confirmed");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(5, "app-info-hint", 87);
+    \u0275\u0275elementStart(5, "app-info-hint", 88);
     \u0275\u0275text(6, " Leave it off to send this as a ");
     \u0275\u0275elementStart(7, "strong");
     \u0275\u0275text(8, "request");
@@ -1020,9 +1035,9 @@ function BookingFormComponent_Conditional_12_Conditional_97_Template(rf, ctx) {
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.confirmed);
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_119_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_120_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 60);
+    \u0275\u0275elementStart(0, "p", 61);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1032,11 +1047,11 @@ function BookingFormComponent_Conditional_12_Conditional_119_Template(rf, ctx) {
     \u0275\u0275textInterpolate(ctx_r2.errorMsg());
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_129_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_130_Template(rf, ctx) {
   if (rf & 1) {
     const _r15 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-availability-picker", 88);
-    \u0275\u0275listener("slotsChange", function BookingFormComponent_Conditional_12_Conditional_129_Template_app_availability_picker_slotsChange_0_listener($event) {
+    \u0275\u0275elementStart(0, "app-availability-picker", 89);
+    \u0275\u0275listener("slotsChange", function BookingFormComponent_Conditional_12_Conditional_130_Template_app_availability_picker_slotsChange_0_listener($event) {
       \u0275\u0275restoreView(_r15);
       const ctx_r2 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r2.onSlotsChanged($event));
@@ -1049,9 +1064,9 @@ function BookingFormComponent_Conditional_12_Conditional_129_Template(rf, ctx) {
     \u0275\u0275property("staffId", ctx_r2.staffId)("timezone", ctx_r2.orgTimezone())("initialSlots", ctx_r2.prefillSlots)("excludeBookingId", (tmp_5_0 = ctx_r2.editingId()) !== null && tmp_5_0 !== void 0 ? tmp_5_0 : "");
   }
 }
-function BookingFormComponent_Conditional_12_Conditional_130_Template(rf, ctx) {
+function BookingFormComponent_Conditional_12_Conditional_131_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 68)(1, "div", 89);
+    \u0275\u0275elementStart(0, "div", 69)(1, "div", 90);
     \u0275\u0275text(2, "\u{1F4C5}");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "p");
@@ -1068,216 +1083,217 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.submit());
     });
-    \u0275\u0275elementStart(2, "section", 24)(3, "h2", 25);
-    \u0275\u0275text(4, "Job");
+    \u0275\u0275template(2, BookingFormComponent_Conditional_12_Conditional_2_Template, 5, 1, "p", 24);
+    \u0275\u0275elementStart(3, "section", 25)(4, "h2", 26);
+    \u0275\u0275text(5, "Job");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "div", 26)(6, "div", 27)(7, "label", 28);
-    \u0275\u0275text(8, "Title");
+    \u0275\u0275elementStart(6, "div", 27)(7, "div", 28)(8, "label", 29);
+    \u0275\u0275text(9, "Title");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(9, "input", 29);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_9_listener($event) {
+    \u0275\u0275elementStart(10, "input", 30);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_10_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.title, $event) || (ctx_r2.title = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "div", 26)(11, "div", 27)(12, "label");
-    \u0275\u0275text(13, "Customer");
+    \u0275\u0275elementStart(11, "div", 27)(12, "div", 28)(13, "label");
+    \u0275\u0275text(14, "Customer");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "app-info-hint", 30)(15, "strong");
-    \u0275\u0275text(16, "Existing client");
+    \u0275\u0275elementStart(15, "app-info-hint", 31)(16, "strong");
+    \u0275\u0275text(17, "Existing client");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(17, " is a saved record with company, VAT and billing address, so the invoice is VAT-ready and you can reuse it. ");
-    \u0275\u0275elementStart(18, "strong");
-    \u0275\u0275text(19, "Just a name");
+    \u0275\u0275text(18, " is a saved record with company, VAT and billing address, so the invoice is VAT-ready and you can reuse it. ");
+    \u0275\u0275elementStart(19, "strong");
+    \u0275\u0275text(20, "Just a name");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(20, " is a one-off, never saved, and bills to that name only. ");
+    \u0275\u0275text(21, " is a one-off, never saved, and bills to that name only. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(21, "div", 31)(22, "button", 32);
-    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_22_listener() {
+    \u0275\u0275elementStart(22, "div", 32)(23, "button", 33);
+    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_23_listener() {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.clientMode = "existing");
     });
-    \u0275\u0275text(23, "Existing client");
+    \u0275\u0275text(24, "Existing client");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(24, "button", 32);
-    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_24_listener() {
+    \u0275\u0275elementStart(25, "button", 33);
+    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_25_listener() {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.clientMode = "quick");
     });
-    \u0275\u0275text(25, "Just a name");
+    \u0275\u0275text(26, "Just a name");
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(26, BookingFormComponent_Conditional_12_Conditional_26_Template, 9, 2)(27, BookingFormComponent_Conditional_12_Conditional_27_Template, 1, 1, "input", 33);
+    \u0275\u0275template(27, BookingFormComponent_Conditional_12_Conditional_27_Template, 9, 2)(28, BookingFormComponent_Conditional_12_Conditional_28_Template, 1, 1, "input", 34);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(28, "div", 26)(29, "div", 27)(30, "label");
-    \u0275\u0275text(31, "Worker");
+    \u0275\u0275elementStart(29, "div", 27)(30, "div", 28)(31, "label");
+    \u0275\u0275text(32, "Worker");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(32, "select", 34);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_select_ngModelChange_32_listener($event) {
+    \u0275\u0275elementStart(33, "select", 35);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_select_ngModelChange_33_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.staffId, $event) || (ctx_r2.staffId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(33, "option", 35);
-    \u0275\u0275text(34, "Select a worker\u2026");
+    \u0275\u0275elementStart(34, "option", 36);
+    \u0275\u0275text(35, "Select a worker\u2026");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(35, BookingFormComponent_Conditional_12_For_36_Template, 2, 2, "option", 36, _forTrack02);
+    \u0275\u0275repeaterCreate(36, BookingFormComponent_Conditional_12_For_37_Template, 2, 2, "option", 37, _forTrack02);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(37, BookingFormComponent_Conditional_12_Conditional_37_Template, 2, 0, "span", 37);
+    \u0275\u0275template(38, BookingFormComponent_Conditional_12_Conditional_38_Template, 2, 0, "span", 38);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(38, "div", 26)(39, "div", 27)(40, "label", 38);
-    \u0275\u0275text(41, "Location ");
-    \u0275\u0275elementStart(42, "span", 39);
-    \u0275\u0275text(43, "optional");
+    \u0275\u0275elementStart(39, "div", 27)(40, "div", 28)(41, "label", 39);
+    \u0275\u0275text(42, "Location ");
+    \u0275\u0275elementStart(43, "span", 40);
+    \u0275\u0275text(44, "optional");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(44, "input", 40);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_44_listener($event) {
+    \u0275\u0275elementStart(45, "input", 41);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_45_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.location, $event) || (ctx_r2.location = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(45, "section", 24)(46, "h2", 25);
-    \u0275\u0275text(47, "Schedule");
+    \u0275\u0275elementStart(46, "section", 25)(47, "h2", 26);
+    \u0275\u0275text(48, "Schedule");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(48, "div", 26)(49, "div", 27)(50, "label");
-    \u0275\u0275text(51, "Time blocks");
+    \u0275\u0275elementStart(49, "div", 27)(50, "div", 28)(51, "label");
+    \u0275\u0275text(52, "Time blocks");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(52, "app-info-hint", 41);
-    \u0275\u0275text(53, " A job can span several blocks, even across different days \u2014 a planning call on one day and the shoot on another. Name each one and the calendar shows ");
-    \u0275\u0275elementStart(54, "strong");
-    \u0275\u0275text(55, "\u201CPre-shoot planning\u201D");
+    \u0275\u0275elementStart(53, "app-info-hint", 42);
+    \u0275\u0275text(54, " A job can span several blocks, even across different days \u2014 a planning call on one day and the shoot on another. Name each one and the calendar shows ");
+    \u0275\u0275elementStart(55, "strong");
+    \u0275\u0275text(56, "\u201CPre-shoot planning\u201D");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(56, " rather than two identical entries. ");
+    \u0275\u0275text(57, " rather than two identical entries. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(57, BookingFormComponent_Conditional_12_Conditional_57_Template, 2, 0, "span", 42)(58, BookingFormComponent_Conditional_12_Conditional_58_Template, 3, 0, "ul", 43)(59, BookingFormComponent_Conditional_12_Conditional_59_Template, 2, 0, "span", 37);
+    \u0275\u0275template(58, BookingFormComponent_Conditional_12_Conditional_58_Template, 2, 0, "span", 43)(59, BookingFormComponent_Conditional_12_Conditional_59_Template, 3, 0, "ul", 44)(60, BookingFormComponent_Conditional_12_Conditional_60_Template, 2, 0, "span", 38);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(60, "section", 24)(61, "h2", 25);
-    \u0275\u0275text(62, "Charges & payment");
+    \u0275\u0275elementStart(61, "section", 25)(62, "h2", 26);
+    \u0275\u0275text(63, "Charges & payment");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(63, "div", 26)(64, "div", 27)(65, "label");
-    \u0275\u0275text(66, "Charges ");
-    \u0275\u0275elementStart(67, "span", 44);
-    \u0275\u0275text(68, "*");
+    \u0275\u0275elementStart(64, "div", 27)(65, "div", 28)(66, "label");
+    \u0275\u0275text(67, "Charges ");
+    \u0275\u0275elementStart(68, "span", 45);
+    \u0275\u0275text(69, "*");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(69, "app-info-hint", 45);
-    \u0275\u0275text(70, " Pick one of your services (and how many hours) to pre-fill a line, or add a custom one. The total here is what the client pays, and it becomes the invoice. ");
+    \u0275\u0275elementStart(70, "app-info-hint", 46);
+    \u0275\u0275text(71, " Pick one of your services (and how many hours) to pre-fill a line, or add a custom one. The total here is what the client pays, and it becomes the invoice. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(71, "app-line-items-editor", 46);
-    \u0275\u0275listener("itemsChange", function BookingFormComponent_Conditional_12_Template_app_line_items_editor_itemsChange_71_listener($event) {
+    \u0275\u0275elementStart(72, "app-line-items-editor", 47);
+    \u0275\u0275listener("itemsChange", function BookingFormComponent_Conditional_12_Template_app_line_items_editor_itemsChange_72_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.onItemsChange($event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(72, "div", 26)(73, "div", 27)(74, "label");
-    \u0275\u0275text(75, "Payment options");
+    \u0275\u0275elementStart(73, "div", 27)(74, "div", 28)(75, "label");
+    \u0275\u0275text(76, "Payment options");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(76, "app-info-hint", 47)(77, "strong");
-    \u0275\u0275text(78, "Card or pay later");
+    \u0275\u0275elementStart(77, "app-info-hint", 48)(78, "strong");
+    \u0275\u0275text(79, "Card or pay later");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(79, " \u2014 the client pays by card now, or asks to pay later and you approve that request. ");
-    \u0275\u0275elementStart(80, "strong");
-    \u0275\u0275text(81, "Card only");
+    \u0275\u0275text(80, " \u2014 the client pays by card now, or asks to pay later and you approve that request. ");
+    \u0275\u0275elementStart(81, "strong");
+    \u0275\u0275text(82, "Card only");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(82, " \u2014 they must pay to confirm. ");
-    \u0275\u0275elementStart(83, "strong");
-    \u0275\u0275text(84, "Pay later only");
+    \u0275\u0275text(83, " \u2014 they must pay to confirm. ");
+    \u0275\u0275elementStart(84, "strong");
+    \u0275\u0275text(85, "Pay later only");
     \u0275\u0275elementEnd();
-    \u0275\u0275text(85, " \u2014 no online payment; they confirm and agree to pay by cash, Revolut or bank, and it books straight away. ");
+    \u0275\u0275text(86, " \u2014 no online payment; they confirm and agree to pay by cash, Revolut or bank, and it books straight away. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(86, "select", 48);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_select_ngModelChange_86_listener($event) {
+    \u0275\u0275elementStart(87, "select", 49);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_select_ngModelChange_87_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.paymentMode, $event) || (ctx_r2.paymentMode = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(87, "option", 49);
-    \u0275\u0275text(88, "Card or pay later (cash / Revolut / bank)");
+    \u0275\u0275elementStart(88, "option", 50);
+    \u0275\u0275text(89, "Card or pay later (cash / Revolut / bank)");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(89, "option", 50);
-    \u0275\u0275text(90, "Card only");
+    \u0275\u0275elementStart(90, "option", 51);
+    \u0275\u0275text(91, "Card only");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(91, "option", 51);
-    \u0275\u0275text(92, "Pay later only \u2014 client just confirms");
+    \u0275\u0275elementStart(92, "option", 52);
+    \u0275\u0275text(93, "Pay later only \u2014 client just confirms");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275template(93, BookingFormComponent_Conditional_12_Conditional_93_Template, 14, 3);
+    \u0275\u0275template(94, BookingFormComponent_Conditional_12_Conditional_94_Template, 14, 3);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(94, "section", 24)(95, "h2", 25);
-    \u0275\u0275text(96, "Options");
+    \u0275\u0275elementStart(95, "section", 25)(96, "h2", 26);
+    \u0275\u0275text(97, "Options");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(97, BookingFormComponent_Conditional_12_Conditional_97_Template, 13, 1, "div", 52);
-    \u0275\u0275elementStart(98, "div", 52)(99, "label", 53)(100, "input", 54);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_100_listener($event) {
+    \u0275\u0275template(98, BookingFormComponent_Conditional_12_Conditional_98_Template, 13, 1, "div", 53);
+    \u0275\u0275elementStart(99, "div", 53)(100, "label", 54)(101, "input", 55);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_101_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.needsProduction, $event) || (ctx_r2.needsProduction = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(101, "span");
-    \u0275\u0275text(102, "Needs post-production");
+    \u0275\u0275elementStart(102, "span");
+    \u0275\u0275text(103, "Needs post-production");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(103, "app-info-hint", 55);
-    \u0275\u0275text(104, " Adds this to the Work board (editing through to delivery). Leave it off for meetings and no-edit jobs. ");
+    \u0275\u0275elementStart(104, "app-info-hint", 56);
+    \u0275\u0275text(105, " Adds this to the Work board (editing through to delivery). Leave it off for meetings and no-edit jobs. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(105, "div", 52)(106, "label", 53)(107, "input", 56);
-    \u0275\u0275listener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_107_listener($event) {
+    \u0275\u0275elementStart(106, "div", 53)(107, "label", 54)(108, "input", 57);
+    \u0275\u0275listener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_108_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.calendarDetail = $event ? "minimal" : "full");
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(108, "span");
-    \u0275\u0275text(109, "Keep money off the calendar invite");
+    \u0275\u0275elementStart(109, "span");
+    \u0275\u0275text(110, "Keep money off the calendar invite");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(110, "app-info-hint", 57);
-    \u0275\u0275text(111, " Turn this on if you will invite anyone else to the event \u2014 a second shooter, or the client. They would otherwise see the total, what has been paid, the progress stage and your private notes. The event still shows the brief, client and service. ");
+    \u0275\u0275elementStart(111, "app-info-hint", 58);
+    \u0275\u0275text(112, " Turn this on if you will invite anyone else to the event \u2014 a second shooter, or the client. They would otherwise see the total, what has been paid, the progress stage and your private notes. The event still shows the brief, client and service. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(112, "div", 26)(113, "div", 27)(114, "label", 58);
-    \u0275\u0275text(115, "Internal notes ");
-    \u0275\u0275elementStart(116, "span", 39);
-    \u0275\u0275text(117, "optional");
+    \u0275\u0275elementStart(113, "div", 27)(114, "div", 28)(115, "label", 59);
+    \u0275\u0275text(116, "Internal notes ");
+    \u0275\u0275elementStart(117, "span", 40);
+    \u0275\u0275text(118, "optional");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(118, "textarea", 59);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_textarea_ngModelChange_118_listener($event) {
+    \u0275\u0275elementStart(119, "textarea", 60);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Template_textarea_ngModelChange_119_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.notes, $event) || (ctx_r2.notes = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd()()();
-    \u0275\u0275template(119, BookingFormComponent_Conditional_12_Conditional_119_Template, 2, 1, "p", 60);
-    \u0275\u0275elementStart(120, "div", 61)(121, "button", 62);
-    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_121_listener() {
+    \u0275\u0275template(120, BookingFormComponent_Conditional_12_Conditional_120_Template, 2, 1, "p", 61);
+    \u0275\u0275elementStart(121, "div", 62)(122, "button", 63);
+    \u0275\u0275listener("click", function BookingFormComponent_Conditional_12_Template_button_click_122_listener() {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.goToList());
     });
-    \u0275\u0275text(122, "Cancel");
+    \u0275\u0275text(123, "Cancel");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(123, "button", 63);
-    \u0275\u0275text(124);
+    \u0275\u0275elementStart(124, "button", 64);
+    \u0275\u0275text(125);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(125, "aside", 64)(126, "div", 65)(127, "h2", 66);
-    \u0275\u0275text(128, "Worker availability");
+    \u0275\u0275elementStart(126, "aside", 65)(127, "div", 66)(128, "h2", 67);
+    \u0275\u0275text(129, "Worker availability");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(129, BookingFormComponent_Conditional_12_Conditional_129_Template, 1, 4, "app-availability-picker", 67)(130, BookingFormComponent_Conditional_12_Conditional_130_Template, 5, 0, "div", 68);
+    \u0275\u0275template(130, BookingFormComponent_Conditional_12_Conditional_130_Template, 1, 4, "app-availability-picker", 68)(131, BookingFormComponent_Conditional_12_Conditional_131_Template, 5, 0, "div", 69);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(131, "app-client-editor", 69);
-    \u0275\u0275twoWayListener("openChange", function BookingFormComponent_Conditional_12_Template_app_client_editor_openChange_131_listener($event) {
+    \u0275\u0275elementStart(132, "app-client-editor", 70);
+    \u0275\u0275twoWayListener("openChange", function BookingFormComponent_Conditional_12_Template_app_client_editor_openChange_132_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.clientEditorOpen, $event) || (ctx_r2.clientEditorOpen = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275listener("saved", function BookingFormComponent_Conditional_12_Template_app_client_editor_saved_131_listener($event) {
+    \u0275\u0275listener("saved", function BookingFormComponent_Conditional_12_Template_app_client_editor_saved_132_listener($event) {
       \u0275\u0275restoreView(_r6);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.onClientCreated($event));
@@ -1285,33 +1301,36 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_1_0;
     const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(9);
+    \u0275\u0275advance(2);
+    \u0275\u0275conditional((tmp_1_0 = ctx_r2.copiedFrom()) ? 2 : -1, tmp_1_0);
+    \u0275\u0275advance(8);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.title);
     \u0275\u0275advance(13);
     \u0275\u0275classProp("seg__btn--on", ctx_r2.clientMode === "existing");
     \u0275\u0275advance(2);
     \u0275\u0275classProp("seg__btn--on", ctx_r2.clientMode === "quick");
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r2.clientMode === "existing" ? 26 : 27);
+    \u0275\u0275conditional(ctx_r2.clientMode === "existing" ? 27 : 28);
     \u0275\u0275advance(6);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.staffId);
     \u0275\u0275advance(3);
     \u0275\u0275repeater(ctx_r2.workers);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r2.workers.length === 0 ? 37 : -1);
+    \u0275\u0275conditional(ctx_r2.workers.length === 0 ? 38 : -1);
     \u0275\u0275advance(7);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.location);
     \u0275\u0275advance(13);
-    \u0275\u0275conditional(!ctx_r2.staffId ? 57 : ctx_r2.selectedSlots.length ? 58 : 59);
+    \u0275\u0275conditional(!ctx_r2.staffId ? 58 : ctx_r2.selectedSlots.length ? 59 : 60);
     \u0275\u0275advance(14);
     \u0275\u0275property("items", ctx_r2.lineItems)("currency", ctx_r2.currency())("services", ctx_r2.services());
     \u0275\u0275advance(15);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.paymentMode);
     \u0275\u0275advance(7);
-    \u0275\u0275conditional(ctx_r2.paymentMode !== "later" ? 93 : -1);
+    \u0275\u0275conditional(ctx_r2.paymentMode !== "later" ? 94 : -1);
     \u0275\u0275advance(4);
-    \u0275\u0275conditional(!ctx_r2.isEditing ? 97 : -1);
+    \u0275\u0275conditional(!ctx_r2.isEditing ? 98 : -1);
     \u0275\u0275advance(3);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.needsProduction);
     \u0275\u0275advance(7);
@@ -1319,13 +1338,13 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
     \u0275\u0275advance(11);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.notes);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r2.errorMsg() ? 119 : -1);
+    \u0275\u0275conditional(ctx_r2.errorMsg() ? 120 : -1);
     \u0275\u0275advance(4);
     \u0275\u0275property("disabled", !ctx_r2.canSubmit);
     \u0275\u0275advance();
     \u0275\u0275textInterpolate1(" ", ctx_r2.saving() ? ctx_r2.isEditing ? "Saving\u2026" : "Creating\u2026" : ctx_r2.isEditing ? "Save changes" : "Create booking", " ");
     \u0275\u0275advance(5);
-    \u0275\u0275conditional(ctx_r2.staffId ? 129 : 130);
+    \u0275\u0275conditional(ctx_r2.staffId ? 130 : 131);
     \u0275\u0275advance(2);
     \u0275\u0275twoWayProperty("open", ctx_r2.clientEditorOpen);
     \u0275\u0275property("client", null);
@@ -1347,6 +1366,7 @@ var BookingFormComponent = class _BookingFormComponent {
     this.errorMsg = signal("");
     this.editingId = signal(null);
     this.created = signal(null);
+    this.copiedFrom = signal("");
     this.clientMode = "existing";
     this.clientId = "";
     this.contactName = "";
@@ -1392,10 +1412,42 @@ var BookingFormComponent = class _BookingFormComponent {
         this.depositPercent = this.orgDefaults.depositPercent;
         this.depositMode = this.orgDefaults.depositAllowed ? "deposit" : "full";
         const id = this.route.snapshot.paramMap.get("id");
+        const cloneOf = this.route.snapshot.queryParamMap.get("from");
         if (id)
           yield this.loadForEdit(id);
+        else if (cloneOf)
+          yield this.loadForDuplicate(cloneOf);
       }
       this.loading.set(false);
+    });
+  }
+  /** Everything that describes the WORK — not the booking's identity, and not its times.
+   *  Shared by edit and duplicate so the two can never drift apart. */
+  applyBookingFields(b) {
+    if (b.client_id) {
+      this.clientMode = "existing";
+      this.clientId = b.client_id;
+      this.contactName = "";
+    } else if (b.contact_name) {
+      this.clientMode = "quick";
+      this.contactName = b.contact_name;
+      this.clientId = "";
+    }
+    this.staffId = b.staff_id;
+    this.title = b.title;
+    this.location = b.location ?? "";
+    this.notes = b.notes ?? "";
+    this.paymentMode = b.allow_card && b.allow_inperson ? "both" : b.allow_card ? "card" : "later";
+    this.depositMode = b.deposit_allowed ?? this.orgDefaults.depositAllowed ? "deposit" : "full";
+    this.depositPercent = b.deposit_percent ?? this.orgDefaults.depositPercent;
+    this.needsProduction = b.needs_production ?? false;
+    this.calendarDetail = b.calendar_detail ?? "full";
+  }
+  /** The saved invoice breakdown, or a single line derived from the booking itself. */
+  loadItems(id, b) {
+    return __async(this, null, function* () {
+      const items = yield this.data.getInvoiceItems(id);
+      return items.length ? items : [{ description: b.description ?? b.title, amount: b.price_total }];
     });
   }
   loadForEdit(id) {
@@ -1407,27 +1459,32 @@ var BookingFormComponent = class _BookingFormComponent {
       }
       this.editingId.set(id);
       this.editingRef = b.booking_ref;
-      if (b.client_id) {
-        this.clientMode = "existing";
-        this.clientId = b.client_id;
-        this.contactName = "";
-      } else if (b.contact_name) {
-        this.clientMode = "quick";
-        this.contactName = b.contact_name;
-        this.clientId = "";
-      }
-      this.staffId = b.staff_id;
-      this.title = b.title;
-      this.location = b.location ?? "";
-      this.notes = b.notes ?? "";
-      this.paymentMode = b.allow_card && b.allow_inperson ? "both" : b.allow_card ? "card" : "later";
-      this.depositMode = b.deposit_allowed ?? this.orgDefaults.depositAllowed ? "deposit" : "full";
-      this.depositPercent = b.deposit_percent ?? this.orgDefaults.depositPercent;
-      this.needsProduction = b.needs_production ?? false;
-      this.calendarDetail = b.calendar_detail ?? "full";
+      this.applyBookingFields(b);
       this.prefillSlots = yield this.data.getBookingSlots(id);
-      const items = yield this.data.getInvoiceItems(id);
-      this.lineItems = items.length ? items : [{ description: b.description ?? b.title, amount: b.price_total }];
+      this.lineItems = yield this.loadItems(id, b);
+    });
+  }
+  /**
+   * Clone a job: same work, blank diary. Repeat bookings here are the same shoot for the
+   * same client on a different day, so everything about WHAT the job is carries over and
+   * nothing about WHEN it happens does.
+   *
+   * Deliberately NOT copied:
+   *  - editingId / booking_ref — this is a new booking and earns its own number
+   *  - time blocks — the whole point; the owner picks fresh ones
+   *  - confirmed — stays off, so cloning can never silently push a calendar event
+   *  - status, payments, invoice — a copy has been neither agreed nor paid for
+   */
+  loadForDuplicate(id) {
+    return __async(this, null, function* () {
+      const b = yield this.data.getBooking(id);
+      if (!b) {
+        this.errorMsg.set("Could not find the booking to copy from.");
+        return;
+      }
+      this.applyBookingFields(b);
+      this.lineItems = yield this.loadItems(id, b);
+      this.copiedFrom.set(b.booking_ref);
     });
   }
   // ── Derived ─────────────────────────────────────────────────────────
@@ -1601,6 +1658,7 @@ var BookingFormComponent = class _BookingFormComponent {
     this.confirmed = false;
     this.created.set(null);
     this.errorMsg.set("");
+    this.copiedFrom.set("");
   }
   goToList() {
     this.router.navigate(["/bookings/list"]);
@@ -1611,7 +1669,7 @@ var BookingFormComponent = class _BookingFormComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingFormComponent, selectors: [["app-booking-form"]], decls: 13, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "loading"], [1, "spinner"], [1, "card", "done"], [1, "done__check"], [1, "done__title"], [1, "done__sub"], [1, "muted"], [1, "done__invoice"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn--ghost", "btn--sm", 3, "href"], [1, "done__actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "click"], [1, "linkbox"], ["readonly", "", 1, "linkbox__input", 3, "focus", "value"], ["type", "button", 1, "btn", "btn--primary", "linkbox__btn", 3, "click"], [1, "done__sub", "done__sub--gap"], [1, "form-layout"], [1, "card", "form", 3, "ngSubmit"], [1, "sec"], [1, "sec__title"], [1, "field"], [1, "field__top"], ["for", "bf-title"], ["id", "bf-title", "name", "title", "placeholder", "e.g. Interview filming \u2014 Clinica Joia", "required", "", 3, "ngModelChange", "ngModel"], ["label", "Customer"], [1, "seg"], ["type", "button", 1, "seg__btn", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModel"], ["name", "staffId", "required", "", 3, "ngModelChange", "ngModel"], ["value", "", "disabled", ""], [3, "value"], [1, "note", "note--warn"], ["for", "bf-loc"], [1, "opt"], ["id", "bf-loc", "name", "location", "placeholder", "Address or venue", 3, "ngModelChange", "ngModel"], ["label", "Time blocks"], [1, "note"], [1, "picked"], [1, "req"], ["label", "Charges"], [3, "itemsChange", "items", "currency", "services"], ["label", "Payment options"], ["name", "paymentMode", 3, "ngModelChange", "ngModel"], ["value", "both"], ["value", "card"], ["value", "later"], [1, "opt-row"], [1, "check"], ["type", "checkbox", "name", "needsProduction", 3, "ngModelChange", "ngModel"], ["label", "Needs post-production"], ["type", "checkbox", "name", "calendarMinimal", 3, "ngModelChange", "ngModel"], ["label", "Keep money off the calendar invite"], ["for", "bf-notes"], ["id", "bf-notes", "name", "notes", "rows", "2", "placeholder", "Anything to remember about this job \u2014 never shown to the client", 3, "ngModelChange", "ngModel"], [1, "error"], [1, "form__actions"], ["type", "button", 1, "btn", "btn--ghost", 3, "click"], ["type", "submit", 1, "btn", "btn--primary", 3, "disabled"], [1, "form-aside"], [1, "card", "aside-card"], [1, "aside-card__title"], [3, "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty"], [3, "openChange", "saved", "open", "client"], [1, "client-row"], ["name", "clientId", 3, "ngModelChange", "ngModel"], ["type", "button", 1, "btn", "btn--ghost", "btn--sm", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModelChange", "ngModel"], [1, "picked__row"], ["aria-hidden", "true", 1, "picked__tick"], [1, "picked__time"], [1, "picked__name"], [1, "row2"], ["label", "Deposit"], ["name", "depositMode", 3, "ngModelChange", "ngModel"], ["value", "deposit"], ["value", "full"], [1, "calc"], ["for", "bf-dep"], ["id", "bf-dep", "type", "number", "name", "depositPercent", "min", "1", "max", "100", "step", "1", 3, "ngModelChange", "ngModel"], ["type", "checkbox", "name", "confirmed", 3, "ngModelChange", "ngModel"], ["label", "Already confirmed"], [3, "slotsChange", "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty__icon"]], template: function BookingFormComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingFormComponent, selectors: [["app-booking-form"]], decls: 13, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "loading"], [1, "spinner"], [1, "card", "done"], [1, "done__check"], [1, "done__title"], [1, "done__sub"], [1, "muted"], [1, "done__invoice"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn--ghost", "btn--sm", 3, "href"], [1, "done__actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "click"], [1, "linkbox"], ["readonly", "", 1, "linkbox__input", 3, "focus", "value"], ["type", "button", 1, "btn", "btn--primary", "linkbox__btn", 3, "click"], [1, "done__sub", "done__sub--gap"], [1, "form-layout"], [1, "card", "form", 3, "ngSubmit"], [1, "cloned"], [1, "sec"], [1, "sec__title"], [1, "field"], [1, "field__top"], ["for", "bf-title"], ["id", "bf-title", "name", "title", "placeholder", "e.g. Interview filming \u2014 Clinica Joia", "required", "", 3, "ngModelChange", "ngModel"], ["label", "Customer"], [1, "seg"], ["type", "button", 1, "seg__btn", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModel"], ["name", "staffId", "required", "", 3, "ngModelChange", "ngModel"], ["value", "", "disabled", ""], [3, "value"], [1, "note", "note--warn"], ["for", "bf-loc"], [1, "opt"], ["id", "bf-loc", "name", "location", "placeholder", "Address or venue", 3, "ngModelChange", "ngModel"], ["label", "Time blocks"], [1, "note"], [1, "picked"], [1, "req"], ["label", "Charges"], [3, "itemsChange", "items", "currency", "services"], ["label", "Payment options"], ["name", "paymentMode", 3, "ngModelChange", "ngModel"], ["value", "both"], ["value", "card"], ["value", "later"], [1, "opt-row"], [1, "check"], ["type", "checkbox", "name", "needsProduction", 3, "ngModelChange", "ngModel"], ["label", "Needs post-production"], ["type", "checkbox", "name", "calendarMinimal", 3, "ngModelChange", "ngModel"], ["label", "Keep money off the calendar invite"], ["for", "bf-notes"], ["id", "bf-notes", "name", "notes", "rows", "2", "placeholder", "Anything to remember about this job \u2014 never shown to the client", 3, "ngModelChange", "ngModel"], [1, "error"], [1, "form__actions"], ["type", "button", 1, "btn", "btn--ghost", 3, "click"], ["type", "submit", 1, "btn", "btn--primary", 3, "disabled"], [1, "form-aside"], [1, "card", "aside-card"], [1, "aside-card__title"], [3, "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty"], [3, "openChange", "saved", "open", "client"], [1, "client-row"], ["name", "clientId", 3, "ngModelChange", "ngModel"], ["type", "button", 1, "btn", "btn--ghost", "btn--sm", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModelChange", "ngModel"], [1, "picked__row"], ["aria-hidden", "true", 1, "picked__tick"], [1, "picked__time"], [1, "picked__name"], [1, "row2"], ["label", "Deposit"], ["name", "depositMode", 3, "ngModelChange", "ngModel"], ["value", "deposit"], ["value", "full"], [1, "calc"], ["for", "bf-dep"], ["id", "bf-dep", "type", "number", "name", "depositPercent", "min", "1", "max", "100", "step", "1", 3, "ngModelChange", "ngModel"], ["type", "checkbox", "name", "confirmed", 3, "ngModelChange", "ngModel"], ["label", "Already confirmed"], [3, "slotsChange", "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty__icon"]], template: function BookingFormComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div")(3, "h1", 2);
         \u0275\u0275text(4);
@@ -1622,7 +1680,7 @@ var BookingFormComponent = class _BookingFormComponent {
         \u0275\u0275elementStart(7, "div", 4)(8, "a", 5);
         \u0275\u0275text(9, "Back to list");
         \u0275\u0275elementEnd()()();
-        \u0275\u0275template(10, BookingFormComponent_Conditional_10_Template, 2, 0, "div", 6)(11, BookingFormComponent_Conditional_11_Template, 1, 1)(12, BookingFormComponent_Conditional_12_Template, 132, 25);
+        \u0275\u0275template(10, BookingFormComponent_Conditional_10_Template, 2, 0, "div", 6)(11, BookingFormComponent_Conditional_11_Template, 1, 1)(12, BookingFormComponent_Conditional_12_Template, 133, 26);
         \u0275\u0275elementEnd();
       }
       if (rf & 2) {
@@ -2102,6 +2160,19 @@ var BookingFormComponent = class _BookingFormComponent {
   margin: 0;
   line-height: 1.5;
 }
+.cloned[_ngcontent-%COMP%] {
+  margin: 0;
+  padding: 10px 13px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: rgba(244, 169, 34, 0.1);
+  color: #92400e;
+  border: 1px solid rgba(244, 169, 34, 0.35);
+  border-radius: 8px;
+}
+.cloned[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {
+  font-weight: 800;
+}
 .error[_ngcontent-%COMP%] {
   background: #fee2e2;
   color: #b91c1c;
@@ -2208,4 +2279,4 @@ var BookingFormComponent = class _BookingFormComponent {
 export {
   BookingFormComponent
 };
-//# sourceMappingURL=chunk-K6QZXGLU.js.map
+//# sourceMappingURL=chunk-XUG4CG7H.js.map

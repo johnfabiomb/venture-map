@@ -197,11 +197,11 @@ var LevelsModalService = class _LevelsModalService {
 };
 
 // package.json
-var version = "2.0.55";
+var version = "2.0.56";
 
 export {
   UserProfileCardComponent,
   LevelsModalService,
   version
 };
-//# sourceMappingURL=chunk-2EA6MLXL.js.map
+//# sourceMappingURL=chunk-Z6BMZ3DU.js.map

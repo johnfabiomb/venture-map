@@ -7,7 +7,7 @@ import { BookingAdminService, AdminService, AdminStaff } from '@booking/core/ser
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { LineItem } from '@booking/core/interfaces/invoice.interface';
-import { Client, BookingSlot } from '@booking/core/interfaces/booking.interface';
+import { Client, BookingSlot, EditableBooking } from '@booking/core/interfaces/booking.interface';
 import { AvailabilityPickerComponent, PickedSlot } from './availability-picker.component';
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
@@ -37,6 +37,9 @@ export class BookingFormComponent implements OnInit {
   readonly errorMsg = signal('');
   readonly editingId = signal<string | null>(null);
   readonly created = signal<{ id: string; ref: string; link: string | null } | null>(null);
+  /** Ref of the booking this one was cloned from — drives the "copied from" banner.
+   *  Empty for an ordinary new booking. */
+  readonly copiedFrom = signal('');
 
   // ── Form state ──────────────────────────────────────────────────────
   // A booking's customer is EITHER an existing client (reusable CRM record with
@@ -94,16 +97,18 @@ export class BookingFormComponent implements OnInit {
       this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
 
       const id = this.route.snapshot.paramMap.get('id');
+      // `?from=` is a CLONE, not an edit: it reuses this same form because the result is
+      // a genuinely new booking, so it belongs on /bookings/new rather than its own route.
+      const cloneOf = this.route.snapshot.queryParamMap.get('from');
       if (id) await this.loadForEdit(id);
+      else if (cloneOf) await this.loadForDuplicate(cloneOf);
     }
     this.loading.set(false);
   }
 
-  private async loadForEdit(id: string): Promise<void> {
-    const b = await this.data.getBooking(id);
-    if (!b) { this.errorMsg.set('Booking not found.'); return; }
-    this.editingId.set(id);
-    this.editingRef = b.booking_ref;
+  /** Everything that describes the WORK — not the booking's identity, and not its times.
+   *  Shared by edit and duplicate so the two can never drift apart. */
+  private applyBookingFields(b: EditableBooking): void {
     if (b.client_id) {
       this.clientMode = 'existing'; this.clientId = b.client_id; this.contactName = '';
     } else if (b.contact_name) {
@@ -118,13 +123,43 @@ export class BookingFormComponent implements OnInit {
     this.depositPercent = b.deposit_percent ?? this.orgDefaults.depositPercent;
     this.needsProduction = b.needs_production ?? false;
     this.calendarDetail = b.calendar_detail ?? 'full';
+  }
+
+  /** The saved invoice breakdown, or a single line derived from the booking itself. */
+  private async loadItems(id: string, b: EditableBooking): Promise<LineItem[]> {
+    const items = await this.data.getInvoiceItems(id);
+    return items.length ? items : [{ description: b.description ?? b.title, amount: b.price_total }];
+  }
+
+  private async loadForEdit(id: string): Promise<void> {
+    const b = await this.data.getBooking(id);
+    if (!b) { this.errorMsg.set('Booking not found.'); return; }
+    this.editingId.set(id);
+    this.editingRef = b.booking_ref;
+    this.applyBookingFields(b);
 
     // Seed the picker from the booking's real time blocks (one or more).
     this.prefillSlots = await this.data.getBookingSlots(id);
+    this.lineItems = await this.loadItems(id, b);
+  }
 
-    // Load the invoice line items (saved breakdown, or a single line derived from the booking).
-    const items = await this.data.getInvoiceItems(id);
-    this.lineItems = items.length ? items : [{ description: b.description ?? b.title, amount: b.price_total }];
+  /**
+   * Clone a job: same work, blank diary. Repeat bookings here are the same shoot for the
+   * same client on a different day, so everything about WHAT the job is carries over and
+   * nothing about WHEN it happens does.
+   *
+   * Deliberately NOT copied:
+   *  - editingId / booking_ref — this is a new booking and earns its own number
+   *  - time blocks — the whole point; the owner picks fresh ones
+   *  - confirmed — stays off, so cloning can never silently push a calendar event
+   *  - status, payments, invoice — a copy has been neither agreed nor paid for
+   */
+  private async loadForDuplicate(id: string): Promise<void> {
+    const b = await this.data.getBooking(id);
+    if (!b) { this.errorMsg.set('Could not find the booking to copy from.'); return; }
+    this.applyBookingFields(b);
+    this.lineItems = await this.loadItems(id, b);
+    this.copiedFrom.set(b.booking_ref);
   }
 
   // ── Derived ─────────────────────────────────────────────────────────
@@ -272,6 +307,8 @@ export class BookingFormComponent implements OnInit {
     this.calendarDetail = 'full';
     this.confirmed = false;
     this.created.set(null); this.errorMsg.set('');
+    // "Create another" starts from blank, so the clone banner must not linger.
+    this.copiedFrom.set('');
   }
 
   goToList(): void { this.router.navigate(['/bookings/list']); }

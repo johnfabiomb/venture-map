@@ -176,6 +176,7 @@
                           <button class="menu__item" cdkMenuItem (click)="goDetail(b)">Record payment…</button>
                         }
                         <button class="menu__item" cdkMenuItem (click)="goEdit(b)">Edit booking</button>
+                        <button class="menu__item" cdkMenuItem (click)="goDuplicate(b)">Duplicate booking…</button>
                         @if (b.status !== 'cancelled') {
                           <button class="menu__item menu__item--danger" cdkMenuItem (click)="cancel(b)">Cancel booking</button>
                         }

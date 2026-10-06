@@ -53,6 +53,11 @@ export class BookingListComponent {
   readonly busyId = signal<string | null>(null);
 
   goEdit(b: BookingSummary): void { this.router.navigate(['/bookings', b.id, 'edit']); }
+  /** Clone this job into a new booking — same client, charges and settings, no times.
+   *  Lands on /bookings/new because the result is a new booking, not an edit of this one. */
+  goDuplicate(b: BookingSummary): void {
+    this.router.navigate(['/bookings/new'], { queryParams: { from: b.id } });
+  }
   goDetail(b: BookingSummary): void { this.router.navigate(['/bookings', b.id]); }
 
   // ── Tabs (URL-driven) + per-tab server queries ───────────────────────
