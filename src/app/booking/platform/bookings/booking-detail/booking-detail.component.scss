@@ -3,8 +3,14 @@
 .field label { font-size: 12px; font-weight: 600; color: $text-2; }
 
 // Detail uses the shared .page width; content splits into two columns on desktop, stacks on mobile.
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-.detail-col { display: flex; flex-direction: column; gap: 18px; }
+// Both columns carry three panels now and nothing hangs full-width below them, so the
+// 18px gap is the ONLY spacing on the page — vertical inside a column, horizontal
+// between them. That is what makes the rhythm uniform.
+//
+// 5fr/4fr, not 1fr/1fr: the left column holds Job details, which is a short read-only
+// list and looked stranded at half the page width.
+.detail-grid { display: grid; grid-template-columns: 5fr 4fr; gap: 18px; align-items: start; }
+.detail-col  { display: flex; flex-direction: column; gap: 18px; }
 @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
 
 .back { font-size: 12.5px; font-weight: 600; color: $accent; text-decoration: none; display: inline-block; margin-bottom: 8px; &:hover { text-decoration: underline; } }
@@ -191,4 +197,21 @@
     font-family: inherit; font-size: 13px; color: $text; text-decoration: none;
     &:hover { background: $bg; }
   }
+}
+
+// app-panel brings its own card chrome and the column supplies the gap, so a panel must
+// not add a margin of its own — that was the uneven spacing.
+.detail-col app-panel { display: block; margin: 0; }
+.pane { display: block; margin: 0; }
+
+// Delivery summary (the form itself lives in the modal).
+.deliv-msg {
+  margin: 0 0 10px; font-size: 13px; color: $text-2; line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.deliv-links {
+  list-style: none; margin: 0 0 10px; padding: 0;
+  display: flex; flex-direction: column; gap: 5px;
+  a { font-size: 13px; font-weight: 600; color: $accent; text-decoration: none; overflow-wrap: anywhere;
+      &:hover { text-decoration: underline; } }
 }

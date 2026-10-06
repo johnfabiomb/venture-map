@@ -80,9 +80,12 @@
       </div>
     </div>
 
+    <div class="detail-grid">
+    <div class="detail-col">
+
     <!-- When / where / who, FIRST. These were below billing, invoices and delivery, so
          the identity of the job was the last thing on the page. -->
-    <app-panel title="Job details" class="pane">
+    <app-panel title="Job details">
       <div class="facts">
 
       @if (slots().length > 1) {
@@ -123,8 +126,6 @@
           </div>
     </app-panel>
 
-    <div class="detail-grid">
-    <div class="detail-col">
 
     <!-- What's billed — invoice line items (source of truth for the total) -->
     @if (lineItems().length) {
@@ -174,12 +175,13 @@
       }
     </app-panel>
 
-    </div><!-- /detail-col (left: billing + facts + delivery) -->
+    </div><!-- /detail-col (left: the job and what it bills) -->
 
     <div class="detail-col">
 
     <!-- Payments ledger -->
     <app-panel title="Payments" [meta]="payments().length + (payments().length === 1 ? ' record' : ' records')">
+      <button panel-actions type="button" class="link-btn" (click)="payDialogOpen.set(true)">+ Record</button>
 
       @if (payments().length === 0) {
         <p class="empty-line">No payments recorded yet.</p>
@@ -203,42 +205,6 @@
           }
         </ul>
       }
-    </app-panel>
-
-    <!-- Record a payment -->
-    <app-panel title="Record a payment" [startOpen]="false"
-               [meta]="balance() > 0 ? (balance() | currency:'EUR':'symbol':'1.0-2') + ' due' : 'settled'">
-      @if (balance() > 0) {
-        <button panel-actions type="button" class="link-btn" (click)="prefillBalance()">Pay full balance</button>
-      }
-
-      <form class="payform" (ngSubmit)="addPayment()">
-        <div class="payform__grid">
-          <div class="field">
-            <label>Amount (€)</label>
-            <input type="number" [(ngModel)]="payAmount" name="payAmount" min="0" step="0.01" placeholder="0.00" required />
-          </div>
-          <div class="field">
-            <label>Method</label>
-            <select [(ngModel)]="payMethod" name="payMethod">
-              @for (m of methods; track m) { <option [value]="m">{{ methodLabel(m) }}</option> }
-            </select>
-          </div>
-          <div class="field">
-            <label>Date</label>
-            <input type="date" [(ngModel)]="payDate" name="payDate" />
-          </div>
-          <div class="field field--note">
-            <label>Note <span class="opt">(optional)</span></label>
-            <input [(ngModel)]="payNote" name="payNote" placeholder="e.g. Deposit, Final payment" />
-          </div>
-        </div>
-        <div class="payform__actions">
-          <button type="submit" class="btn btn--primary" [disabled]="adding()">
-            {{ adding() ? 'Recording…' : 'Record payment' }}
-          </button>
-        </div>
-      </form>
     </app-panel>
 
     <!-- Costs. Deliberately on the same column as payments: money in and money out read
@@ -282,47 +248,38 @@
       }
     </app-panel>
 
-    </div><!-- /detail-col (right: payments) -->
+    <!-- A summary, not a form. Editing happens in a modal like every other action here. -->
+    <app-panel title="Delivery" [meta]="deliveryMeta()">
+      <button panel-actions type="button" class="link-btn" (click)="deliveryDialogOpen.set(true)">
+        {{ hasDelivery() ? 'Edit' : '+ Attach' }}
+      </button>
+
+      @if (!hasDelivery()) {
+        <p class="empty-line">Nothing attached — the client sees no delivery section.</p>
+      } @else {
+        @if (delivery()?.message; as m) { <p class="deliv-msg">{{ m }}</p> }
+        <ul class="deliv-links">
+          @for (l of delivery()?.links ?? []; track l.url) {
+            <li><a [href]="l.url" target="_blank" rel="noopener">{{ l.label || l.url }}</a></li>
+          }
+        </ul>
+        <p class="empty-line">
+          @if (clientCanSee()) { Live on the client's booking link now. }
+          @else { Hidden until the booking is paid in full — or use Release. }
+        </p>
+      }
+    </app-panel>
+
+    </div><!-- /detail-col (right: money + delivery) -->
     </div><!-- /detail-grid -->
-
-    <!-- Closed by default: delivery is a post-shoot task, not a fact about the booking. -->
-    <app-panel title="Delivery" [meta]="deliveryMeta()" [startOpen]="false" class="pane">
-
-
-      <div class="field">
-        <label>Message <span class="opt">(optional)</span></label>
-        <textarea rows="3" [(ngModel)]="deliveryMessage" name="deliveryMessage"
-                  placeholder="e.g. Here are your final edits — please download within 30 days."></textarea>
-      </div>
-
-      <label class="sub-label">Links</label>
-      <app-links-editor [(links)]="deliveryLinks" />
-
-      <div class="delivery-actions">
-        <button type="button" class="btn btn--primary" [disabled]="savingDelivery() || !deliveryValid" (click)="saveDelivery()">
-          {{ savingDelivery() ? 'Saving…' : 'Save delivery' }}
-        </button>
-        @if (hasDelivery() && !paidInFull()) {
-          <button type="button" class="link-btn" [disabled]="releasing()" (click)="toggleRelease()">
-            {{ released() ? 'Lock again' : 'Release now (before payment)' }}
-          </button>
-        }
-        @if (hasDelivery()) {
-          <button type="button" class="link-btn link-btn--danger" (click)="clearDelivery()">Remove</button>
-        }
-      </div>
-
-      <p class="empty-line">
-        @if (!hasDelivery()) { Nothing attached yet — the client sees no delivery section. }
-        @else if (clientCanSee()) { Live on the client's booking link now. }
-        @else { Hidden until the booking is paid in full — or use "Release now". }
-      </p>
-        </app-panel>
-
 
     <!-- One dialog for the whole page; the job is preset and locked to this booking. -->
     <app-expense-dialog [(open)]="costDialogOpen" [forBookingId]="id"
                         [expense]="editingExpense()" (saved)="onCostSaved()" />
+    <app-payment-dialog [(open)]="payDialogOpen" [bookingId]="id" [balance]="balance()"
+                        [bookingRef]="booking()?.booking_ref ?? ''" (saved)="onPaymentSaved()" />
+    <app-delivery-dialog [(open)]="deliveryDialogOpen" [bookingId]="id" [delivery]="delivery()"
+                         [paidInFull]="paidInFull()" (saved)="onDeliverySaved()" />
     }
   }
 </div>

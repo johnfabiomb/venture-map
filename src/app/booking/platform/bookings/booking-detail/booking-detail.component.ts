@@ -8,12 +8,13 @@ import { BookingAdminService, WorkJob } from '@booking/core/services/booking-adm
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
-import { LinksEditorComponent } from '@booking/ui/links-editor/links-editor.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PanelComponent } from '@booking/ui/panel/panel.component';
+import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
+import { DeliveryDialogComponent } from '@booking/ui/delivery-dialog/delivery-dialog.component';
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
-import { Delivery, DeliveryLink, isDeliveryUrl } from '@booking/core/interfaces/delivery.interface';
+import { Delivery } from '@booking/core/interfaces/delivery.interface';
 import { Expense } from '@booking/core/interfaces/expense.interface';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -23,8 +24,9 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, LinksEditorComponent, ExpenseDialogComponent,
-            PanelComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
+  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, ExpenseDialogComponent,
+            PanelComponent, PaymentDialogComponent, DeliveryDialogComponent,
+            CdkMenuTrigger, CdkMenu, CdkMenuItem],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -50,10 +52,8 @@ export class BookingDetailComponent implements OnInit {
 
   // Delivery (what the client receives once paid)
   readonly delivery = signal<Delivery | null>(null);
-  readonly savingDelivery = signal(false);
-  readonly releasing = signal(false);
-  deliveryMessage = '';
-  deliveryLinks: DeliveryLink[] = [];
+  readonly deliveryDialogOpen = signal(false);
+  readonly payDialogOpen = signal(false);
 
   // ── Costs ───────────────────────────────────────────────────────────────
   readonly expenses = signal<Expense[]>([]);
@@ -67,12 +67,6 @@ export class BookingDetailComponent implements OnInit {
   readonly expensesTotal = computed(() => this.expenses().reduce((t, e) => t + Number(e.amount), 0));
   readonly profit = computed(() => this.chargedTotal() - this.expensesTotal());
 
-  // Add-payment form
-  payAmount: number | null = null;
-  payMethod: PaymentMethod = 'cash';
-  payNote = '';
-  payDate = new Date().toISOString().slice(0, 10);
-  readonly methods: PaymentMethod[] = ['cash', 'revolut', 'bank', 'card', 'other'];
 
   readonly booking = computed(() => this.data.bookings().find(b => b.id === this.id));
   readonly balance = computed(() => {
@@ -97,7 +91,6 @@ export class BookingDetailComponent implements OnInit {
     return this.clientCanSee() ? 'visible to client' : 'locked until paid';
   });
 
-  get deliveryValid(): boolean { return this.deliveryLinks.every(l => !l.url.trim() || isDeliveryUrl(l.url)); }
 
   async ngOnInit(): Promise<void> {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -123,64 +116,14 @@ export class BookingDetailComponent implements OnInit {
   }
 
   // ── Delivery actions ─────────────────────────────────────────────────────
-  private applyDelivery(d: Delivery | null): void {
-    this.delivery.set(d);
-    this.deliveryMessage = d?.message ?? '';
-    this.deliveryLinks = (d?.links ?? []).map(l => ({ ...l }));   // copy: the editor writes immutably
-  }
+  private applyDelivery(d: Delivery | null): void { this.delivery.set(d); }
 
-  async saveDelivery(): Promise<void> {
-    const org = this.auth.orgId();
-    if (!org) { this.toast.error('No organization context.'); return; }
-    if (!this.deliveryValid) { this.toast.error('Every link must start with http:// or https://'); return; }
-    this.savingDelivery.set(true);
-    try {
-      // Drop blank rows so a half-typed line never reaches the client.
-      const links = this.deliveryLinks
-        .map(l => ({ label: l.label.trim(), url: l.url.trim() }))
-        .filter(l => l.url);
-      const res = await this.data.saveDelivery(org, this.id, {
-        message: this.deliveryMessage.trim() || null, links,
-      });
-      if (res.error) { this.toast.error('Could not save the delivery.'); return; }
-      this.applyDelivery(await this.data.getDelivery(this.id));
-      this.toast.success('Delivery saved');
-    } finally { this.savingDelivery.set(false); }
-  }
-
-  async toggleRelease(): Promise<void> {
-    const org = this.auth.orgId();
-    if (!org) { this.toast.error('No organization context.'); return; }
-    const releasing = !this.released();
-    const ok = await this.confirm.ask(releasing
-      ? { title: 'Release delivery now', message: 'The client will be able to open this immediately, before the booking is paid in full. Continue?', confirmLabel: 'Release' }
-      : { title: 'Lock delivery', message: 'The client will lose access until the booking is paid in full.', confirmLabel: 'Lock', danger: true });
-    if (!ok) return;
-    this.releasing.set(true);
-    try {
-      const res = await this.data.setDeliveryReleased(org, this.id, releasing);
-      if (res.error) { this.toast.error('Could not update the delivery.'); return; }
-      this.applyDelivery(await this.data.getDelivery(this.id));
-      this.toast.success(releasing ? 'Delivery released to the client' : 'Delivery locked again');
-    } finally { this.releasing.set(false); }
-  }
-
-  async clearDelivery(): Promise<void> {
-    const org = this.auth.orgId();
-    if (!org) { this.toast.error('No organization context.'); return; }
-    if (!(await this.confirm.ask({
-      title: 'Remove delivery', message: 'Clear the message and links? The client will no longer see a delivery.',
-      confirmLabel: 'Remove', danger: true,
-    }))) return;
-    const res = await this.data.clearDelivery(org, this.id);
-    if (res.error) { this.toast.error('Could not remove the delivery.'); return; }
-    this.applyDelivery(await this.data.getDelivery(this.id));
-    this.toast.info('Delivery removed');
-  }
+  /** Re-read after a dialog saved, so the summary panels reflect what was written. */
+  async onDeliverySaved(): Promise<void> { this.applyDelivery(await this.data.getDelivery(this.id)); }
+  async onPaymentSaved(): Promise<void> { this.payments.set(await this.data.getPayments(this.id)); }
 
   methodLabel(m: string): string { return METHOD_LABEL[m as PaymentMethod] ?? m; }
 
-  prefillBalance(): void { this.payAmount = this.balance(); }
 
   /** Opens the shared dialog. Passing a row edits it; passing nothing adds a new cost. */
   openCostDialog(e?: Expense): void {
@@ -208,25 +151,6 @@ export class BookingDetailComponent implements OnInit {
     await this.data.deleteExpense(e.id);
     this.expenses.set(await this.data.getExpenses(this.id));
     this.toast.success('Cost removed');
-  }
-
-  async addPayment(): Promise<void> {
-    const amount = Number(this.payAmount);
-    if (!isFinite(amount) || amount <= 0) { this.toast.error('Enter a valid amount.'); return; }
-    this.adding.set(true);
-    try {
-      const paidAt = this.payDate ? new Date(`${this.payDate}T12:00:00`).toISOString() : null;
-      const res = await this.data.addPayment(this.id, {
-        amount, method: this.payMethod, note: this.payNote.trim() || null, paidAt,
-      });
-      if (res.error) { this.toast.error('Could not record the payment.'); return; }
-      this.payments.set(await this.data.getPayments(this.id));
-      const ref = this.booking()?.booking_ref ?? '';
-      this.toast.success(`€${amount} payment recorded${ref ? ` for ${ref}` : ''}`);
-      this.payAmount = null; this.payNote = '';
-    } finally {
-      this.adding.set(false);
-    }
   }
 
   async deletePayment(p: Payment): Promise<void> {
