@@ -16,8 +16,11 @@ export interface Expense {
   spent_on: string;        // YYYY-MM-DD — the date the money left, what a P&L buckets by
   vendor: string | null;
   notes: string | null;
-  /** Rebilled to the client on the invoice. Separates a cost absorbed from one passed on. */
+  /** The owner wants this charged back to the client. */
   billable: boolean;
+  /** The invoice it was actually charged on. NULL means it has not been charged — either
+   *  it is absorbed, or its invoice was already issued and could not be changed. */
+  invoice_id: string | null;
   created_at: string;
 }
 
@@ -32,6 +35,13 @@ export interface ExpenseInput {
   vendor: string | null;
   billable: boolean;
 }
+
+/** What happens to the invoice when a cost is marked billable. */
+export type BillOutcome =
+  | { kind: 'none' }                                   // not billable, or no job
+  | { kind: 'charged'; invoiceNumber: string }         // a line was added to a draft
+  | { kind: 'issued'; invoiceNumber: string }          // issued: left untouched on purpose
+  | { kind: 'already'; invoiceNumber: string };        // this cost is already on that invoice
 
 /**
  * Starting points for the category field, not a closed list — the column is free text so

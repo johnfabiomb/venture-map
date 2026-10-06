@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -9,6 +10,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { LinksEditorComponent } from '@booking/ui/links-editor/links-editor.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
+import { PanelComponent } from '@booking/ui/panel/panel.component';
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink, isDeliveryUrl } from '@booking/core/interfaces/delivery.interface';
@@ -21,7 +23,8 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, LinksEditorComponent, ExpenseDialogComponent],
+  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, LinksEditorComponent, ExpenseDialogComponent,
+            PanelComponent, CdkMenuTrigger, CdkMenu, CdkMenuItem],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -87,6 +90,13 @@ export class BookingDetailComponent implements OnInit {
   readonly paidInFull = computed(() => this.booking()?.payment_status === 'paid');
   /** Mirrors the server's rule in get_delivery_by_token, for the admin's status badge only. */
   readonly clientCanSee = computed(() => this.hasDelivery() && (this.released() || this.paidInFull()));
+  /** Shown beside the collapsed Delivery heading, so folding it never hides whether the
+   *  client can actually see anything. */
+  readonly deliveryMeta = computed(() => {
+    if (!this.hasDelivery()) return 'nothing attached';
+    return this.clientCanSee() ? 'visible to client' : 'locked until paid';
+  });
+
   get deliveryValid(): boolean { return this.deliveryLinks.every(l => !l.url.trim() || isDeliveryUrl(l.url)); }
 
   async ngOnInit(): Promise<void> {
@@ -184,9 +194,15 @@ export class BookingDetailComponent implements OnInit {
   }
 
   async deleteExpense(e: Expense): Promise<void> {
+    // A charged cost put a line on an invoice. That line is NOT removed here: matching it
+    // back by description and amount would eventually delete the wrong one, and the
+    // invoice may since have been issued to the client. Say so rather than guess.
+    const charged = e.invoice_id
+      ? ' It was charged to the client, and that invoice line stays — remove it in the invoice editor if you need to.'
+      : '';
     if (!(await this.confirm.ask({
       title: 'Remove cost',
-      message: `Remove “${e.description}” (€${Number(e.amount).toFixed(2)})?`,
+      message: `Remove “${e.description}” (€${Number(e.amount).toFixed(2)})?${charged}`,
       confirmLabel: 'Remove', danger: true,
     }))) return;
     await this.data.deleteExpense(e.id);

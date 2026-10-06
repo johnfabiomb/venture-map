@@ -576,7 +576,12 @@ CREATE VIEW public.booking_summary AS
 SELECT
   b.id, b.org_id, b.booking_ref, b.staff_id, b.service_id, b.client_id,
   b.title, b.start_at, b.end_at, b.price_total, b.price_expenses,
-  b.price_total - b.price_expenses AS price_revenue,
+  -- price_expenses is the legacy column: nothing has ever written it and no UI can. Real
+  -- costs live in `expenses` (§22). Both are subtracted so an old value, if one ever
+  -- appeared, still counts rather than silently inflating revenue.
+  b.price_total - b.price_expenses
+    - (SELECT COALESCE(SUM(e.amount),0) FROM public.expenses e
+        WHERE e.booking_id = b.id AND e.deleted_at IS NULL) AS price_revenue,
   b.status, b.google_event_id, b.is_external, b.created_by,
   st.name AS staff_name, s.name AS service_name,
   COALESCE(c.name, b.contact_name) AS client_name, c.email AS client_email,
@@ -590,15 +595,17 @@ SELECT
     ELSE 'unpaid'
   END AS payment_status,
   -- The block that MATTERS NOW. start_at/end_at span the whole booking, so a job with
-  -- planning on Tuesday and filming on Friday reported Tuesday all week — the list showed
-  -- "Today 08:00" for a commitment three days off, and sorted it there too.
-  -- Falls back to the booking's own span when it has no slot rows.
+  -- planning on Tuesday and filming on Friday reported Tuesday all week.
   COALESCE(ns.start_at, b.start_at) AS next_start_at,
   COALESCE(ns.end_at,   b.end_at)   AS next_end_at,
-  -- Blocks still to come. The "+N more" badge needs this; slot_count never shrinks and so
-  -- kept promising another block after they had all happened.
   (SELECT COUNT(*) FROM public.booking_slots bs
-     WHERE bs.booking_id = b.id AND bs.deleted_at IS NULL AND bs.end_at > now()) AS upcoming_slot_count
+     WHERE bs.booking_id = b.id AND bs.deleted_at IS NULL AND bs.end_at > now()) AS upcoming_slot_count,
+  -- What this job COST. Drives profit-per-job on the booking page.
+  (SELECT COALESCE(SUM(e.amount),0) FROM public.expenses e
+     WHERE e.booking_id = b.id AND e.deleted_at IS NULL) AS expenses_total,
+  -- Where the job happens. "Where" is a core fact of a filming job and was the one thing
+  -- the summary could not answer, so the detail page had no way to show it.
+  b.location
 FROM public.bookings b
 LEFT JOIN public.staff    st ON st.id = b.staff_id
 LEFT JOIN public.services s  ON s.id  = b.service_id
@@ -608,8 +615,6 @@ LEFT JOIN LATERAL (
   SELECT bs.start_at, bs.end_at
     FROM public.booking_slots bs
    WHERE bs.booking_id = b.id AND bs.deleted_at IS NULL
-   -- First block that has not finished yet; when every block is past, the LAST one,
-   -- because that is when the job actually ended.
    ORDER BY (bs.end_at > now()) DESC,
             CASE WHEN bs.end_at > now() THEN bs.start_at END ASC,
             bs.start_at DESC
@@ -2732,7 +2737,7 @@ BEGIN
     -- A standalone expense has no booking and therefore no client: it lands in the
     -- Unattributed bucket rather than being dropped, because an overhead is still money
     -- that left the business.
-    SELECT e.id, e.spent_on AS d, e.category, e.amount, e.billable, b.client_id
+    SELECT e.id, e.spent_on AS d, e.category, e.amount, e.billable, e.invoice_id, b.client_id
       FROM expenses e
       LEFT JOIN bookings b ON b.id = e.booking_id
      WHERE e.org_id = p_org AND e.deleted_at IS NULL
@@ -2754,9 +2759,13 @@ BEGIN
       'income',   COALESCE((SELECT SUM(amount) FROM inc), 0),
       'expenses', COALESCE((SELECT SUM(amount) FROM exp), 0),
       'profit',   COALESCE((SELECT SUM(amount) FROM inc), 0) - COALESCE((SELECT SUM(amount) FROM exp), 0),
-      -- Costs rebilled to the client. Already counted inside `income` as invoice lines,
-      -- so this is REPORTED separately and never subtracted again.
-      'billable_expenses', COALESCE((SELECT SUM(amount) FROM exp WHERE billable), 0)
+      -- Costs ACTUALLY charged to a client, keyed on invoice_id rather than the billable
+      -- flag: a cost can be marked billable and still not be charged, because its invoice
+      -- was already issued and could not be changed. Those are genuinely absorbed, and
+      -- counting them here would claim income that was never billed.
+      -- A charged cost is already inside `income` as an invoice line, so it is REPORTED
+      -- separately and never subtracted twice.
+      'billable_expenses', COALESCE((SELECT SUM(amount) FROM exp WHERE invoice_id IS NOT NULL), 0)
     ),
     'by_month', COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
@@ -2787,3 +2796,18 @@ END $$;
 -- but the grant is removed rather than relied upon.
 REVOKE ALL ON FUNCTION public.get_profit(uuid, date, date) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_profit(uuid, date, date) TO authenticated;
+
+-- Which invoice this cost was actually charged on.
+--
+-- `billable` alone was only a LABEL: ticking it changed no invoice, so a cost marked
+-- "rebilled to the client" never reached the client. This column records the charge that
+-- was really made, which is also what stops a second line being added when the cost is
+-- edited again.
+--
+-- NULL means the cost has not been charged — either it is absorbed, or its invoice was
+-- already issued and therefore could not be changed.
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES public.invoices(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS expenses_invoice_idx
+  ON public.expenses(invoice_id) WHERE deleted_at IS NULL AND invoice_id IS NOT NULL;

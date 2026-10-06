@@ -4,7 +4,7 @@ import { BookingsAuthService } from '@booking/core/services/bookings-auth.servic
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
-import { Expense, ExpenseInput, ExpenseRow } from '@booking/core/interfaces/expense.interface';
+import { Expense, ExpenseInput, ExpenseRow, BillOutcome } from '@booking/core/interfaces/expense.interface';
 import { Profit } from '@booking/core/interfaces/profit.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
 import { Earnings } from '@booking/core/interfaces/earnings.interface';
@@ -476,7 +476,7 @@ export class BookingDataService implements OnDestroy {
   async getExpenses(bookingId: string): Promise<Expense[]> {
     const { data, error } = await bookingsDb
       .from('expenses')
-      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, created_at')
+      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, invoice_id, created_at')
       .eq('booking_id', bookingId)
       .order('spent_on', { ascending: true })
       .order('created_at', { ascending: true });
@@ -485,7 +485,7 @@ export class BookingDataService implements OnDestroy {
   }
 
   /** Insert or update one cost. */
-  async saveExpense(orgId: string, e: ExpenseInput): Promise<{ error?: string }> {
+  async saveExpense(orgId: string, e: ExpenseInput): Promise<{ expense?: Expense; error?: string }> {
     const row = {
       booking_id: e.bookingId,
       category: e.category.trim() || 'Other',
@@ -495,13 +495,54 @@ export class BookingDataService implements OnDestroy {
       vendor: e.vendor?.trim() || null,
       billable: e.billable,
     };
-    const { error } = e.id
-      ? await bookingsDb.from('expenses').update(row).eq('id', e.id)
-      : await bookingsDb.from('expenses').insert({ org_id: orgId, ...row });
+    const { data, error } = e.id
+      ? await bookingsDb.from('expenses').update(row).eq('id', e.id).select('*').single()
+      : await bookingsDb.from('expenses').insert({ org_id: orgId, ...row }).select('*').single();
     if (error) { console.error('[BookingData] saveExpense:', error); return { error: error.message }; }
     // price_revenue is derived from these rows, so the cached list is now stale.
     await this.fetchBookings();
-    return {};
+    return { expense: data as Expense };
+  }
+
+  /**
+   * Put a billable cost onto the job's invoice as a charge.
+   *
+   * An ISSUED invoice is never touched. The client already holds that document and may
+   * have paid against it, so silently adding a line would change a record they have in
+   * their hands — the same reason the Invoices card tells you to raise another invoice
+   * rather than edit the original. In that case the cost is recorded and the caller is
+   * told, so it can say so instead of pretending the client was charged.
+   */
+  async chargeExpenseToInvoice(orgId: string, e: Expense): Promise<BillOutcome> {
+    if (!e.billable || !e.booking_id) return { kind: 'none' };
+
+    const invoices = await this.listInvoicesForBooking(e.booking_id);
+    if (invoices.length === 0) return { kind: 'none' };
+
+    // Already on an invoice → never add a second line for the same cost.
+    if (e.invoice_id) {
+      const on = invoices.find(i => i.id === e.invoice_id);
+      return { kind: 'already', invoiceNumber: on?.invoice_number ?? 'the invoice' };
+    }
+
+    const draft = invoices.find(i => i.status !== 'issued');
+    if (!draft) {
+      const latest = invoices[invoices.length - 1];
+      return { kind: 'issued', invoiceNumber: latest.invoice_number ?? 'The invoice' };
+    }
+
+    // save_invoice PATCHES and rewrites the whole line set, so the existing lines are
+    // read first and the new charge appended — sending only the new one would wipe them.
+    const existing = await this.getInvoiceItems(e.booking_id);
+    const line: LineItem = { description: e.description.trim(), amount: Number(e.amount) };
+    const res = await this.saveInvoice(orgId, e.booking_id, {
+      lineItems: [...existing, line], notes: null, issueDate: null,
+    });
+    if (res.error) { console.error('[BookingData] chargeExpenseToInvoice:', res.error); return { kind: 'none' }; }
+
+    await bookingsDb.from('expenses').update({ invoice_id: draft.id }).eq('id', e.id);
+    await this.fetchBookings();
+    return { kind: 'charged', invoiceNumber: draft.invoice_number ?? 'the draft invoice' };
   }
 
   /** Soft delete — the row is kept, exactly like a removed payment. */
@@ -518,7 +559,7 @@ export class BookingDataService implements OnDestroy {
   async listExpenses(orgId: string, from?: string, to?: string): Promise<ExpenseRow[]> {
     let q = bookingsDb
       .from('expenses')
-      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, created_at, bookings(booking_ref, title, clients(name))')
+      .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, invoice_id, created_at, bookings(booking_ref, title, clients(name))')
       .eq('org_id', orgId);
     if (from) q = q.gte('spent_on', from);
     if (to) q = q.lte('spent_on', to);

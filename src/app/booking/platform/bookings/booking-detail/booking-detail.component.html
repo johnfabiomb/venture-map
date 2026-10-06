@@ -17,11 +17,23 @@
       </div>
       <div class="head-actions">
         <button class="btn btn--ghost" (click)="copyLink()">{{ copied() ? '✓ Copied' : 'Copy link' }}</button>
-        <a class="btn btn--ghost" [href]="'/book/invoice/' + id" target="_blank" rel="noopener">Invoice</a>
-        <button class="btn btn--ghost" (click)="copyInvoiceLink()">Copy invoice link</button>
-        <a class="btn btn--ghost" [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
-        <button class="btn btn--ghost" (click)="goEdit()">Edit</button>
-        <a class="btn btn--ghost" routerLink="/bookings/new" [queryParams]="{ from: id }">Duplicate</a>
+        <button class="btn btn--primary" (click)="goEdit()">Edit booking</button>
+        <!-- Six buttons wrapped onto three rows on a phone. One primary, the rest behind
+             a kebab — the same pattern the bookings list already uses. -->
+        <button class="kebab" [cdkMenuTriggerFor]="moreMenu" aria-label="More actions">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+            <circle cx="10" cy="4" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="10" cy="16" r="1.7"/>
+          </svg>
+        </button>
+        <ng-template #moreMenu>
+          <div class="menu" cdkMenu>
+            <a class="menu__item" cdkMenuItem [href]="'/book/invoice/' + id" target="_blank" rel="noopener">View invoice</a>
+            <button class="menu__item" cdkMenuItem (click)="copyInvoiceLink()">Copy invoice link</button>
+            <a class="menu__item" cdkMenuItem [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
+            <button class="menu__item" cdkMenuItem (click)="openCostDialog()">Add a cost…</button>
+            <a class="menu__item" cdkMenuItem routerLink="/bookings/new" [queryParams]="{ from: id }">Duplicate booking</a>
+          </div>
+        </ng-template>
       </div>
     </div>
 
@@ -68,16 +80,56 @@
       </div>
     </div>
 
+    <!-- When / where / who, FIRST. These were below billing, invoices and delivery, so
+         the identity of the job was the last thing on the page. -->
+    <app-panel title="Job details" class="pane">
+      <div class="facts">
+
+      @if (slots().length > 1) {
+        <div class="fact fact--blocks">
+          <span class="fact__k">Time blocks</span>
+          <span class="fact__v">
+            @for (s of slots(); track s.start) {
+              <span class="block-line">{{ s.start | date:'EEE d MMM, HH:mm' }} – {{ s.end | date:'HH:mm' }}</span>
+            }
+          </span>
+        </div>
+      } @else {
+        <div class="fact"><span class="fact__k">Date</span><span class="fact__v">{{ b.start_at | date:'EEE d MMM y, HH:mm' }} – {{ b.end_at | date:'HH:mm' }}</span></div>
+      }
+      @if (b.location) {
+        <div class="fact"><span class="fact__k">Where</span><span class="fact__v">{{ b.location }}</span></div>
+      }
+      <div class="fact"><span class="fact__k">Service</span><span class="fact__v">{{ b.service_name ?? '—' }}</span></div>
+      <div class="fact"><span class="fact__k">Worker</span><span class="fact__v">{{ b.staff_name ?? '—' }}</span></div>
+      <div class="fact"><span class="fact__k">Status</span><span class="fact__v">{{ b.status }}</span></div>
+      <!-- Production is no longer a create-time-only decision: a job can join the Work
+           board at any point after it was booked. -->
+      <div class="fact">
+        <span class="fact__k">Production</span>
+        <span class="fact__v">
+          @if (workItem(); as w) {
+            <a routerLink="/bookings/work">On the Work board · {{ w.production_status }}</a>
+          } @else {
+            <button type="button" class="link-btn" [disabled]="addingCard()" (click)="addToWorkBoard()">
+              {{ addingCard() ? 'Adding…' : '+ Add to Work board' }}
+            </button>
+          }
+        </span>
+      </div>
+      @if (b.client_email) {
+        <div class="fact"><span class="fact__k">Email</span><span class="fact__v">{{ b.client_email }}</span></div>
+      }
+          </div>
+    </app-panel>
+
     <div class="detail-grid">
     <div class="detail-col">
 
     <!-- What's billed — invoice line items (source of truth for the total) -->
     @if (lineItems().length) {
-      <div class="card">
-        <div class="card__head">
-          <h2 class="card__title">What's billed</h2>
-          <a class="link-btn" [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
-        </div>
+      <app-panel title="What's billed">
+        <a panel-actions class="link-btn" [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
         <ul class="items">
           @for (it of lineItems(); track $index) {
             <li class="items__row">
@@ -87,18 +139,15 @@
           }
         </ul>
         <div class="items__total"><span>Total</span><span>{{ b.price_total | currency:'EUR':'symbol':'1.2-2' }}</span></div>
-      </div>
+      </app-panel>
     }
 
     <!-- Invoices raised against this job. Usually one; a second appears when a deposit
          and a final are issued separately, or when scope grew after the first was sent. -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">Invoices</h2>
-        <button type="button" class="link-btn" [disabled]="addingInvoice()" (click)="addInvoice()">
-          {{ addingInvoice() ? 'Adding…' : '+ Add another invoice' }}
-        </button>
-      </div>
+    <app-panel title="Invoices" [meta]="invoices().length + (invoices().length === 1 ? ' invoice' : ' invoices')">
+      <button panel-actions type="button" class="link-btn" [disabled]="addingInvoice()" (click)="addInvoice()">
+        {{ addingInvoice() ? 'Adding…' : '+ Add' }}
+      </button>
 
       @if (invoices().length === 0) {
         <p class="empty-line">No invoice raised yet.</p>
@@ -123,95 +172,14 @@
           </p>
         }
       }
-    </div>
+    </app-panel>
 
-    <!-- Booking facts -->
-    <div class="card facts">
-      @if (slots().length > 1) {
-        <div class="fact fact--blocks">
-          <span class="fact__k">Time blocks</span>
-          <span class="fact__v">
-            @for (s of slots(); track s.start) {
-              <span class="block-line">{{ s.start | date:'EEE d MMM, HH:mm' }} – {{ s.end | date:'HH:mm' }}</span>
-            }
-          </span>
-        </div>
-      } @else {
-        <div class="fact"><span class="fact__k">Date</span><span class="fact__v">{{ b.start_at | date:'EEE d MMM y, HH:mm' }} – {{ b.end_at | date:'HH:mm' }}</span></div>
-      }
-      <div class="fact"><span class="fact__k">Service</span><span class="fact__v">{{ b.service_name ?? '—' }}</span></div>
-      <div class="fact"><span class="fact__k">Worker</span><span class="fact__v">{{ b.staff_name ?? '—' }}</span></div>
-      <div class="fact"><span class="fact__k">Status</span><span class="fact__v">{{ b.status }}</span></div>
-      <!-- Production is no longer a create-time-only decision: a job can join the Work
-           board at any point after it was booked. -->
-      <div class="fact">
-        <span class="fact__k">Production</span>
-        <span class="fact__v">
-          @if (workItem(); as w) {
-            <a routerLink="/bookings/work">On the Work board · {{ w.production_status }}</a>
-          } @else {
-            <button type="button" class="link-btn" [disabled]="addingCard()" (click)="addToWorkBoard()">
-              {{ addingCard() ? 'Adding…' : '+ Add to Work board' }}
-            </button>
-          }
-        </span>
-      </div>
-      @if (b.client_email) {
-        <div class="fact"><span class="fact__k">Email</span><span class="fact__v">{{ b.client_email }}</span></div>
-      }
-    </div>
-
-    <!-- Delivery — what the client receives on their booking link once it's paid in full
-         (or released early). The paid-gate itself is enforced server-side. -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">Delivery</h2>
-        @if (clientCanSee()) {
-          <span class="tag tag--live">Visible to client</span>
-        } @else if (hasDelivery()) {
-          <span class="tag">Locked · {{ balance() | currency:'EUR':'symbol':'1.0-2' }} due</span>
-        }
-      </div>
-
-      <div class="field">
-        <label>Message <span class="opt">(optional)</span></label>
-        <textarea rows="3" [(ngModel)]="deliveryMessage" name="deliveryMessage"
-                  placeholder="e.g. Here are your final edits — please download within 30 days."></textarea>
-      </div>
-
-      <label class="sub-label">Links</label>
-      <app-links-editor [(links)]="deliveryLinks" />
-
-      <div class="delivery-actions">
-        <button type="button" class="btn btn--primary" [disabled]="savingDelivery() || !deliveryValid" (click)="saveDelivery()">
-          {{ savingDelivery() ? 'Saving…' : 'Save delivery' }}
-        </button>
-        @if (hasDelivery() && !paidInFull()) {
-          <button type="button" class="link-btn" [disabled]="releasing()" (click)="toggleRelease()">
-            {{ released() ? 'Lock again' : 'Release now (before payment)' }}
-          </button>
-        }
-        @if (hasDelivery()) {
-          <button type="button" class="link-btn link-btn--danger" (click)="clearDelivery()">Remove</button>
-        }
-      </div>
-
-      <p class="empty-line">
-        @if (!hasDelivery()) { Nothing attached yet — the client sees no delivery section. }
-        @else if (clientCanSee()) { Live on the client's booking link now. }
-        @else { Hidden until the booking is paid in full — or use "Release now". }
-      </p>
-    </div>
     </div><!-- /detail-col (left: billing + facts + delivery) -->
 
     <div class="detail-col">
 
     <!-- Payments ledger -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">Payments</h2>
-        <span class="muted">{{ payments().length }} record{{ payments().length === 1 ? '' : 's' }}</span>
-      </div>
+    <app-panel title="Payments" [meta]="payments().length + (payments().length === 1 ? ' record' : ' records')">
 
       @if (payments().length === 0) {
         <p class="empty-line">No payments recorded yet.</p>
@@ -235,16 +203,14 @@
           }
         </ul>
       }
-    </div>
+    </app-panel>
 
     <!-- Record a payment -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">Record a payment</h2>
-        @if (balance() > 0) {
-          <button type="button" class="link-btn" (click)="prefillBalance()">Pay full balance ({{ balance() | currency:'EUR':'symbol':'1.0-2' }})</button>
-        }
-      </div>
+    <app-panel title="Record a payment" [startOpen]="false"
+               [meta]="balance() > 0 ? (balance() | currency:'EUR':'symbol':'1.0-2') + ' due' : 'settled'">
+      @if (balance() > 0) {
+        <button panel-actions type="button" class="link-btn" (click)="prefillBalance()">Pay full balance</button>
+      }
 
       <form class="payform" (ngSubmit)="addPayment()">
         <div class="payform__grid">
@@ -273,15 +239,12 @@
           </button>
         </div>
       </form>
-    </div>
+    </app-panel>
 
     <!-- Costs. Deliberately on the same column as payments: money in and money out read
          together, and profit means nothing with only one of them on screen. -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">Costs</h2>
-        <button type="button" class="link-btn" (click)="openCostDialog()">+ Add a cost</button>
-      </div>
+    <app-panel title="Costs" [meta]="expenses().length + (expenses().length === 1 ? ' item' : ' items')">
+      <button panel-actions type="button" class="link-btn" (click)="openCostDialog()">+ Add</button>
 
       @if (expenses().length === 0) {
         <p class="empty-line">No costs recorded. Add what this job cost you to see its real profit.</p>
@@ -317,10 +280,45 @@
           </div>
         </div>
       }
-    </div>
+    </app-panel>
 
     </div><!-- /detail-col (right: payments) -->
     </div><!-- /detail-grid -->
+
+    <!-- Closed by default: delivery is a post-shoot task, not a fact about the booking. -->
+    <app-panel title="Delivery" [meta]="deliveryMeta()" [startOpen]="false" class="pane">
+
+
+      <div class="field">
+        <label>Message <span class="opt">(optional)</span></label>
+        <textarea rows="3" [(ngModel)]="deliveryMessage" name="deliveryMessage"
+                  placeholder="e.g. Here are your final edits — please download within 30 days."></textarea>
+      </div>
+
+      <label class="sub-label">Links</label>
+      <app-links-editor [(links)]="deliveryLinks" />
+
+      <div class="delivery-actions">
+        <button type="button" class="btn btn--primary" [disabled]="savingDelivery() || !deliveryValid" (click)="saveDelivery()">
+          {{ savingDelivery() ? 'Saving…' : 'Save delivery' }}
+        </button>
+        @if (hasDelivery() && !paidInFull()) {
+          <button type="button" class="link-btn" [disabled]="releasing()" (click)="toggleRelease()">
+            {{ released() ? 'Lock again' : 'Release now (before payment)' }}
+          </button>
+        }
+        @if (hasDelivery()) {
+          <button type="button" class="link-btn link-btn--danger" (click)="clearDelivery()">Remove</button>
+        }
+      </div>
+
+      <p class="empty-line">
+        @if (!hasDelivery()) { Nothing attached yet — the client sees no delivery section. }
+        @else if (clientCanSee()) { Live on the client's booking link now. }
+        @else { Hidden until the booking is paid in full — or use "Release now". }
+      </p>
+        </app-panel>
+
 
     <!-- One dialog for the whole page; the job is preset and locked to this booking. -->
     <app-expense-dialog [(open)]="costDialogOpen" [forBookingId]="id"

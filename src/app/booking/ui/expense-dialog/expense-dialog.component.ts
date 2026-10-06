@@ -5,6 +5,7 @@ import { BookingDataService } from '@booking/core/services/booking-data.service'
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { Expense, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.interface';
+import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 
 /**
  * The one way to add or edit a cost, opened from the booking page, the invoices list and
@@ -69,10 +70,15 @@ import { Expense, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.in
           </label>
         </div>
 
-        <label class="xd__check">
-          <input type="checkbox" [ngModel]="billable()" (ngModelChange)="billable.set($event)" name="xdBill" />
-          <span>Rebilled to the client on the invoice</span>
+        <label class="xd__check" [class.xd__check--off]="!canBill()">
+          <input type="checkbox" [disabled]="!canBill()"
+                 [ngModel]="billable()" (ngModelChange)="billable.set($event)" name="xdBill" />
+          <span>Charge this to the client</span>
         </label>
+        <!-- States the consequence BEFORE saving. The old label said "rebilled to the
+             client on the invoice" but added nothing to any invoice, so a cost marked
+             that way never actually reached the client. -->
+        @if (billNote(); as n) { <p class="xd__note" [class.xd__note--warn]="billWarn()">{{ n }}</p> }
 
         <div class="xd__actions">
           <button type="button" class="btn btn--ghost" (click)="open.set(false)">Cancel</button>
@@ -106,6 +112,11 @@ import { Expense, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.in
       font-size: 12.5px; color: #475569; cursor: pointer;
     }
     .xd__check input { width: 16px; height: 16px; accent-color: #F4A922; cursor: pointer; }
+    .xd__check--off { opacity: 0.55; cursor: default; }
+    .xd__note {
+      margin: 6px 0 0 24px; font-size: 11.5px; line-height: 1.45; color: #64748b;
+    }
+    .xd__note--warn { color: #b45309; font-weight: 600; }
     .xd__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     @media (max-width: 560px) { .xd__actions .btn { flex: 1 1 0; justify-content: center; } }
   `],
@@ -143,6 +154,38 @@ export class ExpenseDialogComponent {
     const b = this.data.bookings().find(x => x.id === this.forBookingId());
     return b ? `${b.booking_ref} · ${b.title}` : 'This job';
   });
+  // The job's invoices, loaded when the dialog opens on a job. Needed BEFORE saving so
+  // the dialog can say whether a charge is actually possible.
+  readonly jobInvoices = signal<InvoiceListRow[]>([]);
+  /** A cost can only be charged to a client if it belongs to a job. */
+  readonly canBill = computed(() => !!(this.forBookingId() || this.bookingId()));
+
+  private readonly draftInvoice = computed(() => this.jobInvoices().find(i => i.status !== 'issued'));
+  private readonly lastInvoice  = computed(() => this.jobInvoices()[this.jobInvoices().length - 1]);
+
+  /** True when ticking the box will NOT reach the client — shown in amber. */
+  readonly billWarn = computed(() =>
+    this.billable() && this.canBill() && !this.expense()?.invoice_id && !this.draftInvoice() && !!this.lastInvoice());
+
+  readonly billNote = computed(() => {
+    if (!this.canBill()) return 'A general business cost has no client to charge it to.';
+    if (!this.billable()) return '';
+    const already = this.expense()?.invoice_id;
+    if (already) {
+      const on = this.jobInvoices().find(i => i.id === already);
+      return `Already charged on ${on?.invoice_number ?? 'this job\u2019s invoice'}.`;
+    }
+    const draft = this.draftInvoice();
+    if (draft) return `Will be added to ${draft.invoice_number ?? 'the draft invoice'} as a charge.`;
+    const last = this.lastInvoice();
+    if (last) {
+      return `${last.invoice_number ?? 'That invoice'} is already issued, so it cannot be changed — `
+           + `your client already holds it. The cost is recorded; use “+ Add” on Invoices to raise `
+           + `another one that charges it.`;
+    }
+    return 'This job has no invoice yet — raise one and the charge can be added to it.';
+  });
+
   readonly valid = computed(() => {
     const a = Number(this.amount());
     return isFinite(a) && a > 0 && this.description().trim().length > 0;
@@ -163,8 +206,13 @@ export class ExpenseDialogComponent {
         this.bookingId.set(e?.booking_id ?? preset ?? '');
         this.billable.set(e?.billable ?? false);
         this.spentOn.set(e?.spent_on ?? new Date().toISOString().slice(0, 10));
+        void this.loadInvoices(e?.booking_id ?? preset ?? '');
       });
     });
+  }
+
+  private async loadInvoices(bookingId: string): Promise<void> {
+    this.jobInvoices.set(bookingId ? await this.data.listInvoicesForBooking(bookingId) : []);
   }
 
   async save(): Promise<void> {
@@ -185,8 +233,23 @@ export class ExpenseDialogComponent {
         vendor: this.vendor() || null,
         billable: this.billable(),
       });
-      if (res.error) { this.toast.error('Could not save the cost.'); return; }
-      this.toast.success(this.editing() ? 'Cost updated' : `€${amount.toFixed(2)} cost added`);
+      if (res.error || !res.expense) { this.toast.error('Could not save the cost.'); return; }
+
+      // The charge is the point of the checkbox, so it happens here rather than being
+      // left as a label the owner has to act on themselves.
+      const outcome = await this.data.chargeExpenseToInvoice(org, res.expense);
+      switch (outcome.kind) {
+        case 'charged':
+          this.toast.success(`€${amount.toFixed(2)} added to ${outcome.invoiceNumber} and recorded as a cost`);
+          break;
+        case 'issued':
+          this.toast.error(
+            `Cost recorded, but ${outcome.invoiceNumber} is already issued and cannot be changed. ` +
+            `Raise another invoice to charge it.`, 9000);
+          break;
+        default:
+          this.toast.success(this.editing() ? 'Cost updated' : `€${amount.toFixed(2)} cost added`);
+      }
       this.open.set(false);
       this.saved.emit();
     } finally { this.saving.set(false); }

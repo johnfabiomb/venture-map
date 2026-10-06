@@ -50,6 +50,8 @@ export interface BookingSummary {
   staff_name: string | null;
   is_external: boolean;
   google_event_id: string | null;
+  /** Where the job happens. */
+  location: string | null;
 }
 
 /** Raw editable columns of a booking — used by the admin edit form. */

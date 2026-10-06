@@ -108,3 +108,6 @@
 
 // Every <td> carries data-label, so the mixin can restack the tables as cards on a phone.
 @include tc.table-cards;
+
+// Marked to charge but never actually billed — the invoice was already issued.
+.chip--todo { background: rgba(245, 158, 11, 0.16); color: #b45309; margin-left: 6px; }

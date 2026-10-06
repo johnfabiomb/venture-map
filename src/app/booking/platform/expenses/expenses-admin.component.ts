@@ -105,9 +105,13 @@ export class ExpensesAdminComponent implements OnInit {
   }
 
   async remove(r: ExpenseRow): Promise<void> {
+    // See booking-detail: a charged cost's invoice line is deliberately left alone.
+    const charged = r.invoice_id
+      ? ' It was charged to the client, and that invoice line stays — remove it in the invoice editor if you need to.'
+      : '';
     if (!(await this.confirm.ask({
       title: 'Remove cost',
-      message: `Remove “${r.description}” (€${Number(r.amount).toFixed(2)})?`,
+      message: `Remove “${r.description}” (€${Number(r.amount).toFixed(2)})?${charged}`,
       confirmLabel: 'Remove', danger: true,
     }))) return;
     await this.data.deleteExpense(r.id);

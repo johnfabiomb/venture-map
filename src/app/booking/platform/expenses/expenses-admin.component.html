@@ -35,7 +35,7 @@
           </span>
         </div>
         <div class="summary__card">
-          <span class="summary__label">Of which rebilled</span>
+          <span class="summary__label">Charged to clients</span>
           <span class="summary__val">{{ t.billable_expenses | currency:'EUR':'symbol':'1.0-2' }}</span>
           <!-- Stated plainly: it is already inside Income as invoice lines, so it is NOT
                subtracted a second time. Without this line the two figures look wrong. -->
@@ -140,7 +140,10 @@
                   <td class="ellipsis" data-label="What">
                     {{ r.description }}
                     @if (r.vendor) { <span class="muted">· {{ r.vendor }}</span> }
-                    @if (r.billable) { <span class="chip chip--bill">rebilled</span> }
+                    <!-- "charged" = a line really went onto an invoice; "to charge" = marked
+                         billable but the invoice was already issued, so it never reached them. -->
+                    @if (r.invoice_id) { <span class="chip chip--bill">charged</span> }
+                    @else if (r.billable) { <span class="chip chip--todo">to charge</span> }
                   </td>
                   <td data-label="Job">
                     @if (r.booking_ref) {
