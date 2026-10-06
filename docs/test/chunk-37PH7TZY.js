@@ -10,6 +10,9 @@ import {
 } from "./chunk-JA4IGNBH.js";
 import "./chunk-SQGLN6CN.js";
 import {
+  ExpenseDialogComponent
+} from "./chunk-QRBC3A7W.js";
+import {
   ModalComponent
 } from "./chunk-5MZRX563.js";
 import {
@@ -1263,7 +1266,7 @@ var _forTrack02 = ($index, $item) => $item.key;
 var _forTrack1 = ($index, $item) => $item.id;
 function InvoicesAdminComponent_Conditional_8_For_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 11);
+    \u0275\u0275elementStart(0, "option", 12);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1277,18 +1280,18 @@ function InvoicesAdminComponent_Conditional_8_For_4_Template(rf, ctx) {
 function InvoicesAdminComponent_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "select", 9);
+    \u0275\u0275elementStart(0, "select", 10);
     \u0275\u0275listener("change", function InvoicesAdminComponent_Conditional_8_Template_select_change_0_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.year.set($event.target.value));
     });
-    \u0275\u0275elementStart(1, "option", 10);
+    \u0275\u0275elementStart(1, "option", 11);
     \u0275\u0275text(2, "All years");
     \u0275\u0275elementEnd();
-    \u0275\u0275repeaterCreate(3, InvoicesAdminComponent_Conditional_8_For_4_Template, 2, 2, "option", 11, \u0275\u0275repeaterTrackByIdentity);
+    \u0275\u0275repeaterCreate(3, InvoicesAdminComponent_Conditional_8_For_4_Template, 2, 2, "option", 12, \u0275\u0275repeaterTrackByIdentity);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 12);
+    \u0275\u0275elementStart(5, "button", 13);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_8_Template_button_click_5_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -1320,7 +1323,7 @@ function InvoicesAdminComponent_Conditional_12_Template(rf, ctx) {
 }
 function InvoicesAdminComponent_Conditional_13_For_32_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 23);
+    \u0275\u0275elementStart(0, "span", 24);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1334,7 +1337,7 @@ function InvoicesAdminComponent_Conditional_13_For_32_Conditional_3_Template(rf,
 function InvoicesAdminComponent_Conditional_13_For_32_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 22);
+    \u0275\u0275elementStart(0, "button", 23);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_For_32_Template_button_click_0_listener() {
       const t_r5 = \u0275\u0275restoreView(_r4).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1343,7 +1346,7 @@ function InvoicesAdminComponent_Conditional_13_For_32_Template(rf, ctx) {
     \u0275\u0275elementStart(1, "span");
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(3, InvoicesAdminComponent_Conditional_13_For_32_Conditional_3_Template, 2, 1, "span", 23);
+    \u0275\u0275template(3, InvoicesAdminComponent_Conditional_13_For_32_Conditional_3_Template, 2, 1, "span", 24);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -1366,25 +1369,25 @@ function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_0_Temp
 function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_For_17_Template(rf, ctx) {
   if (rf & 1) {
     const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr")(1, "td", 26);
+    \u0275\u0275elementStart(0, "tr")(1, "td", 27);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 27);
+    \u0275\u0275elementStart(3, "td", 28);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "td", 28);
+    \u0275\u0275elementStart(5, "td", 29);
     \u0275\u0275text(6);
     \u0275\u0275pipe(7, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "td", 29);
+    \u0275\u0275elementStart(8, "td", 30);
     \u0275\u0275text(9);
     \u0275\u0275pipe(10, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 30);
+    \u0275\u0275elementStart(11, "td", 31);
     \u0275\u0275text(12);
     \u0275\u0275pipe(13, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "td", 31)(15, "button", 32);
+    \u0275\u0275elementStart(14, "td", 32)(15, "button", 33);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_For_17_Template_button_click_15_listener() {
       const d_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
@@ -1416,7 +1419,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_For_
 }
 function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 21)(1, "table", 24)(2, "thead")(3, "tr")(4, "th");
+    \u0275\u0275elementStart(0, "div", 22)(1, "table", 25)(2, "thead")(3, "tr")(4, "th");
     \u0275\u0275text(5, "Invoice");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "th");
@@ -1425,7 +1428,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_Temp
     \u0275\u0275elementStart(8, "th");
     \u0275\u0275text(9, "Date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "th", 25);
+    \u0275\u0275elementStart(10, "th", 26);
     \u0275\u0275text(11, "Total");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(12, "th");
@@ -1445,7 +1448,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_Temp
 }
 function InvoicesAdminComponent_Conditional_13_Conditional_33_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_0_Template, 2, 0, "p", 7)(1, InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_Template, 18, 0, "div", 21);
+    \u0275\u0275template(0, InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_0_Template, 2, 0, "p", 7)(1, InvoicesAdminComponent_Conditional_13_Conditional_33_Conditional_1_Template, 18, 0, "div", 22);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1461,7 +1464,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_34_Template(rf, ctx) 
 }
 function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Conditional_27_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 42);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1471,12 +1474,26 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Conditional
     \u0275\u0275textInterpolate1("", r_r9.days_overdue, "d overdue");
   }
 }
-function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_9_Template(rf, ctx) {
+function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
     const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 50);
-    \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_9_Template_button_click_0_listener() {
+    \u0275\u0275elementStart(0, "button", 51);
+    \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_7_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r11);
+      const r_r9 = \u0275\u0275nextContext(2).$implicit;
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.openCost(r_r9));
+    });
+    \u0275\u0275text(1, "Add a cost\u2026");
+    \u0275\u0275elementEnd();
+  }
+}
+function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_10_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r12 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 51);
+    \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_10_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r12);
       const r_r9 = \u0275\u0275nextContext(2).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.openSend(r_r9, "reminder"));
@@ -1488,10 +1505,10 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template
 function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template(rf, ctx) {
   if (rf & 1) {
     const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 48)(1, "a", 49);
+    \u0275\u0275elementStart(0, "div", 49)(1, "a", 50);
     \u0275\u0275text(2, "Edit invoice");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "button", 50);
+    \u0275\u0275elementStart(3, "button", 51);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template_button_click_3_listener() {
       \u0275\u0275restoreView(_r10);
       const r_r9 = \u0275\u0275nextContext().$implicit;
@@ -1500,7 +1517,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template
     });
     \u0275\u0275text(4, "View / print");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 50);
+    \u0275\u0275elementStart(5, "button", 51);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template_button_click_5_listener() {
       \u0275\u0275restoreView(_r10);
       const r_r9 = \u0275\u0275nextContext().$implicit;
@@ -1509,16 +1526,17 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template
     });
     \u0275\u0275text(6, "Copy share link");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 50);
-    \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template_button_click_7_listener() {
+    \u0275\u0275template(7, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_7_Template, 2, 0, "button", 52);
+    \u0275\u0275elementStart(8, "button", 51);
+    \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template_button_click_8_listener() {
       \u0275\u0275restoreView(_r10);
       const r_r9 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.openSend(r_r9, "invoice"));
     });
-    \u0275\u0275text(8, "Send by email\u2026");
+    \u0275\u0275text(9, "Send by email\u2026");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(9, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_9_Template, 2, 0, "button", 51);
+    \u0275\u0275template(10, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Conditional_10_Template, 2, 0, "button", 52);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -1526,66 +1544,68 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template
     const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance();
     \u0275\u0275property("routerLink", ctx_r1.editLink(r_r9));
-    \u0275\u0275advance(8);
-    \u0275\u0275conditional(r_r9.balance_due > 0 ? 9 : -1);
+    \u0275\u0275advance(6);
+    \u0275\u0275conditional(r_r9.booking_id ? 7 : -1);
+    \u0275\u0275advance(3);
+    \u0275\u0275conditional(r_r9.balance_due > 0 ? 10 : -1);
   }
 }
 function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "tr", 34);
+    \u0275\u0275elementStart(0, "tr", 35);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template_tr_click_0_listener() {
       const r_r9 = \u0275\u0275restoreView(_r8).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.open(r_r9));
     });
-    \u0275\u0275elementStart(1, "td", 26);
+    \u0275\u0275elementStart(1, "td", 27);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "td", 28);
+    \u0275\u0275elementStart(3, "td", 29);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "td", 35);
+    \u0275\u0275elementStart(6, "td", 36);
     \u0275\u0275text(7);
     \u0275\u0275pipe(8, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "td", 27);
+    \u0275\u0275elementStart(9, "td", 28);
     \u0275\u0275text(10);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "td", 36);
+    \u0275\u0275elementStart(11, "td", 37);
     \u0275\u0275text(12);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "td", 37);
+    \u0275\u0275elementStart(13, "td", 38);
     \u0275\u0275text(14);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "td", 29);
+    \u0275\u0275elementStart(15, "td", 30);
     \u0275\u0275text(16);
     \u0275\u0275pipe(17, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "td", 38);
+    \u0275\u0275elementStart(18, "td", 39);
     \u0275\u0275text(19);
     \u0275\u0275pipe(20, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "td", 39);
+    \u0275\u0275elementStart(21, "td", 40);
     \u0275\u0275text(22);
     \u0275\u0275pipe(23, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(24, "td", 40)(25, "span", 41);
+    \u0275\u0275elementStart(24, "td", 41)(25, "span", 42);
     \u0275\u0275text(26);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(27, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Conditional_27_Template, 2, 1, "span", 42);
+    \u0275\u0275template(27, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Conditional_27_Template, 2, 1, "span", 43);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(28, "td", 31)(29, "button", 43);
+    \u0275\u0275elementStart(28, "td", 32)(29, "button", 44);
     \u0275\u0275listener("click", function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template_button_click_29_listener($event) {
       \u0275\u0275restoreView(_r8);
       return \u0275\u0275resetView($event.stopPropagation());
     });
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(30, "svg", 44);
-    \u0275\u0275element(31, "circle", 45)(32, "circle", 46)(33, "circle", 47);
+    \u0275\u0275elementStart(30, "svg", 45);
+    \u0275\u0275element(31, "circle", 46)(32, "circle", 47)(33, "circle", 48);
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(34, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template, 10, 2, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+    \u0275\u0275template(34, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_ng_template_34_Template, 11, 3, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1594,7 +1614,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template(rf
     let tmp_18_0;
     let tmp_19_0;
     const r_r9 = ctx.$implicit;
-    const rowMenu_r12 = \u0275\u0275reference(35);
+    const rowMenu_r13 = \u0275\u0275reference(35);
     const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance(2);
     \u0275\u0275textInterpolate((tmp_13_0 = r_r9.invoice_number) !== null && tmp_13_0 !== void 0 ? tmp_13_0 : "\u2014");
@@ -1625,12 +1645,12 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template(rf
     \u0275\u0275advance();
     \u0275\u0275conditional(r_r9.is_overdue ? 27 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275property("cdkMenuTriggerFor", rowMenu_r12);
+    \u0275\u0275property("cdkMenuTriggerFor", rowMenu_r13);
   }
 }
 function InvoicesAdminComponent_Conditional_13_Conditional_35_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 21)(1, "table", 24)(2, "thead")(3, "tr")(4, "th");
+    \u0275\u0275elementStart(0, "div", 22)(1, "table", 25)(2, "thead")(3, "tr")(4, "th");
     \u0275\u0275text(5, "Invoice");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "th");
@@ -1648,13 +1668,13 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_Template(rf, ctx) 
     \u0275\u0275elementStart(14, "th");
     \u0275\u0275text(15, "Service");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "th", 25);
+    \u0275\u0275elementStart(16, "th", 26);
     \u0275\u0275text(17, "Total");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "th", 25);
+    \u0275\u0275elementStart(18, "th", 26);
     \u0275\u0275text(19, "Paid");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "th", 25);
+    \u0275\u0275elementStart(20, "th", 26);
     \u0275\u0275text(21, "Balance");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(22, "th");
@@ -1663,7 +1683,7 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_Template(rf, ctx) 
     \u0275\u0275element(24, "th");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(25, "tbody");
-    \u0275\u0275repeaterCreate(26, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template, 36, 43, "tr", 33, _forTrack1);
+    \u0275\u0275repeaterCreate(26, InvoicesAdminComponent_Conditional_13_Conditional_35_For_27_Template, 36, 43, "tr", 34, _forTrack1);
     \u0275\u0275elementEnd()()();
   }
   if (rf & 2) {
@@ -1674,44 +1694,44 @@ function InvoicesAdminComponent_Conditional_13_Conditional_35_Template(rf, ctx) 
 }
 function InvoicesAdminComponent_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13)(1, "div", 14)(2, "span", 15);
+    \u0275\u0275elementStart(0, "div", 14)(1, "div", 15)(2, "span", 16);
     \u0275\u0275text(3, "Invoices");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 16);
+    \u0275\u0275elementStart(4, "span", 17);
     \u0275\u0275text(5);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "div", 14)(7, "span", 15);
+    \u0275\u0275elementStart(6, "div", 15)(7, "span", 16);
     \u0275\u0275text(8, "Billed (gross)");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "span", 16);
+    \u0275\u0275elementStart(9, "span", 17);
     \u0275\u0275text(10);
     \u0275\u0275pipe(11, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(12, "div", 14)(13, "span", 15);
+    \u0275\u0275elementStart(12, "div", 15)(13, "span", 16);
     \u0275\u0275text(14, "Collected");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "span", 17);
+    \u0275\u0275elementStart(15, "span", 18);
     \u0275\u0275text(16);
     \u0275\u0275pipe(17, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(18, "div", 14)(19, "span", 15);
+    \u0275\u0275elementStart(18, "div", 15)(19, "span", 16);
     \u0275\u0275text(20, "Outstanding");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "span", 18);
+    \u0275\u0275elementStart(21, "span", 19);
     \u0275\u0275text(22);
     \u0275\u0275pipe(23, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(24, "div", 14)(25, "span", 15);
+    \u0275\u0275elementStart(24, "div", 15)(25, "span", 16);
     \u0275\u0275text(26, "Overdue");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(27, "span", 16);
+    \u0275\u0275elementStart(27, "span", 17);
     \u0275\u0275text(28);
     \u0275\u0275pipe(29, "currency");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(30, "div", 19);
-    \u0275\u0275repeaterCreate(31, InvoicesAdminComponent_Conditional_13_For_32_Template, 4, 4, "button", 20, _forTrack02);
+    \u0275\u0275elementStart(30, "div", 20);
+    \u0275\u0275repeaterCreate(31, InvoicesAdminComponent_Conditional_13_For_32_Template, 4, 4, "button", 21, _forTrack02);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(33, InvoicesAdminComponent_Conditional_13_Conditional_33_Template, 2, 1)(34, InvoicesAdminComponent_Conditional_13_Conditional_34_Template, 2, 0, "p", 7)(35, InvoicesAdminComponent_Conditional_13_Conditional_35_Template, 28, 0, "div", 21);
+    \u0275\u0275template(33, InvoicesAdminComponent_Conditional_13_Conditional_33_Template, 2, 1)(34, InvoicesAdminComponent_Conditional_13_Conditional_34_Template, 2, 0, "p", 7)(35, InvoicesAdminComponent_Conditional_13_Conditional_35_Template, 28, 0, "div", 22);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext();
@@ -1753,6 +1773,8 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
     this.sendKind = signal("invoice");
     this.deleted = signal([]);
     this.restoring = signal("");
+    this.costOpen = signal(false);
+    this.costBookingId = signal(null);
     this.year = signal("all");
     this.years = computed(() => {
       const ys = /* @__PURE__ */ new Set();
@@ -1838,6 +1860,12 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
         this.restoring.set("");
       }
     });
+  }
+  openCost(r) {
+    if (!r.booking_id)
+      return;
+    this.costBookingId.set(r.booking_id);
+    this.costOpen.set(true);
   }
   openSend(r, kind) {
     this.sendId.set(r.id);
@@ -1931,7 +1959,7 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _InvoicesAdminComponent, selectors: [["app-invoices-admin"]], decls: 15, vars: 5, consts: [["rowMenu", ""], [1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-tools"], ["routerLink", "/bookings/invoices/new", 1, "btn", "btn--primary"], [1, "muted"], [3, "openChange", "kindChange", "sent", "open", "invoiceId", "kind"], [1, "year-select", 3, "change", "value"], ["value", "all"], [3, "value"], [1, "btn", "btn--ghost", 3, "click"], [1, "summary"], [1, "summary__card"], [1, "summary__label"], [1, "summary__val"], [1, "summary__val", "summary__val--ok"], [1, "summary__val", "summary__val--due"], ["role", "tablist", 1, "tabs"], ["role", "tab", 1, "tab", 3, "tab--active"], [1, "table-wrap"], ["role", "tab", 1, "tab", 3, "click"], [1, "tab__count"], [1, "table"], [1, "num"], ["data-label", "Invoice", 1, "mono"], ["data-label", "Client", 1, "ellipsis"], ["data-label", "Date"], ["data-label", "Total", 1, "num"], ["data-label", "Deleted"], ["data-label", "", 1, "actions"], [1, "link-btn", 3, "click", "disabled"], [1, "row"], [1, "row", 3, "click"], ["data-label", "Due"], ["data-label", "Worker", 1, "ellipsis"], ["data-label", "Service", 1, "ellipsis"], ["data-label", "Paid", 1, "num"], ["data-label", "Balance", 1, "num"], ["data-label", "Status"], [1, "badge"], [1, "badge", "badge--overdue"], ["aria-label", "Actions", 1, "kebab", 3, "click", "cdkMenuTriggerFor"], ["viewBox", "0 0 20 20", "width", "18", "height", "18", "fill", "currentColor"], ["cx", "10", "cy", "4", "r", "1.7"], ["cx", "10", "cy", "10", "r", "1.7"], ["cx", "10", "cy", "16", "r", "1.7"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", 1, "menu__item", 3, "routerLink"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"], ["cdkMenuItem", "", 1, "menu__item"]], template: function InvoicesAdminComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _InvoicesAdminComponent, selectors: [["app-invoices-admin"]], decls: 16, vars: 7, consts: [["rowMenu", ""], [1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-tools"], ["routerLink", "/bookings/invoices/new", 1, "btn", "btn--primary"], [1, "muted"], [3, "openChange", "saved", "open", "forBookingId"], [3, "openChange", "kindChange", "sent", "open", "invoiceId", "kind"], [1, "year-select", 3, "change", "value"], ["value", "all"], [3, "value"], [1, "btn", "btn--ghost", 3, "click"], [1, "summary"], [1, "summary__card"], [1, "summary__label"], [1, "summary__val"], [1, "summary__val", "summary__val--ok"], [1, "summary__val", "summary__val--due"], ["role", "tablist", 1, "tabs"], ["role", "tab", 1, "tab", 3, "tab--active"], [1, "table-wrap"], ["role", "tab", 1, "tab", 3, "click"], [1, "tab__count"], [1, "table"], [1, "num"], ["data-label", "Invoice", 1, "mono"], ["data-label", "Client", 1, "ellipsis"], ["data-label", "Date"], ["data-label", "Total", 1, "num"], ["data-label", "Deleted"], ["data-label", "", 1, "actions"], [1, "link-btn", 3, "click", "disabled"], [1, "row"], [1, "row", 3, "click"], ["data-label", "Due"], ["data-label", "Worker", 1, "ellipsis"], ["data-label", "Service", 1, "ellipsis"], ["data-label", "Paid", 1, "num"], ["data-label", "Balance", 1, "num"], ["data-label", "Status"], [1, "badge"], [1, "badge", "badge--overdue"], ["aria-label", "Actions", 1, "kebab", 3, "click", "cdkMenuTriggerFor"], ["viewBox", "0 0 20 20", "width", "18", "height", "18", "fill", "currentColor"], ["cx", "10", "cy", "4", "r", "1.7"], ["cx", "10", "cy", "10", "r", "1.7"], ["cx", "10", "cy", "16", "r", "1.7"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", 1, "menu__item", 3, "routerLink"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"], ["cdkMenuItem", "", 1, "menu__item"]], template: function InvoicesAdminComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 1)(1, "div", 2)(2, "div")(3, "h1", 3);
         \u0275\u0275text(4, "Invoices");
@@ -1945,16 +1973,24 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
         \u0275\u0275text(10, "New invoice");
         \u0275\u0275elementEnd()()();
         \u0275\u0275template(11, InvoicesAdminComponent_Conditional_11_Template, 2, 0, "p", 7)(12, InvoicesAdminComponent_Conditional_12_Template, 2, 0, "p", 7)(13, InvoicesAdminComponent_Conditional_13_Template, 36, 28);
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(14, "app-invoice-send", 8);
-        \u0275\u0275twoWayListener("openChange", function InvoicesAdminComponent_Template_app_invoice_send_openChange_14_listener($event) {
+        \u0275\u0275elementStart(14, "app-expense-dialog", 8);
+        \u0275\u0275twoWayListener("openChange", function InvoicesAdminComponent_Template_app_expense_dialog_openChange_14_listener($event) {
+          \u0275\u0275twoWayBindingSet(ctx.costOpen, $event) || (ctx.costOpen = $event);
+          return $event;
+        });
+        \u0275\u0275listener("saved", function InvoicesAdminComponent_Template_app_expense_dialog_saved_14_listener() {
+          return ctx.reload();
+        });
+        \u0275\u0275elementEnd()();
+        \u0275\u0275elementStart(15, "app-invoice-send", 9);
+        \u0275\u0275twoWayListener("openChange", function InvoicesAdminComponent_Template_app_invoice_send_openChange_15_listener($event) {
           \u0275\u0275twoWayBindingSet(ctx.sendOpen, $event) || (ctx.sendOpen = $event);
           return $event;
-        })("kindChange", function InvoicesAdminComponent_Template_app_invoice_send_kindChange_14_listener($event) {
+        })("kindChange", function InvoicesAdminComponent_Template_app_invoice_send_kindChange_15_listener($event) {
           \u0275\u0275twoWayBindingSet(ctx.sendKind, $event) || (ctx.sendKind = $event);
           return $event;
         });
-        \u0275\u0275listener("sent", function InvoicesAdminComponent_Template_app_invoice_send_sent_14_listener() {
+        \u0275\u0275listener("sent", function InvoicesAdminComponent_Template_app_invoice_send_sent_15_listener() {
           return ctx.reload();
         });
         \u0275\u0275elementEnd();
@@ -1965,11 +2001,14 @@ var InvoicesAdminComponent = class _InvoicesAdminComponent {
         \u0275\u0275advance(3);
         \u0275\u0275conditional(ctx.loading() ? 11 : ctx.invoices().length === 0 ? 12 : 13);
         \u0275\u0275advance(3);
+        \u0275\u0275twoWayProperty("open", ctx.costOpen);
+        \u0275\u0275property("forBookingId", ctx.costBookingId());
+        \u0275\u0275advance();
         \u0275\u0275twoWayProperty("open", ctx.sendOpen);
         \u0275\u0275property("invoiceId", ctx.sendId());
         \u0275\u0275twoWayProperty("kind", ctx.sendKind);
       }
-    }, dependencies: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent], styles: [`
+    }, dependencies: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent], styles: [`
 
 .page[_ngcontent-%COMP%] {
   padding: 32px 40px;
@@ -2512,9 +2551,9 @@ th.num[_ngcontent-%COMP%] {
   }
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(InvoicesAdminComponent, { className: "InvoicesAdminComponent", filePath: "src/app/booking/platform/invoices/invoices-admin.component.ts", lineNumber: 41 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(InvoicesAdminComponent, { className: "InvoicesAdminComponent", filePath: "src/app/booking/platform/invoices/invoices-admin.component.ts", lineNumber: 42 });
 })();
 export {
   InvoicesAdminComponent
 };
-//# sourceMappingURL=chunk-LSNACH72.js.map
+//# sourceMappingURL=chunk-37PH7TZY.js.map

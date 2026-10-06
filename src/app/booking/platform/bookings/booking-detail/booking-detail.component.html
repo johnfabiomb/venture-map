@@ -39,6 +39,26 @@
         <span class="money__value" [class.money__value--due]="balance() > 0">{{ balance() | currency:'EUR':'symbol':'1.2-2' }}</span>
         <span class="money__label">Balance due</span>
       </div>
+      <!-- Costs and profit live in the summary, not only in a card at the foot of the
+           page: this strip is where the money is read, and anything below the payments
+           column is off the bottom of a phone screen. -->
+      <div class="money__stat">
+        <span class="money__value" [class.money__value--cost]="expensesTotal() > 0">
+          {{ expensesTotal() ? '−' : '' }}{{ expensesTotal() | currency:'EUR':'symbol':'1.2-2' }}
+        </span>
+        <span class="money__label">
+          Costs
+          <button type="button" class="money__add" (click)="openCostDialog()">+ Add</button>
+        </span>
+      </div>
+      @if (expensesTotal() > 0) {
+        <div class="money__stat">
+          <span class="money__value" [class.money__value--paid]="profit() >= 0" [class.money__value--due]="profit() < 0">
+            {{ profit() | currency:'EUR':'symbol':'1.2-2' }}
+          </span>
+          <span class="money__label">Profit</span>
+        </div>
+      }
       <div class="money__badge">
         <span class="badge badge--{{ b.payment_status }}">
           {{ b.payment_status === 'paid' ? 'Paid in full'
@@ -260,7 +280,7 @@
     <div class="card">
       <div class="card__head">
         <h2 class="card__title">Costs</h2>
-        <span class="muted">{{ expenses().length }} item{{ expenses().length === 1 ? '' : 's' }}</span>
+        <button type="button" class="link-btn" (click)="openCostDialog()">+ Add a cost</button>
       </div>
 
       @if (expenses().length === 0) {
@@ -277,6 +297,7 @@
                 @if (e.billable) { <span class="pay__tag">rebilled</span> }
               </div>
               <div class="pay__date">{{ e.spent_on | date:'d MMM y' }}</div>
+              <button class="pay__edit" title="Edit cost" (click)="openCostDialog(e)">Edit</button>
               <button class="pay__del" title="Remove cost" (click)="deleteExpense(e)">✕</button>
             </li>
           }
@@ -298,48 +319,12 @@
       }
     </div>
 
-    <!-- Add a cost -->
-    <div class="card">
-      <div class="card__head"><h2 class="card__title">Add a cost</h2></div>
-
-      <form class="payform" (ngSubmit)="addExpense()">
-        <div class="payform__grid">
-          <div class="field">
-            <label>Amount (€)</label>
-            <input type="number" [(ngModel)]="expAmount" name="expAmount" min="0" step="0.01" placeholder="0.00" required />
-          </div>
-          <div class="field">
-            <label>Category</label>
-            <!-- A datalist, not a select: the column is free text so a cost nobody
-                 predicted is never blocked from being recorded. -->
-            <input [(ngModel)]="expCategory" name="expCategory" list="expenseCategories" placeholder="Travel" />
-            <datalist id="expenseCategories">
-              @for (c of categories; track c) { <option [value]="c"></option> }
-            </datalist>
-          </div>
-          <div class="field">
-            <label>Date</label>
-            <input type="date" [(ngModel)]="expDate" name="expDate" />
-          </div>
-          <div class="field field--note">
-            <label>What was it?</label>
-            <input [(ngModel)]="expDescription" name="expDescription" placeholder="e.g. Fuel to Zebbug, second shooter" required />
-          </div>
-        </div>
-        <label class="check check--inline">
-          <input type="checkbox" [(ngModel)]="expBillable" name="expBillable" />
-          <span>Rebilled to the client on the invoice</span>
-        </label>
-        <div class="payform__actions">
-          <button type="submit" class="btn btn--primary" [disabled]="addingExpense()">
-            {{ addingExpense() ? 'Saving…' : 'Add cost' }}
-          </button>
-        </div>
-      </form>
-    </div>
-
     </div><!-- /detail-col (right: payments) -->
     </div><!-- /detail-grid -->
+
+    <!-- One dialog for the whole page; the job is preset and locked to this booking. -->
+    <app-expense-dialog [(open)]="costDialogOpen" [forBookingId]="id"
+                        [expense]="editingExpense()" (saved)="onCostSaved()" />
     }
   }
 </div>

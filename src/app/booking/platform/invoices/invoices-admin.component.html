@@ -132,6 +132,12 @@
                            and shares via its own invoice token. -->
                       <button class="menu__item" cdkMenuItem (click)="open(r)">View / print</button>
                       <button class="menu__item" cdkMenuItem (click)="copyShareLink(r)">Copy share link</button>
+                      <!-- Costs attach to the JOB, so this is only offered when the invoice
+                           has one. A standalone invoice has no job to hang a cost on; those
+                           are recorded on Costs & profit as general business costs. -->
+                      @if (r.booking_id) {
+                        <button class="menu__item" cdkMenuItem (click)="openCost(r)">Add a cost…</button>
+                      }
                       <button class="menu__item" cdkMenuItem (click)="openSend(r, 'invoice')">Send by email…</button>
                       <!-- Chasing only makes sense while something is actually owed. -->
                       @if (r.balance_due > 0) {
@@ -147,6 +153,9 @@
       </div>
     }
   }
+
+  <!-- Shared cost dialog, job preset from the invoice's booking. -->
+  <app-expense-dialog [(open)]="costOpen" [forBookingId]="costBookingId()" (saved)="reload()" />
 </div>
 
 <!-- One dialog for the whole page: it loads its own data from the invoice id, so hosting

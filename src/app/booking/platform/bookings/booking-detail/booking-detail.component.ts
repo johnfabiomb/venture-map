@@ -8,10 +8,11 @@ import { BookingsAuthService } from '@booking/core/services/bookings-auth.servic
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { LinksEditorComponent } from '@booking/ui/links-editor/links-editor.component';
+import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
 import { Delivery, DeliveryLink, isDeliveryUrl } from '@booking/core/interfaces/delivery.interface';
-import { Expense, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.interface';
+import { Expense } from '@booking/core/interfaces/expense.interface';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: 'Card', cash: 'Cash', revolut: 'Revolut', bank: 'Bank transfer', other: 'Other',
@@ -20,7 +21,7 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, LinksEditorComponent],
+  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, LinksEditorComponent, ExpenseDialogComponent],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -53,13 +54,9 @@ export class BookingDetailComponent implements OnInit {
 
   // ── Costs ───────────────────────────────────────────────────────────────
   readonly expenses = signal<Expense[]>([]);
-  readonly addingExpense = signal(false);
-  readonly categories = EXPENSE_CATEGORIES;
-  expAmount: number | null = null;
-  expCategory = 'Travel';
-  expDescription = '';
-  expBillable = false;
-  expDate = new Date().toISOString().slice(0, 10);
+  readonly costDialogOpen = signal(false);
+  /** The cost being edited; null means the dialog adds a new one. */
+  readonly editingExpense = signal<Expense | null>(null);
 
   /** What the client is being charged. Read from the booking, never re-derived from the
    *  invoice lines — the booking total is the figure the rest of the app agrees on. */
@@ -175,31 +172,15 @@ export class BookingDetailComponent implements OnInit {
 
   prefillBalance(): void { this.payAmount = this.balance(); }
 
-  async addExpense(): Promise<void> {
-    const amount = Number(this.expAmount);
-    if (!isFinite(amount) || amount <= 0) { this.toast.error('Enter a valid amount.'); return; }
-    if (!this.expDescription.trim()) { this.toast.error('Say what the cost was for.'); return; }
-    const org = this.auth.orgId();
-    if (!org) { this.toast.error('No organization context.'); return; }
+  /** Opens the shared dialog. Passing a row edits it; passing nothing adds a new cost. */
+  openCostDialog(e?: Expense): void {
+    this.editingExpense.set(e ?? null);
+    this.costDialogOpen.set(true);
+  }
 
-    this.addingExpense.set(true);
-    try {
-      const res = await this.data.saveExpense(org, {
-        bookingId: this.id,
-        category: this.expCategory,
-        description: this.expDescription,
-        amount,
-        spentOn: this.expDate,
-        vendor: null,
-        billable: this.expBillable,
-      });
-      if (res.error) { this.toast.error('Could not save the cost.'); return; }
-      this.expenses.set(await this.data.getExpenses(this.id));
-      this.toast.success(`€${amount.toFixed(2)} cost added`);
-      this.expAmount = null; this.expDescription = ''; this.expBillable = false;
-    } finally {
-      this.addingExpense.set(false);
-    }
+  async onCostSaved(): Promise<void> {
+    this.editingExpense.set(null);
+    this.expenses.set(await this.data.getExpenses(this.id));
   }
 
   async deleteExpense(e: Expense): Promise<void> {

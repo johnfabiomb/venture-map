@@ -6,8 +6,9 @@ import { BookingDataService } from '@booking/core/services/booking-data.service'
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
-import { ExpenseRow, EXPENSE_CATEGORIES } from '@booking/core/interfaces/expense.interface';
+import { ExpenseRow } from '@booking/core/interfaces/expense.interface';
 import { Profit } from '@booking/core/interfaces/profit.interface';
+import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 
 /**
  * The costs ledger and the P&L behind it.
@@ -22,7 +23,7 @@ import { Profit } from '@booking/core/interfaces/profit.interface';
 @Component({
   selector: 'app-expenses-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, FormsModule, RouterLink],
+  imports: [DatePipe, CurrencyPipe, FormsModule, RouterLink, ExpenseDialogComponent],
   templateUrl: './expenses-admin.component.html',
   styleUrl: './expenses-admin.component.scss',
 })
@@ -35,8 +36,6 @@ export class ExpensesAdminComponent implements OnInit {
   readonly loading = signal(true);
   readonly rows = signal<ExpenseRow[]>([]);
   readonly profit = signal<Profit | null>(null);
-  readonly saving = signal(false);
-  readonly categories = EXPENSE_CATEGORIES;
 
   /** Year scope. The whole page — ledger, totals, P&L — follows this one control. */
   readonly year = signal(String(new Date().getFullYear()));
@@ -47,21 +46,15 @@ export class ExpensesAdminComponent implements OnInit {
     return [...seen].sort((a, b) => b.localeCompare(a));
   });
 
-  // ── Add / edit form ──────────────────────────────────────────────────────
-  editingId = '';
-  fAmount: number | null = null;
-  fCategory = 'Travel';
-  fDescription = '';
-  fVendor = '';
-  fBookingId = '';          // '' = standalone (an overhead, belonging to no job)
-  fBillable = false;
-  fDate = new Date().toISOString().slice(0, 10);
+  // ── Add / edit, via the shared dialog ────────────────────────────────────
+  readonly dialogOpen = signal(false);
+  readonly editing = signal<ExpenseRow | null>(null);
 
-  /** Jobs to attach a cost to, newest first. */
-  readonly jobs = computed(() =>
-    [...this.data.bookings()]
-      .sort((a, b) => b.next_start_at.localeCompare(a.next_start_at))
-      .slice(0, 150));
+  /** With a row, edits it; without, adds a new cost. */
+  openDialog(r?: ExpenseRow): void {
+    this.editing.set(r ?? null);
+    this.dialogOpen.set(true);
+  }
 
   // ── Derived ──────────────────────────────────────────────────────────────
   readonly totals = computed(() => this.profit()?.totals ?? null);
@@ -111,52 +104,6 @@ export class ExpensesAdminComponent implements OnInit {
     this.loading.set(false);
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────
-  startEdit(r: ExpenseRow): void {
-    this.editingId = r.id;
-    this.fAmount = Number(r.amount);
-    this.fCategory = r.category;
-    this.fDescription = r.description;
-    this.fVendor = r.vendor ?? '';
-    this.fBookingId = r.booking_id ?? '';
-    this.fBillable = r.billable;
-    this.fDate = r.spent_on;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  resetForm(): void {
-    this.editingId = '';
-    this.fAmount = null; this.fDescription = ''; this.fVendor = '';
-    this.fBookingId = ''; this.fBillable = false;
-    this.fDate = new Date().toISOString().slice(0, 10);
-  }
-
-  async save(): Promise<void> {
-    const amount = Number(this.fAmount);
-    if (!isFinite(amount) || amount <= 0) { this.toast.error('Enter a valid amount.'); return; }
-    if (!this.fDescription.trim()) { this.toast.error('Say what the cost was for.'); return; }
-    const org = this.auth.orgId();
-    if (!org) { this.toast.error('No organization context.'); return; }
-
-    this.saving.set(true);
-    try {
-      const res = await this.data.saveExpense(org, {
-        id: this.editingId || undefined,
-        bookingId: this.fBookingId || null,
-        category: this.fCategory,
-        description: this.fDescription,
-        amount,
-        spentOn: this.fDate,
-        vendor: this.fVendor || null,
-        billable: this.fBillable,
-      });
-      if (res.error) { this.toast.error('Could not save the cost.'); return; }
-      this.toast.success(this.editingId ? 'Cost updated' : `€${amount.toFixed(2)} cost added`);
-      this.resetForm();
-      await this.reload();
-    } finally { this.saving.set(false); }
-  }
-
   async remove(r: ExpenseRow): Promise<void> {
     if (!(await this.confirm.ask({
       title: 'Remove cost',
@@ -164,7 +111,8 @@ export class ExpensesAdminComponent implements OnInit {
       confirmLabel: 'Remove', danger: true,
     }))) return;
     await this.data.deleteExpense(r.id);
-    if (this.editingId === r.id) this.resetForm();
+    // If the dialog was open on this row, it no longer has anything to edit.
+    if (this.editing()?.id === r.id) { this.editing.set(null); this.dialogOpen.set(false); }
     await this.reload();
     this.toast.success('Cost removed');
   }

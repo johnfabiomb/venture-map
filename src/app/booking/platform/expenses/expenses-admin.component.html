@@ -9,6 +9,7 @@
         @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
       </select>
       <button class="btn btn--ghost" (click)="exportCsv()" [disabled]="rows().length === 0">Export CSV</button>
+      <button class="btn btn--primary" (click)="openDialog()">+ Add a cost</button>
     </div>
   </div>
 
@@ -42,62 +43,6 @@
         </div>
       </div>
     }
-
-    <!-- Add / edit -->
-    <div class="card">
-      <div class="card__head">
-        <h2 class="card__title">{{ editingId ? 'Edit cost' : 'Add a cost' }}</h2>
-        @if (editingId) { <button class="link-btn" (click)="resetForm()">Cancel edit</button> }
-      </div>
-
-      <form class="exform" (ngSubmit)="save()">
-        <div class="exform__grid">
-          <div class="field">
-            <label for="ex-amt">Amount (€)</label>
-            <input id="ex-amt" type="number" [(ngModel)]="fAmount" name="fAmount" min="0" step="0.01" placeholder="0.00" required />
-          </div>
-          <div class="field">
-            <label for="ex-cat">Category</label>
-            <input id="ex-cat" [(ngModel)]="fCategory" name="fCategory" list="expCats" placeholder="Travel" />
-            <datalist id="expCats">
-              @for (c of categories; track c) { <option [value]="c"></option> }
-            </datalist>
-          </div>
-          <div class="field">
-            <label for="ex-date">Date</label>
-            <input id="ex-date" type="date" [(ngModel)]="fDate" name="fDate" />
-          </div>
-          <div class="field field--wide">
-            <label for="ex-desc">What was it?</label>
-            <input id="ex-desc" [(ngModel)]="fDescription" name="fDescription" placeholder="e.g. Fuel to Zebbug, Adobe CC, drone repair" required />
-          </div>
-          <div class="field">
-            <label for="ex-vendor">Paid to <span class="opt">optional</span></label>
-            <input id="ex-vendor" [(ngModel)]="fVendor" name="fVendor" placeholder="e.g. Circle K" />
-          </div>
-          <div class="field field--wide">
-            <label for="ex-job">Job <span class="opt">optional</span></label>
-            <!-- Defaults to no job on purpose: overheads are the costs this page exists
-                 to capture, and the booking page already covers job-linked ones. -->
-            <select id="ex-job" [(ngModel)]="fBookingId" name="fBookingId">
-              <option value="">No job — a general business cost</option>
-              @for (j of jobs(); track j.id) {
-                <option [value]="j.id">{{ j.booking_ref }} · {{ j.title }}</option>
-              }
-            </select>
-          </div>
-        </div>
-        <label class="check check--inline">
-          <input type="checkbox" [(ngModel)]="fBillable" name="fBillable" />
-          <span>Rebilled to the client on the invoice</span>
-        </label>
-        <div class="exform__actions">
-          <button type="submit" class="btn btn--primary" [disabled]="saving()">
-            {{ saving() ? 'Saving…' : (editingId ? 'Save changes' : 'Add cost') }}
-          </button>
-        </div>
-      </form>
-    </div>
 
     <div class="cols">
       <!-- Monthly P&L -->
@@ -180,7 +125,7 @@
         <span class="muted">{{ rows().length }} item{{ rows().length === 1 ? '' : 's' }}</span>
       </div>
       @if (rows().length === 0) {
-        <p class="empty-line">No costs recorded in {{ year() }}. Add one above and your profit figures come alive.</p>
+        <p class="empty-line">No costs recorded in {{ year() }}. Use “Add a cost” above and your profit figures come alive.</p>
       } @else {
         <div class="table-wrap">
           <table class="table">
@@ -206,7 +151,7 @@
                   </td>
                   <td class="num num--cost" data-label="Amount">−{{ r.amount | currency:'EUR':'symbol':'1.2-2' }}</td>
                   <td class="cell--actions" data-label="">
-                    <button class="link-btn" (click)="startEdit(r)">Edit</button>
+                    <button class="link-btn" (click)="openDialog(r)">Edit</button>
                     <button class="link-btn link-btn--danger" (click)="remove(r)">Remove</button>
                   </td>
                 </tr>
@@ -217,4 +162,8 @@
       }
     </div>
   }
+
+  <!-- No job preset here: this page is where general business costs are recorded, so the
+       job stays a free choice (and defaults to none). -->
+  <app-expense-dialog [(open)]="dialogOpen" [expense]="editing()" (saved)="reload()" />
 </div>

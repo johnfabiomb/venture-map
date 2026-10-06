@@ -9,6 +9,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
+import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
 /** What a row's money actually is. */
@@ -34,7 +35,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -78,6 +79,16 @@ export class InvoicesAdminComponent implements OnInit {
       this.toast.success('Invoice restored');
       await Promise.all([this.reload(), this.loadDeleted()]);
     } finally { this.restoring.set(''); }
+  }
+
+  // ── Add a cost against this invoice's job ───────────────────────────────
+  readonly costOpen = signal(false);
+  readonly costBookingId = signal<string | null>(null);
+
+  openCost(r: InvoiceListRow): void {
+    if (!r.booking_id) return;
+    this.costBookingId.set(r.booking_id);
+    this.costOpen.set(true);
   }
 
   openSend(r: InvoiceListRow, kind: InvoiceEmailKind): void {
