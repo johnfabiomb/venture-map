@@ -109,27 +109,6 @@
       }
     } @else if (rows().length === 0) {
       <div class="empty-tab">{{ emptyText() }}</div>
-    } @else if (tab() === 'pending') {
-      <!-- Cash requests awaiting approval -->
-      <div class="requests">
-        @for (b of paged.items(); track b.id) {
-          <div class="request">
-            <div class="request__main">
-              <div class="request__who">{{ b.client_name ?? '—' }}</div>
-              <div class="request__when">{{ b.start_at | date:'EEE d MMM, HH:mm' }} · {{ b.title }}</div>
-            </div>
-            <div class="request__price">{{ b.price_total | currency:'EUR':'symbol':'1.0-0' }}</div>
-            <div class="request__actions">
-              <button class="btn btn--sm btn--primary" [disabled]="busyId() === b.id" (click)="approve(b)">
-                {{ busyId() === b.id ? '…' : 'Confirm' }}
-              </button>
-              <button class="btn btn--sm btn--ghost" [disabled]="busyId() === b.id" (click)="decline(b)">Decline</button>
-            </div>
-          </div>
-        }
-      </div>
-      <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
-                     [total]="paged.total()" (pageChange)="paged.setPage($event)" />
     } @else {
       <div class="table-wrap">
         <table class="table">
@@ -160,17 +139,34 @@
                 <td data-label="Total">{{ b.price_total | currency:'EUR':'symbol':'1.0-0' }}</td>
                 <td data-label="Payment">
                   <div class="pay-cell">
-                    <span class="badge" [ngClass]="paymentClass(b.payment_status)">{{ paymentLabel(b.payment_status) }}</span>
-                    @if (!b.is_external && b.payment_status !== 'paid') {
-                      <span class="pay-cell__amt">{{ b.total_paid | currency:'EUR':'symbol':'1.0-0' }} / {{ b.price_total | currency:'EUR':'symbol':'1.0-0' }}</span>
+                    <!-- A €0 job is not "unpaid", it is not priced yet. Saying Unpaid
+                         €0 / €0 reads like a free job you are chasing money for. -->
+                    @if (b.price_total === 0) {
+                      <span class="badge badge--tbc">Price TBC</span>
+                    } @else {
+                      <span class="badge" [ngClass]="paymentClass(b.payment_status)">{{ paymentLabel(b.payment_status) }}</span>
+                      @if (!b.is_external && b.payment_status !== 'paid') {
+                        <span class="pay-cell__amt">{{ b.total_paid | currency:'EUR':'symbol':'1.0-0' }} / {{ b.price_total | currency:'EUR':'symbol':'1.0-0' }}</span>
+                      }
                     }
                   </div>
                 </td>
-                <td data-label="Status"><span class="badge badge--status">{{ b.status }}</span></td>
+                <td data-label="Status">
+                  <span class="badge" [ngClass]="statusClass(b.status)">{{ statusLabel(b.status) }}</span>
+                </td>
                 <td class="cell--actions" data-label="">
                   @if (!b.is_external) {
                     <div class="row-actions">
-                      <button class="link-btn" (click)="copyLink(b.id)">{{ copiedId() === b.id ? '✓ Copied' : 'Copy link' }}</button>
+                      @if (isPending(b)) {
+                        <!-- Kept inline, not in the kebab: accepting a job is the one thing
+                             you do most from this row, and it was the whole point of the
+                             card view this table replaced. -->
+                        <button class="link-btn link-btn--go" [disabled]="busyId() === b.id" (click)="approve(b)">
+                          {{ busyId() === b.id ? '…' : 'Confirm' }}
+                        </button>
+                      } @else {
+                        <button class="link-btn" (click)="copyLink(b.id)">{{ copiedId() === b.id ? '✓ Copied' : 'Copy link' }}</button>
+                      }
                       <button class="kebab" [cdkMenuTriggerFor]="rowMenu" [disabled]="busyId() === b.id" aria-label="More actions">
                         <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
                           <circle cx="10" cy="4" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="10" cy="16" r="1.7"/>
@@ -184,6 +180,10 @@
                           <button class="menu__item" cdkMenuItem (click)="goDetail(b)">Record payment…</button>
                         }
                         <button class="menu__item" cdkMenuItem (click)="goEdit(b)">Edit booking</button>
+                        @if (isPending(b)) {
+                          <button class="menu__item" cdkMenuItem (click)="copyLink(b.id)">Copy link</button>
+                          <button class="menu__item menu__item--danger" cdkMenuItem (click)="decline(b)">Decline request</button>
+                        }
                         <button class="menu__item" cdkMenuItem (click)="goDuplicate(b)">Duplicate booking…</button>
                         @if (b.status !== 'cancelled') {
                           <button class="menu__item menu__item--danger" cdkMenuItem (click)="cancel(b)">Cancel booking</button>

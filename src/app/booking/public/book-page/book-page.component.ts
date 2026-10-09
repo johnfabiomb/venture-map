@@ -86,7 +86,13 @@ export class BookPageComponent implements OnInit {
   /** Printable invoice, accessible without login via the booking-link token. */
   get invoiceUrl(): string { return `/book/invoice?token=${this.token}`; }
 
-  get showCard(): boolean { return this.booking()?.allow_card ?? false; }
+  /** Stripe cannot charge €0, and create-payment-intent rejects a zero balance with
+   *  "already fully paid" — which is nonsense to a client looking at an unpriced job.
+   *  So an unpriced booking offers confirmation only, never a card button. */
+  get showCard(): boolean {
+    const b = this.booking();
+    return !!b?.allow_card && b.price_total > 0;
+  }
   get showInperson(): boolean { return this.booking()?.allow_inperson ?? false; }
   /** Pay-later is the only option → the in-person button confirms the booking directly. */
   get payLaterOnly(): boolean {

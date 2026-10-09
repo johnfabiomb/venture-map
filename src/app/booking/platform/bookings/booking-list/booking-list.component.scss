@@ -206,34 +206,8 @@
 }
 .del-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 
-// ── Cash requests awaiting approval ────────────────────────────────────
-.requests {
-  margin-bottom: 26px; background: $card; border: 1px solid $border;
-  border-left: 3px solid $accent; border-radius: $radius-lg; padding: 16px 18px;
-
-  &__title {
-    font-size: 14px; font-weight: 700; margin: 0 0 12px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  &__count {
-    background: $accent; color: #000; font-size: 12px; font-weight: 700;
-    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-}
-.request {
-  // Price is nowrap and __actions holds two buttons that can't shrink, so on a phone the
-  // name was squeezed into ~80px. Wrapping drops the buttons to their own line instead;
-  // this row is the approve/decline control for a cash request, so it has to stay usable.
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 0;
-  & + & { border-top: 1px solid $border; }
-
-  &__main { flex: 1 1 160px; min-width: 0; }
-  &__who { font-size: 14px; font-weight: 600; }
-  &__when { font-size: 12.5px; color: $text-2; }
-  &__price { font-size: 15px; font-weight: 700; white-space: nowrap; }
-  &__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-}
+// (The cash-request card styles lived here. Pending jobs are ordinary table rows now,
+//  so they were removed rather than left behind unreferenced.)
 
 .cell--actions { white-space: nowrap; }
 
@@ -337,3 +311,12 @@
   svg { width: 48px; height: 48px; opacity: .35; }
   p   { font-size: 14px; margin: 0; max-width: 300px; }
 }
+
+// A job the client asked for that you have not accepted yet — amber, because it is
+// waiting on YOU, not on them.
+.badge--toconfirm { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+.badge--off { background: #f1f5f9; color: #94a3b8; }
+.link-btn--go { color: #16a34a; &:hover { background: rgba(22, 163, 74, 0.1); } }
+
+// Priced later: not unpaid, just not decided yet.
+.badge--tbc { background: #eef2f6; color: $text-2; font-style: italic; }

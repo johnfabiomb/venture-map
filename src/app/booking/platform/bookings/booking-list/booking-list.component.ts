@@ -17,6 +17,17 @@ import { InvoiceListRow, DeletedBooking } from '@booking/core/interfaces/invoice
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   unpaid: 'Unpaid', partial: 'Deposit paid', paid: 'Paid', external: 'External',
 };
+// Raw status strings were rendered straight into the badge, so a job awaiting the
+// client read as the bare word "pending".
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', pending: 'To confirm', hold: 'Held', booked: 'Booked',
+  in_progress: 'In progress', done: 'Done', cancelled: 'Cancelled', expired: 'Expired',
+};
+const STATUS_CLASSES: Record<string, string> = {
+  pending: 'badge--toconfirm', hold: 'badge--toconfirm',
+  cancelled: 'badge--off', expired: 'badge--off',
+};
+
 const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
   unpaid: 'badge--unpaid', partial: 'badge--partial', paid: 'badge--paid', external: 'badge--external',
 };
@@ -215,6 +226,11 @@ export class BookingListComponent {
   });
 
   emptyText(): string { return EMPTY_TEXT[this.tab()]; }
+
+  statusLabel(st: string): string { return STATUS_LABELS[st] ?? st; }
+  statusClass(st: string): string { return STATUS_CLASSES[st] ?? 'badge--status'; }
+  /** A job the client has asked for but you have not accepted yet. */
+  isPending(b: BookingSummary): boolean { return b.status === 'pending'; }
 
   /** Friendly relative day for the schedule ("Today", "Tomorrow", "in 3 days"). */
   relative(b: BookingSummary): string {

@@ -917,7 +917,11 @@ export class BookingDataService implements OnDestroy {
     const A = BookingDataService.ACTIVE;
     switch (tab) {
       // Upcoming = happening now or still to come (real OR external), soonest first.
-      case 'upcoming':  return q.in('status', ['booked', 'in_progress']).gte('end_at', nowIso).order('next_start_at', { ascending: true });
+      // 'pending' belongs here: it is a real job the client has asked for, it holds the
+      // worker's slot, and it must be visible and editable alongside everything else.
+      // It simply has not been confirmed yet — ensureBookingEvent already refuses to put
+      // a non-booked status on the calendar, so showing it here cannot leak it there.
+      case 'upcoming':  return q.in('status', ['booked', 'in_progress', 'pending']).gte('end_at', nowIso).order('next_start_at', { ascending: true });
       case 'past':      return q.eq('is_external', false).in('status', A).lt('end_at', nowIso).order('next_start_at', { ascending: false });
       case 'pending':   return q.eq('status', 'pending').order('next_start_at', { ascending: true });
       case 'unpaid':    return q.eq('is_external', false).in('status', A).in('payment_status', ['unpaid', 'partial']).order('next_start_at', { ascending: true });

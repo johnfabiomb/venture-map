@@ -195,8 +195,11 @@ export class BookingFormComponent implements OnInit {
 
   // ── Submit ──────────────────────────────────────────────────────────
   get canSubmit(): boolean {
+    // A charge may be €0: the job is agreed before the price sometimes is. What a line
+    // still MUST have is a description — that is what the client reads on the invoice,
+    // and a nameless zero line is not a placeholder, it is nothing.
     const itemsOk = this.lineItems.length > 0
-      && this.lineItems.every(i => i.description.trim().length > 0) && this.priceTotal > 0;
+      && this.lineItems.every(i => i.description.trim().length > 0);
     return !this.saving() && this.hasCustomer && !!this.staffId && this.selectedSlots.length > 0
       && itemsOk && this.title.trim().length > 0;
   }
@@ -208,7 +211,8 @@ export class BookingFormComponent implements OnInit {
     if (!this.hasCustomer) return 'Pick a customer';
     if (!this.staffId) return 'Pick a worker';
     if (!this.title.trim()) return 'Add a title';
-    if (!this.lineItems.length || this.priceTotal <= 0) return 'Add a charge';
+    if (!this.lineItems.length) return 'Add a charge';
+    if (this.lineItems.some(i => !i.description.trim())) return 'Describe each charge';
     if (!this.selectedSlots.length) return 'Pick a time block';
     return '';
   }
