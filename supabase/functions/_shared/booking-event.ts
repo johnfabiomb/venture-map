@@ -178,3 +178,78 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
   }
   return primary;
 }
+
+// ── Work blocks ─────────────────────────────────────────────────────────────
+interface WorkSlotRow { id: string; start_at: string; end_at: string; label: string | null; google_event_id: string | null; }
+
+/**
+ * Ensure a work item's reserved time is on the calendar — one event per block, exactly
+ * like a booking's.
+ *
+ * Deliberately a sibling of ensureBookingEvent rather than a branch inside it: a work
+ * item has no client, no money and no payment state, so sharing composeDescription would
+ * mean threading nulls through every line of it. What they DO share is the slot table,
+ * which is what makes the time genuinely reserved.
+ */
+export async function ensureWorkEvent(service: SupabaseClient, workItemId: string): Promise<string | null> {
+  const { data } = await service.from('work_items')
+    .select('id, org_id, title, production_status, due_at, deleted_at, slots:booking_slots(id, start_at, end_at, label, google_event_id), links:work_item_bookings(booking:booking_id(booking_ref, title))')
+    .eq('id', workItemId)
+    .maybeSingle();
+  if (!data) return null;
+  const w = data as unknown as {
+    id: string; org_id: string; title: string; production_status: string;
+    due_at: string | null; deleted_at: string | null;
+    slots: WorkSlotRow[] | null;
+    links: Array<{ booking: { booking_ref: string; title: string } | { booking_ref: string; title: string }[] | null }> | null;
+  };
+  if (w.deleted_at) return null;
+
+  // Same single-shared-calendar rule as bookings.
+  const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
+  if (calendarOrg && w.org_id !== calendarOrg) return null;
+
+  const slots = (w.slots ?? []).slice().sort((a, b) => a.start_at.localeCompare(b.start_at));
+  if (slots.length === 0) return null;   // no reserved time → nothing to show
+
+  // Which jobs this work is for. The refs are what let him match the block back to the
+  // shoot at a glance, which is the entire reason for the many-to-many.
+  const jobs = (w.links ?? [])
+    .map(l => (Array.isArray(l.booking) ? l.booking[0] : l.booking))
+    .filter((b): b is { booking_ref: string; title: string } => !!b);
+
+  const lines = [`Work: ${PROGRESS_LABEL[w.production_status] ?? w.production_status}`];
+  if (jobs.length) {
+    lines.push('', 'For:');
+    for (const j of jobs) lines.push(`• ${j.title} [${j.booking_ref}]`);
+  }
+  if (w.due_at) lines.push('', `Deliver by: ${new Date(w.due_at).toISOString().slice(0, 10)}`);
+  // No money, no client contact: this is the owner's own time, and the event may be
+  // shared with a second shooter the same way a booking's can.
+  const description = lines.join('\n');
+
+  const ids: string[] = [];
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    const label = s.label?.trim();
+    const part = label ? ` — ${label}` : (slots.length > 1 ? ` (${i + 1}/${slots.length})` : '');
+    const summary = `${w.title}${part}`;
+    if (s.google_event_id) {
+      await updateCalendarEvent(s.google_event_id, {
+        summary, description, location: null, startAt: s.start_at, endAt: s.end_at,
+      });
+      ids.push(s.google_event_id);
+    } else {
+      const eventId = await createCalendarEvent({
+        title: `${w.title}${part}`, description, location: null,
+        startAt: s.start_at, endAt: s.end_at,
+        // Work has no booking ref; the helper appends this in brackets, and a blank one
+        // would leave a stray "[]" on every event title.
+        bookingRef: '',
+      });
+      ids.push(eventId);
+      await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', s.id);
+    }
+  }
+  return ids[0] ?? null;
+}

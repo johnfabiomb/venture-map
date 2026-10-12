@@ -184,7 +184,9 @@ export class BookingDataService implements OnDestroy {
   async getWorkerBusy(staffId: string, fromIso: string, toIso: string): Promise<WorkerBusy[]> {
     const { data, error } = await bookingsDb
       .from('booking_slots')
-      .select('booking_id, start_at, end_at, google_event_id, bookings!inner(title, status, clients(name))')
+      // LEFT joins, not `!inner`: a work block has no booking, and an inner join would
+      // silently drop exactly the reserved editing time this is meant to surface.
+      .select('booking_id, work_item_id, start_at, end_at, google_event_id, bookings(title, status, clients(name)), work_items(title, production_status)')
       .eq('staff_id', staffId)
       .eq('blocking', true)
       .lt('start_at', toIso)
@@ -192,12 +194,29 @@ export class BookingDataService implements OnDestroy {
       .order('start_at');
     if (error) { console.error('[BookingData] getWorkerBusy:', error); return []; }
     return (data ?? []).map(r => {
-      const row = r as unknown as { booking_id: string; start_at: string; end_at: string; google_event_id: string | null;
+      const row = r as unknown as { booking_id: string | null; work_item_id: string | null;
+        start_at: string; end_at: string; google_event_id: string | null;
         bookings: { title: string; status: string; clients: { name: string } | { name: string }[] | null }
-                | { title: string; status: string; clients: { name: string } | { name: string }[] | null }[] };
-      const bk = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
-      const client = Array.isArray(bk.clients) ? bk.clients[0] : bk.clients;
-      return { id: row.booking_id, start_at: row.start_at, end_at: row.end_at, title: bk.title, status: bk.status as WorkerBusy['status'], clientName: client?.name ?? null, googleEventId: row.google_event_id ?? null };
+                | { title: string; status: string; clients: { name: string } | { name: string }[] | null }[] | null;
+        work_items: { title: string; production_status: string } | { title: string; production_status: string }[] | null };
+      const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+
+      if (row.work_item_id) {
+        const w = one(row.work_items);
+        return {
+          kind: 'work' as const, id: row.work_item_id,
+          start_at: row.start_at, end_at: row.end_at,
+          title: w?.title ?? 'Reserved work time',
+          // Reserved time always holds the worker; it has no booking status of its own.
+          status: 'booked' as WorkerBusy['status'],
+          clientName: null, googleEventId: row.google_event_id ?? null,
+        };
+      }
+      const bk = one(row.bookings);
+      const client = bk ? one(bk.clients) : null;
+      return { kind: 'booking' as const, id: row.booking_id!, start_at: row.start_at, end_at: row.end_at,
+        title: bk?.title ?? '', status: (bk?.status ?? 'booked') as WorkerBusy['status'],
+        clientName: client?.name ?? null, googleEventId: row.google_event_id ?? null };
     });
   }
 

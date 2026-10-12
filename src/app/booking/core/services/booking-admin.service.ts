@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
+import { BookingSlot } from '@booking/core/interfaces/booking.interface';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ServicePricing } from '@booking/core/interfaces/org.interface';
 import { WorkingHoursConfig } from '@booking/core/interfaces/working-hours.interface';
@@ -120,6 +121,78 @@ export class BookingAdminService {
   private readonly auth = inject(BookingsAuthService);
 
   // ── Services ──────────────────────────────────────────────────────
+  // ── Work blocks: reserved post-production time ───────────────────────────
+  // These are rows in `booking_slots` with work_item_id set. That is deliberate — the
+  // no-overlap EXCLUDE constraint lives on that table, so reserved editing time really
+  // does stop a shoot being booked over it. A separate table could not do that.
+
+  /** A work item's reserved time blocks, earliest first. */
+  async getWorkSlots(workItemId: string): Promise<BookingSlot[]> {
+    const { data } = await bookingsDb
+      .from('booking_slots')
+      .select('start_at, end_at, label')
+      .eq('work_item_id', workItemId).is('deleted_at', null).order('start_at');
+    return (data ?? []).map(r => {
+      const x = r as { start_at: string; end_at: string; label: string | null };
+      return { start: x.start_at, end: x.end_at, label: x.label };
+    });
+  }
+
+  /**
+   * Replace a work item's blocks. Returns the ones that could NOT be reserved because
+   * that time is already taken — the caller must say so rather than quietly dropping
+   * them, since the whole point is knowing what is actually free.
+   */
+  async setWorkSlots(orgId: string, workItemId: string, staffId: string, slots: BookingSlot[]):
+      Promise<{ clashes: BookingSlot[]; orphanEventIds: string[] }> {
+    const { data: existing } = await bookingsDb
+      .from('booking_slots').select('id, google_event_id')
+      .eq('work_item_id', workItemId).is('deleted_at', null);
+    const orphanEventIds = ((existing ?? []) as { google_event_id: string | null }[])
+      .map(r => r.google_event_id).filter((x): x is string => !!x);
+
+    // Hard delete, not soft: a block is a reservation, not a record worth auditing, and
+    // a soft-deleted row would keep failing the unique-ish overlap checks on re-add.
+    await bookingsDb.from('booking_slots').delete().eq('work_item_id', workItemId);
+
+    // One at a time inside its own request: the EXCLUDE constraint aborts the whole
+    // statement on the first clash, which would lose every other block the owner picked.
+    const clashes: BookingSlot[] = [];
+    for (const s of slots) {
+      const { error } = await bookingsDb.from('booking_slots').insert({
+        org_id: orgId, work_item_id: workItemId, staff_id: staffId,
+        start_at: s.start, end_at: s.end, label: s.label ?? null,
+      });
+      if (error) {
+        if ((error as { code?: string }).code === '23P01') clashes.push(s);
+        else { console.error('[BookingAdmin] setWorkSlots:', error); clashes.push(s); }
+      }
+    }
+    return { clashes, orphanEventIds };
+  }
+
+  /** Push the work item's blocks to Google Calendar (fire and forget, like bookings). */
+  syncWorkEvent(workItemId: string, deleteEventIds?: string[]): void {
+    void bookingsDb.functions.invoke('sync-work-event', { body: { workItemId, deleteEventIds } })
+      .then(({ error }) => { if (error) console.warn('[BookingAdmin] work calendar sync failed:', error.message); });
+  }
+
+  /** Bookings this work item covers (many-to-many). */
+  async getWorkBookings(workItemId: string): Promise<string[]> {
+    const { data } = await bookingsDb
+      .from('work_item_bookings').select('booking_id').eq('work_item_id', workItemId);
+    return ((data ?? []) as { booking_id: string }[]).map(r => r.booking_id);
+  }
+
+  /** Replace the set of jobs this work covers. Links are re-creatable, so hard writes. */
+  async setWorkBookings(orgId: string, workItemId: string, bookingIds: string[]): Promise<void> {
+    await bookingsDb.from('work_item_bookings').delete().eq('work_item_id', workItemId);
+    if (!bookingIds.length) return;
+    const { error } = await bookingsDb.from('work_item_bookings').insert(
+      bookingIds.map(booking_id => ({ org_id: orgId, work_item_id: workItemId, booking_id })));
+    if (error) console.error('[BookingAdmin] setWorkBookings:', error);
+  }
+
   async listServices(orgId: string): Promise<AdminService[]> {
     const staff = this.auth.staffId();
     if (!staff) {
@@ -234,8 +307,18 @@ export class BookingAdminService {
     }));
   }
   /** Create a work card — standalone (bookingId null) or linked to a booking (seeds its service tasks). */
-  async addWorkItem(orgId: string, bookingId: string | null, title: string): Promise<void> {
-    await bookingsDb.rpc('create_work_item', { p_org: orgId, p_booking: bookingId, p_title: title });
+  /** Returns the new card's id — the work editor needs it to attach slots and links. */
+  async addWorkItem(orgId: string, bookingId: string | null, title: string): Promise<string | null> {
+    const { data, error } = await bookingsDb.rpc('create_work_item',
+      { p_org: orgId, p_booking: bookingId, p_title: title });
+    if (error) { console.error('[BookingAdmin] addWorkItem:', error); return null; }
+    const row = Array.isArray(data) ? data[0] : data;
+    return (typeof row === 'string' ? row : (row as { id?: string } | null)?.id) ?? null;
+  }
+
+  async renameWorkItem(id: string, title: string): Promise<void> {
+    const { error } = await bookingsDb.from('work_items').update({ title }).eq('id', id);
+    if (error) console.error('[BookingAdmin] renameWorkItem:', error);
   }
 
   /**

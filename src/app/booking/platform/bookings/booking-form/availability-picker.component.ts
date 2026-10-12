@@ -404,6 +404,9 @@ export class AvailabilityPickerComponent {
 }
 
 function reason(b: WorkerBusy): string {
+  // A work block is time already owed to post-production, not a client booking — saying
+  // so is the difference between "why is this taken?" and "right, I'm editing then".
+  if (b.kind === 'work') return `Reserved · ${b.title}`;
   return b.clientName ? `${b.clientName} · ${b.title}` : b.title;
 }
 function toDateStr(d: Date): string {

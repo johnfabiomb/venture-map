@@ -123,3 +123,28 @@ Clients and Services become **per-worker views**:
 ### 4. A filter now; permissions later
 Build the selector and the scoping. No RLS changes yet. The split in the menu is what
 makes a later permission layer a small change rather than a rewrite.
+
+
+---
+
+## Built (2026-10-12)
+
+**Part 1 — per-worker scope.** Shipped. Switcher in the shell, every module scoped,
+booking form pre-fills the worker, menu split into worker-scoped and Organization groups,
+`get_profit(p_staff)` returning Contribution vs Profit.
+
+**Part 2 — work tasks with reserved time.** Built.
+- `booking_slots.booking_id` nullable + `work_item_id`, CHECK exactly one owner.
+- `slot_set_blocking` always blocks a work slot.
+- `get_busy_ranges` LEFT-joins so public availability sees reserved time.
+- `work_item_bookings` many-to-many, backfilled.
+- `ensureWorkEvent` + `sync-work-event` for Google Calendar.
+- `booking_summary.work_count` / `work_status` for the list badge.
+- `ui/work-editor/` reusing the availability picker.
+
+### Still open
+- The work board's columns are still driven by `production_status`; reserved time does
+  not yet drive a "this week" view of post-production.
+- A work block's calendar event is not deleted when the task itself is deleted (the
+  booking path does this via `cancel-booking`); `deleteWorkItem` should pass its event
+  ids to `sync-work-event`'s `deleteEventIds`.

@@ -153,6 +153,11 @@
                 </td>
                 <td data-label="Status">
                   <span class="badge" [ngClass]="statusClass(b.status)">{{ statusLabel(b.status) }}</span>
+                  <!-- Post-production sits beside the booking status, not instead of it:
+                       a job can be done and paid while the edit is still owed. -->
+                  @if (workLabel(b); as w) {
+                    <span class="badge" [ngClass]="workClass(b)" title="Post-production">{{ w }}</span>
+                  }
                 </td>
                 <td class="cell--actions" data-label="">
                   @if (!b.is_external) {

@@ -53,6 +53,10 @@ export interface BookingSummary {
   google_event_id: string | null;
   /** Where the job happens. */
   location: string | null;
+  /** How many work tasks cover this job (many-to-many via work_item_bookings). */
+  work_count: number;
+  /** The LEAST advanced stage across them — what is still owed. Null when none. */
+  work_status: 'to_edit' | 'editing' | 'to_deliver' | 'delivered' | null;
 }
 
 /** Raw editable columns of a booking — used by the admin edit form. */
@@ -98,6 +102,8 @@ export interface BookingSlot {
 
 /** A worker's occupied time range — feeds the admin availability picker's busy slots. */
 export interface WorkerBusy {
+  /** What is occupying the time. A work block is reserved post-production, not a job. */
+  kind: 'booking' | 'work';
   id: string;
   start_at: string;
   end_at: string;

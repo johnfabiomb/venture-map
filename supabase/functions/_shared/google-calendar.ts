@@ -40,13 +40,15 @@ export async function createCalendarEvent(params: {
   location?: string | null;
   startAt: string;
   endAt: string;
-  bookingRef: string;
+  /** Appended in brackets. Omit/empty for work blocks, which have no booking ref —
+   *  otherwise every work event title ends in a stray "[]". */
+  bookingRef?: string;
 }): Promise<string> {
   const token = await getAccessToken();
   const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
 
   const body = {
-    summary: `${params.title} [${params.bookingRef}]`,
+    summary: params.bookingRef ? `${params.title} [${params.bookingRef}]` : params.title,
     description: params.description ?? undefined,
     location: params.location ?? undefined,
     start: { dateTime: params.startAt },

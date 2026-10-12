@@ -28,6 +28,10 @@ const STATUS_CLASSES: Record<string, string> = {
   cancelled: 'badge--off', expired: 'badge--off',
 };
 
+const WORK_LABELS: Record<string, string> = {
+  to_edit: 'To edit', editing: 'Editing', to_deliver: 'To deliver', delivered: 'Delivered',
+};
+
 const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
   unpaid: 'badge--unpaid', partial: 'badge--partial', paid: 'badge--paid', external: 'badge--external',
 };
@@ -226,6 +230,16 @@ export class BookingListComponent {
   });
 
   emptyText(): string { return EMPTY_TEXT[this.tab()]; }
+
+  /** Post-production stage for a job, or '' when no work covers it. */
+  workLabel(b: BookingSummary): string {
+    if (!b.work_count) return '';
+    const l = WORK_LABELS[b.work_status ?? ''] ?? '';
+    return b.work_count > 1 ? `${l} +${b.work_count - 1}` : l;
+  }
+  workClass(b: BookingSummary): string {
+    return b.work_status === 'delivered' ? 'badge--work-done' : 'badge--work';
+  }
 
   statusLabel(st: string): string { return STATUS_LABELS[st] ?? st; }
   statusClass(st: string): string { return STATUS_CLASSES[st] ?? 'badge--status'; }

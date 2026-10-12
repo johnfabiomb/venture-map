@@ -320,3 +320,8 @@
 
 // Priced later: not unpaid, just not decided yet.
 .badge--tbc { background: #eef2f6; color: $text-2; font-style: italic; }
+
+// Post-production, shown ALONGSIDE the booking status — a job can be done and paid for
+// while the edit is still owed, so one can never stand in for the other.
+.badge--work      { background: #e0e7ff; color: #4338ca; margin-left: 4px; }
+.badge--work-done { background: #dcfce7; color: #16a34a; margin-left: 4px; }

@@ -221,7 +221,10 @@ CREATE TABLE public.bookings (
 CREATE TABLE public.booking_slots (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id     UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  -- Nullable since §23: a slot belongs to a booking OR to a work item (reserved
+  -- post-production time). Exactly one, enforced by booking_slots_owner_one_of.
+  booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
+  work_item_id UUID REFERENCES public.work_items(id) ON DELETE CASCADE,
   staff_id   UUID NOT NULL REFERENCES public.staff(id) ON DELETE RESTRICT,
   start_at   TIMESTAMPTZ NOT NULL,
   end_at     TIMESTAMPTZ NOT NULL,
@@ -605,7 +608,21 @@ SELECT
      WHERE e.booking_id = b.id AND e.deleted_at IS NULL) AS expenses_total,
   -- Where the job happens. "Where" is a core fact of a filming job and was the one thing
   -- the summary could not answer, so the detail page had no way to show it.
-  b.location
+  b.location,
+  -- Post-production at a glance. Reads work_item_bookings, so a job covered by a single
+  -- "edit the whole week" task counts it — work_items.booking_id could only ever name one.
+  (SELECT COUNT(*) FROM public.work_item_bookings wb
+     JOIN public.work_items wi ON wi.id = wb.work_item_id AND wi.deleted_at IS NULL
+    WHERE wb.booking_id = b.id) AS work_count,
+  -- The LEAST advanced stage, because that is what is still owed. A job whose edit is
+  -- delivered but whose grade has not started is not "delivered".
+  (SELECT wi.production_status FROM public.work_item_bookings wb
+     JOIN public.work_items wi ON wi.id = wb.work_item_id AND wi.deleted_at IS NULL
+    WHERE wb.booking_id = b.id
+    ORDER BY CASE wi.production_status
+               WHEN 'to_edit' THEN 1 WHEN 'editing' THEN 2
+               WHEN 'to_deliver' THEN 3 WHEN 'delivered' THEN 4 ELSE 5 END
+    LIMIT 1) AS work_status
 FROM public.bookings b
 LEFT JOIN public.staff    st ON st.id = b.staff_id
 LEFT JOIN public.services s  ON s.id  = b.service_id
@@ -2823,3 +2840,113 @@ ALTER TABLE public.expenses
 
 CREATE INDEX IF NOT EXISTS expenses_invoice_idx
   ON public.expenses(invoice_id) WHERE deleted_at IS NULL AND invoice_id IS NOT NULL;
+
+
+-- ═══ 23. Work blocks — post-production as real, reserved time ═══════════════
+-- A work item (editing, colour grading, delivery) takes hours that are already owed.
+-- Until now it had no time at all, so "what is available" counted only shoots and the
+-- owner was left hoping there would be enough evening left to edit.
+--
+-- Work blocks live in `booking_slots`, NOT in a table of their own. That is the whole
+-- design: `booking_slots_no_overlap` is
+--     EXCLUDE (staff_id WITH =, tstzrange(start_at,end_at) WITH &&) WHERE (blocking AND …)
+-- — it never mentions booking_id, so it covers any row in this table. A separate
+-- work_slots table would carry its OWN constraint, and two constraints cannot see each
+-- other: a shoot could still be booked straight over editing time, which is precisely
+-- what this feature exists to stop. One table, one constraint, one answer about who is
+-- free. `get_busy_ranges` and the admin picker read this table too, so both learn about
+-- reserved work time without knowing it exists.
+ALTER TABLE public.booking_slots ALTER COLUMN booking_id DROP NOT NULL;
+
+ALTER TABLE public.booking_slots
+  ADD COLUMN IF NOT EXISTS work_item_id UUID REFERENCES public.work_items(id) ON DELETE CASCADE;
+
+-- Exactly one owner. A slot belonging to both, or to neither, is meaningless and would
+-- make every "whose block is this?" query ambiguous.
+ALTER TABLE public.booking_slots DROP CONSTRAINT IF EXISTS booking_slots_owner_one_of;
+ALTER TABLE public.booking_slots
+  ADD CONSTRAINT booking_slots_owner_one_of
+  CHECK (num_nonnulls(booking_id, work_item_id) = 1);
+
+CREATE INDEX IF NOT EXISTS booking_slots_work_idx
+  ON public.booking_slots(work_item_id) WHERE work_item_id IS NOT NULL;
+
+-- A work block always reserves the worker. John's decision, and the point of the
+-- feature: the hours are already committed, so they are unavailable to clients and
+-- warned about for him, exactly like a shoot.
+CREATE OR REPLACE FUNCTION public.slot_set_blocking() RETURNS TRIGGER
+LANGUAGE plpgsql AS $f$
+BEGIN
+  IF NEW.work_item_id IS NOT NULL THEN
+    NEW.blocking := true;
+    RETURN NEW;
+  END IF;
+  SELECT (status IN ('hold','booked','in_progress','done')
+          OR (status = 'pending' AND created_by = 'admin')) INTO NEW.blocking
+    FROM public.bookings WHERE id = NEW.booking_id;
+  RETURN NEW;
+END $f$;
+
+-- Public availability must see reserved work time, or a client books over the evening
+-- already promised to editing. The join becomes LEFT because a work slot has no booking.
+CREATE OR REPLACE FUNCTION public.get_busy_ranges(
+  p_staff_id UUID, range_start TIMESTAMPTZ, range_end TIMESTAMPTZ
+) RETURNS TABLE (start_at TIMESTAMPTZ, end_at TIMESTAMPTZ)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT s.start_at, s.end_at
+    FROM booking_slots s
+    LEFT JOIN bookings   b ON b.id = s.booking_id
+    LEFT JOIN work_items w ON w.id = s.work_item_id
+   WHERE s.staff_id = p_staff_id
+     AND s.deleted_at IS NULL
+     AND s.start_at < range_end AND s.end_at > range_start
+     AND (
+       -- reserved post-production time
+       (s.work_item_id IS NOT NULL AND s.blocking AND w.deleted_at IS NULL)
+       -- or a shoot in a status that holds the worker
+       OR (s.booking_id IS NOT NULL AND b.deleted_at IS NULL
+           AND ( b.status IN ('booked','in_progress','done')
+                 OR (b.status = 'hold' AND b.hold_expires_at > now()) ))
+     );
+$$;
+GRANT EXECUTE ON FUNCTION public.get_busy_ranges(UUID,TIMESTAMPTZ,TIMESTAMPTZ) TO anon, authenticated;
+
+-- One task can cover several shoots (a week's edit), and one shoot can need several
+-- tasks (edit, grade, deliver). work_items.booking_id could only ever say one thing.
+CREATE TABLE IF NOT EXISTS public.work_item_bookings (
+  work_item_id UUID NOT NULL REFERENCES public.work_items(id)   ON DELETE CASCADE,
+  booking_id   UUID NOT NULL REFERENCES public.bookings(id)     ON DELETE CASCADE,
+  org_id       UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (work_item_id, booking_id)
+);
+-- No deleted_at on purpose: this is a re-creatable LINK, not an item, so it follows the
+-- same rule as staff_services unassign and org_members removal (§18) and is hard-deleted.
+CREATE INDEX IF NOT EXISTS wib_booking_idx ON public.work_item_bookings(booking_id);
+CREATE INDEX IF NOT EXISTS wib_org_idx     ON public.work_item_bookings(org_id);
+
+ALTER TABLE public.work_item_bookings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS wib_admin ON public.work_item_bookings;
+-- Table-qualified in the WITH CHECK on purpose: an unqualified org_id binds to the INNER
+-- table and silently becomes a tautology (that bug shipped twice in this schema).
+CREATE POLICY wib_admin ON public.work_item_bookings FOR ALL
+  USING (public.is_org_admin(org_id))
+  WITH CHECK (public.is_org_admin(org_id)
+              AND EXISTS (SELECT 1 FROM public.work_items w
+                           WHERE w.id = work_item_bookings.work_item_id
+                             AND w.org_id = work_item_bookings.org_id)
+              AND EXISTS (SELECT 1 FROM public.bookings b
+                           WHERE b.id = work_item_bookings.booking_id
+                             AND b.org_id = work_item_bookings.org_id));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.work_item_bookings TO authenticated;
+GRANT ALL ON public.work_item_bookings TO service_role;
+
+-- Backfill from the single FK so nothing is lost. work_items.booking_id is KEPT as the
+-- originating booking (the work_board view and the card UI read it); the join table is
+-- the full picture.
+INSERT INTO public.work_item_bookings (work_item_id, booking_id, org_id)
+SELECT w.id, w.booking_id, w.org_id
+  FROM public.work_items w
+ WHERE w.booking_id IS NOT NULL AND w.deleted_at IS NULL
+ON CONFLICT DO NOTHING;

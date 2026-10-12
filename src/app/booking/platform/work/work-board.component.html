@@ -46,6 +46,7 @@
                   <div class="job__nav">
                     <button class="job__arrow" [disabled]="!canPrev(j)" (click)="move(j, -1)" title="Move back">‹</button>
                     <button class="job__arrow" [disabled]="!canNext(j)" (click)="move(j, 1)" title="Move forward">›</button>
+                    <button class="job__edit" (click)="openEditor(j)" title="Reserved time, jobs covered, due date">✎</button>
                     <button class="job__del" (click)="deleteCard(j)" [title]="j.bookingId ? 'Remove from board' : 'Delete card'">×</button>
                   </div>
                 </div>
@@ -100,4 +101,7 @@
       }
     </div>
   }
+
+  <app-work-editor [(open)]="editorOpen" [job]="editing()" [staff]="staff()"
+                   (saved)="onWorkSaved()" />
 </div>

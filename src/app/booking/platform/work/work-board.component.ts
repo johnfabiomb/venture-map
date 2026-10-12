@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff } from '@booking/core/services/booking-admin.service';
+import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -27,7 +28,7 @@ const emptyBoard = (): Board => ({ backlog: [], to_edit: [], editing: [], to_del
 @Component({
   selector: 'app-work-board',
   standalone: true,
-  imports: [FormsModule, DatePipe, DragDropModule],
+  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent],
   templateUrl: './work-board.component.html',
   styleUrl: './work-board.component.scss',
 })
@@ -60,6 +61,17 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
       .filter(j => j.isActive && j.production_status !== 'delivered'
                 && j.dueAt && new Date(j.dueAt).getTime() < now).length;
   });
+
+  // ── Work task editor (reserved time + linked jobs) ──────────────────────
+  readonly editorOpen = signal(false);
+  readonly editing = signal<WorkJob | null>(null);
+
+  /** With a card, edits it; without, creates a standalone task. */
+  openEditor(j?: WorkJob): void {
+    this.editing.set(j ?? null);
+    this.editorOpen.set(true);
+  }
+  async onWorkSaved(): Promise<void> { this.editing.set(null); await this.reload(); }
 
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();

@@ -7,6 +7,17 @@ All notable changes to Venture Map are recorded here.
 ## [Unreleased]
 
 ### Added
+- **Post-production now takes real time in the calendar.** A work task can reserve time blocks, which show in Google Calendar beside the shoots and make "what am I actually free for" honest instead of hopeful. The blocks are rows in **`booking_slots`**, not a table of their own — `booking_slots_no_overlap` never mentions `booking_id`, so one constraint covers both and a shoot genuinely cannot be booked over an evening already owed to editing. A separate table would have carried its own constraint, and two constraints cannot see each other. Proved live: the EXCLUDE rejects the overlapping shoot with 23P01, and `get_busy_ranges` reports the reserved time to the public booking page.
+- **Work tasks are many-to-many with bookings** (`work_item_bookings`): one "edit the week" task can cover several shoots, and one shoot can need an edit, a grade and a delivery. Backfilled from the old single FK (5 links), which is kept as the originating booking.
+- **A new work editor** (reserved time, who, deliver-by, jobs covered) reusing the *same* availability picker the booking form uses — so reserving an evening shows the shoots already in the way. Time that could not be reserved is reported, never silently dropped.
+- **The bookings list shows post-production status** beside the booking status, never instead of it: a job can be done and paid while the edit is still owed. Multi-task jobs show the LEAST advanced stage, because that is what is still outstanding.
+- `sync-work-event` Edge Function, mirroring `sync-booking-event` including its authorization.
+
+### Changed
+- `createCalendarEvent`'s `bookingRef` is optional — work blocks have no ref, and the old template would have left a stray `[]` on every work event title.
+- The admin availability picker shows reserved work time as "Reserved · <task>" rather than dropping it: its query used `bookings!inner`, which silently excluded exactly the blocks this feature adds.
+
+### Added (earlier)
 - **Everything can now be viewed per worker, not just per organization.** A second scope switcher sits under the organization one in the sidebar: *Whole organization*, or one person. Bookings, invoices, costs, the work board, clients, services and the dashboard all follow it, and creating a booking pre-fills the worker because the context already says who. Stored in the same localStorage entry as the active org (two stores would drift) and **cleared on an org switch**, since a worker id from another org would silently filter every query to zero rows.
 - **A worker's bottom line is Contribution, not Profit.** `get_profit` gains `p_staff` and returns a `scope`, so the UI cannot mislabel the figure. The split is the standard two-level P&L: **direct costs** (fuel for that shoot, the second shooter that day) belong to the worker who did the job; **overheads** (software, insurance, gear) belong to the business and are excluded from a worker scope. Sharing them out would mean double-counting one insurance payment the moment two workers were compared or summed, so the worker view answers the question it honestly can — what this person's work contributed toward covering them. Verified live: €38 real + €50 direct + €90 overhead = €178 org-wide, €88 for the worker.
 - The sidebar is split into a **worker-scoped group** (headed by whoever is selected) and an **Organization group** (Staff, Settings). Doing this now is what makes a future "this worker sees only their own things" a permission check rather than a rebuild.
