@@ -32,12 +32,7 @@
 
       <label class="field">
         <span>Job <span class="opt">(optional)</span></span>
-        <select [(ngModel)]="jobId" (ngModelChange)="onJobChange()">
-          <option value="">No job — invoice only</option>
-          @for (o of jobOptions(); track o.id) {
-            <option [value]="o.id">{{ o.title }}{{ o.clientName ? ' · ' + o.clientName : '' }} ({{ o.start_at | date:'d MMM y' }})</option>
-          }
-        </select>
+        <app-select [value]="jobId" (changed)="jobId = $event; onJobChange()" [options]="jobSelectOptions()" placeholder="No job — invoice only" />
       </label>
 
       <label class="field">
@@ -48,12 +43,7 @@
       <div class="field-row">
         <label class="field">
           <span>Client <span class="opt">(optional)</span></span>
-          <select [(ngModel)]="clientId">
-            <option value="">No saved client</option>
-            @for (c of data.clients(); track c.id) {
-              <option [value]="c.id">{{ c.company || c.name }}</option>
-            }
-          </select>
+          <app-select [value]="clientId" (changed)="clientId = $event" [options]="clientSelectOptions()" placeholder="No saved client" [clearable]="true" />
         </label>
         <label class="field">
           <span>…or a one-off name</span>
@@ -65,17 +55,11 @@
       <div class="field-row">
         <label class="field">
           <span>Worker <span class="opt">(who earned it)</span></span>
-          <select [(ngModel)]="staffId">
-            <option value="">Unassigned</option>
-            @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-          </select>
+          <app-select [value]="staffId" (changed)="staffId = $event" [options]="staffSelectOptions()" placeholder="Unassigned" [clearable]="true" />
         </label>
         <label class="field">
           <span>Service <span class="opt">(for reporting)</span></span>
-          <select [(ngModel)]="serviceId">
-            <option value="">Unattributed</option>
-            @for (s of services(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-          </select>
+          <app-select [value]="serviceId" (changed)="serviceId = $event" [options]="serviceSelectOptions()" placeholder="Unattributed" [clearable]="true" />
         </label>
       </div>
 

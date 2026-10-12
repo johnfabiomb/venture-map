@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BookingAdminService } from '@booking/core/services/booking-admin.service';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
@@ -20,7 +21,7 @@ function supportedList(key: 'timeZone' | 'currency', fallback: string[]): string
 @Component({
   selector: 'app-organizations',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, SelectComponent],
   templateUrl: './organizations.component.html',
   styleUrl: './organizations.component.scss',
 })
@@ -38,6 +39,8 @@ export class OrganizationsComponent {
   readonly creating = signal(false);
   readonly timezones = supportedList('timeZone', ['UTC', 'Europe/Malta', 'Europe/London', 'Europe/Madrid', 'America/New_York']);
   readonly currencies = supportedList('currency', ['EUR', 'USD', 'GBP', 'CHF', 'AUD', 'CAD']);
+  readonly tzOptions: SelectOption[] = this.timezones.map(x => ({ value: x, label: x }));
+  readonly currencyOptions: SelectOption[] = this.currencies.map(c => ({ value: c, label: c }));
   name = '';
   slug = '';
   timezone = 'Europe/Malta';

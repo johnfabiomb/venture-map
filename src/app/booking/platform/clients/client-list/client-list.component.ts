@@ -17,7 +17,9 @@ export class ClientListComponent {
   readonly data = inject(BookingDataService);
 
   /** The client list has no filter of its own, so it pages the whole set. */
-  readonly paged = paginate(this.data.clientsInScope);
+  /** Org-wide on purpose: a client record is the organisation's, not a worker's.
+   *  The same company, VAT number and address whoever happens to shoot for them. */
+  readonly paged = paginate(this.data.clients);
 
   readonly editorOpen = signal(false);
   readonly editClient = signal<Client | null>(null);

@@ -28,14 +28,10 @@
           <h2 class="card__h">General</h2>
           <div class="grid">
             <label class="field"><span>Timezone</span>
-              <select [(ngModel)]="timezone">
-                @for (tz of timezones; track tz) { <option [value]="tz">{{ tz }}</option> }
-              </select>
+              <app-select [value]="timezone" (changed)="timezone = $event" [options]="tzOptions" />
             </label>
             <label class="field"><span>Currency</span>
-              <select [(ngModel)]="currency">
-                @for (c of currencies; track c) { <option [value]="c">{{ c }}</option> }
-              </select>
+              <app-select [value]="currency" (changed)="currency = $event" [options]="currencyOptions" />
             </label>
           </div>
           <label class="check"><input type="checkbox" [(ngModel)]="workBoard" /> Enable <strong>Work board</strong> — post-production to-do for confirmed jobs</label>
@@ -239,11 +235,7 @@
           <div class="grid">
             <label class="field"><span>Add member by email</span><input type="email" [(ngModel)]="newMemberEmail" placeholder="person@email.com" /></label>
             <label class="field"><span>Role</span>
-              <select [(ngModel)]="newMemberRole">
-                <option value="admin">Admin</option>
-                <option value="staff">Staff</option>
-                <option value="owner">Owner</option>
-              </select>
+              <app-select [value]="newMemberRole" (changed)="newMemberRole = $any($event)" [options]="roleOptions" [searchable]="false" />
             </label>
           </div>
           <div class="actions">

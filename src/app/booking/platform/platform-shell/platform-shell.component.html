@@ -43,18 +43,18 @@
     }
 
     <!-- Worker scope. A second axis under the org: the whole organization, or one
-         person's slice of it. Everything below follows it. -->
+         person's slice of it. Everything below follows it. Uses the shared select in its
+         DARK variant so it reads as part of the sidebar rather than a browser control
+         dropped into it. -->
     @if (auth.staff().length > 1) {
-      <label class="who">
+      <div class="who">
         <span class="who__label">Viewing</span>
-        <select class="who__select" [value]="auth.staffId() ?? ''"
-                (change)="onWhoChange($any($event.target).value)">
-          <option value="">Whole organization</option>
-          @for (w of auth.staff(); track w.id) {
-            <option [value]="w.id">{{ w.name }}</option>
-          }
-        </select>
-      </label>
+        <app-select variant="dark"
+                    [value]="auth.staffId() ?? ''"
+                    [options]="workerOptions()"
+                    placeholder="Whole organization"
+                    (changed)="onWhoChange($event)" />
+      </div>
     }
 
     <nav class="nav">

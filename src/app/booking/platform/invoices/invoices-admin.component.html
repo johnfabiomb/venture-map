@@ -8,10 +8,8 @@
          need a way to create your first one. -->
     <div class="head-tools">
       @if (invoices().length > 0) {
-        <select class="year-select" [value]="year()" (change)="setYear($any($event.target).value)">
-          <option value="all">All years</option>
-          @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
-        </select>
+        <app-select class="year-select" [value]="year()" (changed)="setYear($event)"
+                    [options]="yearOptions()" [searchable]="false" />
         <button class="btn btn--ghost" (click)="exportCsv()">Export CSV</button>
       }
       <a class="btn btn--primary" routerLink="/bookings/invoices/new">New invoice</a>

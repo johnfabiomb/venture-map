@@ -17,10 +17,10 @@
         <label class="field"><span>Name</span><input [(ngModel)]="name" placeholder="Acme Studio" /></label>
         <label class="field"><span>Slug</span><input [(ngModel)]="slug" placeholder="acme" /></label>
         <label class="field"><span>Timezone</span>
-          <select [(ngModel)]="timezone">@for (tz of timezones; track tz) { <option [value]="tz">{{ tz }}</option> }</select>
+          <app-select [value]="timezone" (changed)="timezone = $event" [options]="tzOptions" />
         </label>
         <label class="field"><span>Currency</span>
-          <select [(ngModel)]="currency">@for (c of currencies; track c) { <option [value]="c">{{ c }}</option> }</select>
+          <app-select [value]="currency" (changed)="currency = $event" [options]="currencyOptions" />
         </label>
       </div>
       <p class="hint">Public booking page: <strong>{{ origin }}/{{ slug || 'slug' }}/book</strong> &nbsp;·&nbsp; lowercase letters, numbers and hyphens only.</p>

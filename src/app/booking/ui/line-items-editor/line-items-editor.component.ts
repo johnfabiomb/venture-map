@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { LineItem, ServiceOption } from '@booking/core/interfaces/invoice.interface';
 import { servicePrice } from '@booking/core/interfaces/org.interface';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 
 /**
  * Reusable invoice line-items editor. Adding a line is guided: pick one of your
@@ -14,11 +15,18 @@ import { servicePrice } from '@booking/core/interfaces/org.interface';
   selector: 'app-line-items-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, SelectComponent],
   templateUrl: './line-items-editor.component.html',
   styleUrl: './line-items-editor.component.scss',
 })
 export class LineItemsEditorComponent {
+  /** Services carry a hint rather than an optgroup — the grouping only ever existed to
+   *  separate them from "Custom charge", which the hint says directly. */
+  readonly pickOptions = computed<SelectOption[]>(() => [
+    { value: 'custom', label: 'Custom charge' },
+    ...this.services().map(s => ({ value: s.id, label: s.name, hint: 'service' })),
+  ]);
+
   readonly items = model.required<LineItem[]>();
   readonly currency = input<string>('EUR');
   readonly services = input<ServiceOption[]>([]);

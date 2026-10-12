@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BookingAdminService, ConnectStatus, OrgMember, InvoiceDetails, InvoiceSettings } from '@booking/core/services/booking-admin.service';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
@@ -24,7 +25,7 @@ function supportedList(key: 'timeZone' | 'currency', fallback: string[]): string
 @Component({
   selector: 'app-settings-admin',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, SelectComponent],
   templateUrl: './settings-admin.component.html',
   styleUrl: './settings-admin.component.scss',
 })
@@ -115,6 +116,13 @@ export class SettingsAdminComponent implements OnInit {
   readonly stripe = signal<IntStatus | null>(null);
   readonly google = signal<IntStatus | null>(null);
   readonly intError = signal<string | null>(null);
+
+  readonly tzOptions: SelectOption[] = this.timezones.map(t => ({ value: t, label: t }));
+  readonly currencyOptions: SelectOption[] = this.currencies.map(c => ({ value: c, label: c }));
+  readonly roleOptions: SelectOption[] = [
+    { value: 'admin', label: 'Admin', hint: 'manages the organization' },
+    { value: 'staff', label: 'Staff', hint: 'a worker' },
+  ];
 
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, mo
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { PaymentMethod } from '@booking/core/interfaces/booking.interface';
@@ -22,7 +23,7 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   selector: 'app-payment-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CurrencyPipe, ModalComponent],
+  imports: [FormsModule, CurrencyPipe, ModalComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" (openChange)="open.set($event)" title="Record a payment" [dismissable]="true">
       <div class="pd">
@@ -40,9 +41,8 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
           </label>
           <label class="pd__field">
             <span>Method</span>
-            <select [ngModel]="method()" (ngModelChange)="method.set($event)" name="pdMethod">
-              @for (m of methods; track m) { <option [value]="m">{{ label(m) }}</option> }
-            </select>
+            <app-select [value]="method()" (changed)="method.set($any($event))"
+                        [options]="methodOptions" [searchable]="false" />
           </label>
           <label class="pd__field">
             <span>Date</span>
@@ -107,6 +107,7 @@ export class PaymentDialogComponent {
   readonly saved = output<void>();
 
   readonly methods: PaymentMethod[] = ['cash', 'revolut', 'bank', 'card', 'other'];
+  readonly methodOptions: SelectOption[] = this.methods.map(m => ({ value: m, label: METHOD_LABEL[m] }));
   readonly saving = signal(false);
 
   readonly amount = signal<number | null>(null);

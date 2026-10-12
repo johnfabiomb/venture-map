@@ -17,15 +17,8 @@
 @if (picking()) {
   <!-- Guided add: a service (with hours) or a custom charge -->
   <div class="add-row">
-    <select class="add-row__what" [(ngModel)]="pickId" name="pickId">
-      <option value="">What are you charging?</option>
-      <option value="custom">Custom charge</option>
-      @if (services().length) {
-        <optgroup label="Services">
-          @for (s of services(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-        </optgroup>
-      }
-    </select>
+    <app-select class="add-row__what" [value]="pickId" (changed)="pickId = $event"
+                [options]="pickOptions()" placeholder="What are you charging?" />
 
     @if (pickedService) {
       <div class="add-row__hours">

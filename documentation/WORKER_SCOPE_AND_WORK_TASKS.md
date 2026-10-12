@@ -116,9 +116,10 @@ already owed to post-production.
 Clients and Services become **per-worker views**:
 - Services already are per-worker in the data (`staff_services`), so this just reflects
   what the schema already says.
-- Clients: the page lists clients this worker has actually worked with.
-  ⚠ The client PICKER on a booking form must still offer everyone — otherwise a worker
-  could never take on a new client. Page filter ≠ picker filter.
+- Clients: **org-wide, shared** (corrected by John 2026-10-12: *"a client information is
+  a client information, it doesn't change, clients can be shared for sure"*). A client
+  record — company, VAT, billing address — belongs to the business, not to whoever
+  happens to shoot for them. The earlier per-worker filter was removed.
 
 ### 4. A filter now; permissions later
 Build the selector and the scoping. No RLS changes yet. The split in the menu is what

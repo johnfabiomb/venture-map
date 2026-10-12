@@ -1,21 +1,28 @@
-import { Component, OnInit, computed, inject, effect, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { ToastHostComponent } from '@booking/ui/toast/toast-host.component';
 import { ConfirmHostComponent } from '@booking/ui/confirm/confirm-host.component';
 
 @Component({
   selector: 'app-platform-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, ConfirmHostComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, ConfirmHostComponent, SelectComponent],
   providers: [BookingDataService],
   templateUrl: './platform-shell.component.html',
   styleUrl: './platform-shell.component.scss',
 })
 export class PlatformShellComponent implements OnInit {
   readonly auth = inject(BookingsAuthService);
+
+  /** '' is a real choice here, not an empty state: the whole organization. */
+  readonly workerOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Whole organization' },
+    ...this.auth.staff().map(w => ({ value: w.id, label: w.name })),
+  ]);
 
   /** Switching worker changes what every page is allowed to show, so the shared caches
    *  are re-pulled rather than left showing the previous person's rows. */

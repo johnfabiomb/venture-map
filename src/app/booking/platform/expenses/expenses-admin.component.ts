@@ -10,6 +10,7 @@ import { ExpenseRow } from '@booking/core/interfaces/expense.interface';
 import { Profit } from '@booking/core/interfaces/profit.interface';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { paginate } from '@booking/core/utils/pagination.util';
 
 /**
@@ -25,7 +26,7 @@ import { paginate } from '@booking/core/utils/pagination.util';
 @Component({
   selector: 'app-expenses-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, FormsModule, RouterLink, ExpenseDialogComponent, PaginatorComponent],
+  imports: [DatePipe, CurrencyPipe, FormsModule, RouterLink, ExpenseDialogComponent, PaginatorComponent, SelectComponent],
   templateUrl: './expenses-admin.component.html',
   styleUrl: './expenses-admin.component.scss',
 })
@@ -51,6 +52,9 @@ export class ExpensesAdminComponent implements OnInit {
   // Only the ledger pages. Month-by-month tops out at 12 rows and the category and client
   // tables are summaries — paging a 5-row table hides nothing and costs a click.
   readonly paged = paginate(this.rows);
+
+  readonly yearOptions = computed<SelectOption[]>(() =>
+    this.years().map(y => ({ value: y, label: y })));
 
   // ── Add / edit, via the shared dialog ────────────────────────────────────
   readonly dialogOpen = signal(false);

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
@@ -20,7 +21,7 @@ import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
   selector: 'app-expense-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModalComponent],
+  imports: [FormsModule, ModalComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" (openChange)="open.set($event)"
                [title]="editing() ? 'Edit cost' : 'Add a cost'" [dismissable]="true">
@@ -60,12 +61,8 @@ import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
                    shown for confirmation rather than offered as a choice to get wrong. -->
               <input [value]="lockedJobLabel()" disabled />
             } @else {
-              <select [ngModel]="bookingId()" (ngModelChange)="bookingId.set($event)" name="xdJob">
-                <option value="">No job — a general business cost</option>
-                @for (j of jobs(); track j.id) {
-                  <option [value]="j.id">{{ j.booking_ref }} · {{ j.title }}</option>
-                }
-              </select>
+              <app-select [value]="bookingId()" (changed)="bookingId.set($event)"
+                          [options]="jobOptions()" placeholder="No job — a general business cost" />
             }
           </label>
         </div>
@@ -150,6 +147,10 @@ export class ExpenseDialogComponent {
     [...this.data.bookings()]
       .sort((a, b) => b.next_start_at.localeCompare(a.next_start_at))
       .slice(0, 150));
+  readonly jobOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'No job — a general business cost' },
+    ...this.jobs().map(j => ({ value: j.id, label: j.title, hint: j.booking_ref })),
+  ]);
   readonly lockedJobLabel = computed(() => {
     const b = this.data.bookings().find(x => x.id === this.forBookingId());
     return b ? `${b.booking_ref} · ${b.title}` : 'This job';

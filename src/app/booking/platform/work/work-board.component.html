@@ -14,12 +14,8 @@
     <div class="composer">
       <input class="composer__title" type="text" placeholder="Card title (e.g. Edit reel for IG)"
              [(ngModel)]="newCardTitle" (keyup.enter)="addCard()" />
-      <select class="composer__job" [(ngModel)]="newCardBookingId">
-        <option value="">No job — personal card</option>
-        @for (o of jobOptions(); track o.id) {
-          <option [value]="o.id">{{ o.title }}{{ o.clientName ? ' · ' + o.clientName : '' }} ({{ o.start_at | date:'d MMM' }})</option>
-        }
-      </select>
+      <app-select class="composer__job" [value]="newCardBookingId" (changed)="newCardBookingId = $event"
+                  [options]="composerJobOptions()" placeholder="No job — personal card" />
       <button class="btn btn--primary btn--sm" [disabled]="adding() || (!newCardBookingId && !newCardTitle.trim())" (click)="addCard()">Add</button>
       <button class="btn btn--ghost btn--sm" (click)="toggleComposer()">Cancel</button>
     </div>
@@ -67,10 +63,8 @@
                 <div class="job__manage">
                   <label class="job__assignee" [class.job__assignee--set]="j.assigneeId">
                     @if (j.assigneeId) { <span class="job__avatar">{{ initials(j.assigneeName) }}</span> }
-                    <select [ngModel]="j.assigneeId ?? ''" (ngModelChange)="assign(j, $event)" title="Assign to staff">
-                      <option value="">Unassigned</option>
-                      @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-                    </select>
+                    <app-select [value]="j.assigneeId ?? ''" (changed)="assign(j, $event)"
+                        [options]="assigneeOptions()" placeholder="Unassigned" [searchable]="false" />
                   </label>
                   <input class="job__due" type="date" [class.job__due--overdue]="isOverdue(j)"
                          [value]="dueValue(j)" (change)="setDue(j, $any($event.target).value)" title="Deliver-by date" />

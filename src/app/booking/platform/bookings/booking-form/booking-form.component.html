@@ -72,6 +72,10 @@
       <section class="sec">
         <h2 class="sec__title">Job</h2>
 
+        @if (scopedWorkerName(); as w) {
+          <p class="note">For <strong>{{ w }}</strong> — change the worker from the sidebar.</p>
+        }
+
         <div class="field">
           <div class="field__top"><label for="bf-title">Title</label></div>
           <input id="bf-title" [(ngModel)]="title" name="title"
@@ -96,12 +100,8 @@
 
           @if (clientMode === 'existing') {
             <div class="client-row">
-              <select [(ngModel)]="clientId" name="clientId">
-                <option value="" disabled>Select a client…</option>
-                @for (c of data.clients(); track c.id) {
-                  <option [value]="c.id">{{ c.name }}{{ c.company ? ' · ' + c.company : '' }}</option>
-                }
-              </select>
+                <app-select [value]="clientId" (changed)="clientId = $event"
+                          [options]="clientOptions()" placeholder="Select a client…" [clearable]="true" />
               <button type="button" class="btn btn--ghost btn--sm" (click)="openClientEditor()">+ New</button>
             </div>
             @if (selectedClient && !selectedClient.vat_number && !selectedClient.billing_address) {
@@ -112,18 +112,18 @@
           }
         </div>
 
-        <div class="field">
-          <div class="field__top"><label>Worker</label></div>
-          <select [(ngModel)]="staffId" name="staffId" required>
-            <option value="" disabled>Select a worker…</option>
-            @for (w of workers; track w.id) {
-              <option [value]="w.id">{{ w.name }}</option>
+        <!-- Hidden when the worker scope already says who: asking again is asking the
+             same question twice, and the answer is already on screen in the sidebar. -->
+        @if (!scopedWorkerName()) {
+          <div class="field">
+            <div class="field__top"><label>Worker</label></div>
+            <app-select [value]="staffId" (changed)="staffId = $event"
+                        [options]="workerOptions()" placeholder="Select a worker…" />
+            @if (workers.length === 0) {
+              <span class="note note--warn">No bookable workers yet — add one in Staff.</span>
             }
-          </select>
-          @if (workers.length === 0) {
-            <span class="note note--warn">No bookable workers yet — add one in Staff.</span>
-          }
-        </div>
+          </div>
+        }
 
         <div class="field">
           <div class="field__top"><label for="bf-loc">Location <span class="opt">optional</span></label></div>
@@ -189,11 +189,8 @@
               by cash, Revolut or bank, and it books straight away.
             </app-info-hint>
           </div>
-          <select [(ngModel)]="paymentMode" name="paymentMode">
-            <option value="both">Card or pay later (cash / Revolut / bank)</option>
-            <option value="card">Card only</option>
-            <option value="later">Pay later only — client just confirms</option>
-          </select>
+          <app-select [value]="paymentMode" (changed)="paymentMode = $any($event)"
+                      [options]="paymentModeOptions" [searchable]="false" />
         </div>
 
         @if (paymentMode !== 'later') {
@@ -206,10 +203,8 @@
                   booking only.
                 </app-info-hint>
               </div>
-              <select [(ngModel)]="depositMode" name="depositMode">
-                <option value="deposit">Allow a deposit</option>
-                <option value="full">Require full payment</option>
-              </select>
+              <app-select [value]="depositMode" (changed)="depositMode = $any($event)"
+                          [options]="depositModeOptions" [searchable]="false" />
             </div>
             @if (depositMode === 'deposit') {
               <div class="field">

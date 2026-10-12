@@ -7,6 +7,15 @@ All notable changes to Venture Map are recorded here.
 ## [Unreleased]
 
 ### Added
+- **One select for the whole admin.** A native `<select>` is drawn by the browser, so it looked different on every machine, could not match the dark sidebar, and could not show a colour, a secondary hint or a search box. `ui/select/` renders everything itself: searchable (automatically once a list passes seven), keyboard-navigable, clearable, with a light and a dark variant. All **23** native selects across 13 files are replaced; none remain. The panel goes through a **CDK overlay**, not an absolutely-positioned div — a dropdown inside a scrolling sidebar or a modal gets clipped by its ancestors otherwise, which is the classic reason hand-rolled selects break exactly where they are most needed.
+- **The Worker field disappears when the scope already says who.** Creating a booking or a work task inside a selected worker no longer asks a question the sidebar has already answered; a line names the worker instead.
+
+### Fixed
+- **The Deleted tab ignored the worker scope** and showed every worker's rows. `list_deleted_bookings` / `list_deleted_invoices` are `SECURITY DEFINER`, so they bypass RLS and the scope could not reach them the way it reaches an ordinary query — it had to become a parameter. Both now take `p_staff`.
+- **Clients are organisation-wide again.** A client record — company, VAT number, billing address — belongs to the business, not to whoever happens to shoot for them (John: *"a client information is a client information, it doesn't change"*). The per-worker filter and its computed were removed rather than left as a second, contradictory client list.
+- The sidebar worker switcher was a white control inside a dark sidebar with mismatched margins (12px/14px vs 0/14px). It uses the shared select's dark variant and the org link's exact margins now.
+
+### Added (earlier)
 - **The work board's columns are yours now.** Stages were a CHECK constraint, so renaming one or adding "Client review" meant a schema migration. They are rows in `work_stages` — add, rename, reorder, recolour, delete. `work_items.production_status` still stores the stage KEY, so nothing had to be migrated and every existing card stayed valid. Deleting a column goes through `delete_work_stage(stage, move_to)`: the cards move and the stage goes in one transaction, because doing it in the app would strand cards pointing at a stage that no longer exists if the second call failed. The last remaining column cannot be deleted.
 - **Reserved work time gets its own colour in Google Calendar**, per stage, so post-production is visibly distinct from a shoot. The colour is stored as **Google's own event colour id (1–11)**, not a hex: Google has eleven fixed event colours and nothing else, so a colour wheel would promise something the calendar cannot render.
 

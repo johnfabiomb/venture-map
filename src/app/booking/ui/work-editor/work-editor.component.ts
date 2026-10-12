@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, mo
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { AvailabilityPickerComponent, PickedSlot } from '@booking/platform/bookings/booking-form/availability-picker.component';
 import { BookingAdminService, WorkJob } from '@booking/core/services/booking-admin.service';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -21,7 +22,7 @@ import { BookingSlot } from '@booking/core/interfaces/booking.interface';
   selector: 'app-work-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DatePipe, ModalComponent, AvailabilityPickerComponent],
+  imports: [FormsModule, DatePipe, ModalComponent, AvailabilityPickerComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" (openChange)="open.set($event)"
                [title]="job() ? 'Work task' : 'New work task'" [dismissable]="true">
@@ -32,14 +33,17 @@ import { BookingSlot } from '@booking/core/interfaces/booking.interface';
                  placeholder="e.g. Edit the Prohealth interviews" />
         </label>
 
+        @if (scopedWorkerName(); as w) {
+          <p class="we__hint">Reserved against <strong>{{ w }}</strong> — change the worker from the sidebar.</p>
+        }
         <div class="we__row">
-          <label class="we__field">
-            <span>Who</span>
-            <select [ngModel]="assigneeId()" (ngModelChange)="assigneeId.set($event)" name="weWho">
-              <option value="">Unassigned</option>
-              @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-            </select>
-          </label>
+          @if (!scopedWorkerName()) {
+            <label class="we__field">
+              <span>Who</span>
+              <app-select [value]="assigneeId()" (changed)="assigneeId.set($event)"
+                          [options]="staffOptions()" placeholder="Unassigned" [clearable]="true" />
+            </label>
+          }
           <label class="we__field">
             <span>Deliver by <em>optional</em></span>
             <input type="date" [ngModel]="dueOn()" (ngModelChange)="dueOn.set($event)" name="weDue" />
@@ -140,6 +144,9 @@ export class WorkEditorComponent {
   private picked: PickedSlot[] = [];
 
   readonly timezone = computed(() => 'Europe/Malta');
+  readonly scopedWorkerName = computed(() => this.auth.activeStaff()?.name ?? '');
+  readonly staffOptions = computed<SelectOption[]>(() =>
+    this.staff().map(s => ({ value: s.id, label: s.name })));
   /** Recent jobs, newest first — linking to a shoot from last year is not the case. */
   readonly jobOptions = computed(() =>
     [...this.data.bookings()]

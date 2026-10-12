@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingAdminService, WorkStage, GCAL_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
@@ -18,7 +19,7 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
   selector: 'app-stage-manager',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModalComponent],
+  imports: [FormsModule, ModalComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" (openChange)="open.set($event)" title="Board columns" [dismissable]="true">
       <div class="sm">
@@ -36,11 +37,10 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
               </div>
               <input class="sm__name" [ngModel]="s.label" (ngModelChange)="edit(s.id, 'label', $event)"
                      [name]="'lbl' + s.id" placeholder="Stage name" />
-              <select class="sm__color" [ngModel]="s.color_id ?? ''" (ngModelChange)="edit(s.id, 'color_id', $event || null)"
-                      [name]="'col' + s.id" [style.borderColor]="hex(s.color_id)">
-                <option value="">Default</option>
-                @for (c of colors; track c.id) { <option [value]="c.id">{{ c.name }}</option> }
-              </select>
+              <div class="sm__color">
+                <app-select [value]="s.color_id ?? ''" (changed)="edit(s.id, 'color_id', $event || null)"
+                            [options]="colorOptions" [searchable]="false" placeholder="Default" />
+              </div>
               <label class="sm__done" title="Work is finished at this stage">
                 <input type="checkbox" [ngModel]="s.is_done" (ngModelChange)="edit(s.id, 'is_done', $event)"
                        [name]="'done' + s.id" />
@@ -79,10 +79,9 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
     .sm__order button:disabled { opacity: 0.35; cursor: default; }
     .sm__name { flex: 1 1 130px; min-width: 0; padding: 8px 10px; border: 1.5px solid #e2e8f0; border-radius: 8px;
                 font-family: inherit; font-size: 13px; color: #0f172a; }
-    .sm__color { padding: 8px 8px; border: 2px solid #e2e8f0; border-radius: 8px;
-                 font-family: inherit; font-size: 12px; background: #fff; cursor: pointer; }
-    .sm__name:focus, .sm__color:focus { outline: none; border-color: #F4A922; }
-    @media (max-width: 560px) { .sm__name, .sm__color { font-size: 16px; } }
+    .sm__color { flex: 0 0 132px; }
+    .sm__name:focus { outline: none; border-color: #F4A922; }
+    @media (max-width: 560px) { .sm__name { font-size: 16px; } .sm__color { flex: 1 1 100%; } }
     .sm__done { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #475569; cursor: pointer; }
     .sm__done input { width: 15px; height: 15px; accent-color: #F4A922; }
     .sm__del { background: none; border: none; font-size: 17px; line-height: 1; color: #94a3b8; cursor: pointer; padding: 0 4px; }
@@ -107,6 +106,12 @@ export class StageManagerComponent {
   readonly changed = output<void>();
 
   readonly colors = GCAL_COLORS;
+  /** The dot shows the colour itself — a name alone tells you nothing about what the
+   *  calendar will look like. */
+  readonly colorOptions: SelectOption[] = [
+    { value: '', label: 'Default' },
+    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+  ];
   readonly busy = signal(false);
   readonly rows = signal<WorkStage[]>([]);
   readonly newLabel = signal('');

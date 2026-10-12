@@ -5,9 +5,8 @@
       <p class="page__sub">What the work cost you, and what you actually kept</p>
     </div>
     <div class="head-actions">
-      <select class="year-select" [ngModel]="year()" (ngModelChange)="setYear($event)" name="year">
-        @for (y of years(); track y) { <option [value]="y">{{ y }}</option> }
-      </select>
+      <app-select class="year-select" [value]="year()" (changed)="setYear($event)"
+                  [options]="yearOptions()" [searchable]="false" />
       <button class="btn btn--ghost" (click)="exportCsv()" [disabled]="rows().length === 0">Export CSV</button>
       <button class="btn btn--primary" (click)="openDialog()">+ Add a cost</button>
     </div>

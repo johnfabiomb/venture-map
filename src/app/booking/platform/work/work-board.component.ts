@@ -5,6 +5,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from 
 import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff, WorkStage, colorHex } from '@booking/core/services/booking-admin.service';
 import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
 import { StageManagerComponent } from '@booking/ui/stage-manager/stage-manager.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -20,7 +21,7 @@ type Board = Record<ColumnKey, WorkJob[]>;
 @Component({
   selector: 'app-work-board',
   standalone: true,
-  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent, StageManagerComponent],
+  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent, StageManagerComponent, SelectComponent],
   templateUrl: './work-board.component.html',
   styleUrl: './work-board.component.scss',
 })
@@ -63,6 +64,19 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   });
 
   // ── Work task editor (reserved time + linked jobs) ──────────────────────
+  readonly assigneeOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Unassigned' },
+    ...this.staff().map(s => ({ value: s.id, label: s.name })),
+  ]);
+  readonly composerJobOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'No job — personal card' },
+    ...this.jobOptions().map(o => ({
+      value: o.id, label: o.title,
+      hint: [o.clientName, o.start_at ? new Date(o.start_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null]
+        .filter(Boolean).join(' · ') || undefined,
+    })),
+  ]);
+
   readonly stagesOpen = signal(false);
   readonly editorOpen = signal(false);
   readonly editing = signal<WorkJob | null>(null);

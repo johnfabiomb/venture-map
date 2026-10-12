@@ -1,8 +1,9 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -26,11 +27,25 @@ import { Client } from '@booking/core/interfaces/booking.interface';
 @Component({
   selector: 'app-invoice-edit',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink, LineItemsEditorComponent, ClientEditorComponent],
+  imports: [FormsModule, DatePipe, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent],
   templateUrl: './invoice-edit.component.html',
   styleUrl: './invoice-edit.component.scss',
 })
 export class InvoiceEditComponent implements OnInit {
+  // Searchable pickers: an invoice editor with a hundred jobs or clients is exactly
+  // where a native select stops being usable.
+  readonly jobSelectOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'No job — invoice only' },
+    ...this.jobOptions().map(o => ({ value: o.id, label: o.title,
+      hint: o.clientName ?? undefined })),
+  ]);
+  readonly clientSelectOptions = computed<SelectOption[]>(() =>
+    this.data.clients().map(c => ({ value: c.id, label: c.name, hint: c.company ?? undefined })));
+  readonly staffSelectOptions = computed<SelectOption[]>(() =>
+    this.staff().map(s => ({ value: s.id, label: s.name })));
+  readonly serviceSelectOptions = computed<SelectOption[]>(() =>
+    this.services().map(s => ({ value: s.id, label: s.name })));
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly data = inject(BookingDataService);

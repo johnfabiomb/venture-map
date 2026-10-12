@@ -10,6 +10,7 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
 import { paginate } from '@booking/core/utils/pagination.util';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
@@ -37,7 +38,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -164,6 +165,11 @@ export class InvoicesAdminComponent implements OnInit {
   // set and must return to page one — hence reset() in setTab/setYear below.
   readonly paged = paginate(this.filtered);
   readonly pagedDeleted = paginate(this.deleted);
+
+  readonly yearOptions = computed<SelectOption[]>(() => [
+    { value: 'all', label: 'All years' },
+    ...this.years().map(y => ({ value: y, label: y })),
+  ]);
 
   setTab(t: InvoiceTab): void { this.tab.set(t); this.paged.reset(); }
   setYear(y: string): void { this.year.set(y); this.paged.reset(); }

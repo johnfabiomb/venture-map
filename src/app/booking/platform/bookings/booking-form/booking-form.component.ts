@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
@@ -12,11 +12,12 @@ import { AvailabilityPickerComponent, PickedSlot } from './availability-picker.c
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 
 @Component({
   selector: 'app-booking-form',
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent, InfoHintComponent],
+  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent, InfoHintComponent, SelectComponent],
   templateUrl: './booking-form.component.html',
   styleUrl: './booking-form.component.scss',
 })
@@ -74,6 +75,25 @@ export class BookingFormComponent implements OnInit {
   confirmed = false;         // OFF (default) → tentative booking (held, awaits confirmation); ON → booked + calendar now
 
   private orgDefaults = { depositPercent: 30, depositAllowed: true };
+
+  /** The worker the sidebar scope already chose, if any — the field is hidden then. */
+  readonly scopedWorkerName = computed(() => this.auth.activeStaff()?.name ?? '');
+
+  readonly workerOptions = computed<SelectOption[]>(() =>
+    this.workers.map(w => ({ value: w.id, label: w.name })));
+  /** Org-wide, searchable: a client belongs to the business, and a worker must be able to
+   *  take on one they have never shot for. */
+  readonly clientOptions = computed<SelectOption[]>(() =>
+    this.data.clients().map(c => ({ value: c.id, label: c.name, hint: c.company ?? undefined })));
+  readonly paymentModeOptions: SelectOption[] = [
+    { value: 'both',  label: 'Card or pay later', hint: 'cash / Revolut / bank' },
+    { value: 'card',  label: 'Card only' },
+    { value: 'later', label: 'Pay later only', hint: 'client just confirms' },
+  ];
+  readonly depositModeOptions: SelectOption[] = [
+    { value: 'deposit', label: 'Allow a deposit' },
+    { value: 'full',    label: 'Require full payment' },
+  ];
 
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();

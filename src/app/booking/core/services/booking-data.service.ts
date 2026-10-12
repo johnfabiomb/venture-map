@@ -292,7 +292,7 @@ export class BookingDataService implements OnDestroy {
   async listDeletedBookings(): Promise<DeletedBooking[]> {
     const org = this.auth.orgId();
     if (!org) return [];
-    const { data, error } = await bookingsDb.rpc('list_deleted_bookings', { p_org: org });
+    const { data, error } = await bookingsDb.rpc('list_deleted_bookings', { p_org: org, p_staff: this.auth.staffId() });
     if (error) { console.error('[BookingData] listDeletedBookings:', error.message); return []; }
     return (data ?? []) as DeletedBooking[];
   }
@@ -300,7 +300,7 @@ export class BookingDataService implements OnDestroy {
   async listDeletedInvoices(): Promise<DeletedInvoice[]> {
     const org = this.auth.orgId();
     if (!org) return [];
-    const { data, error } = await bookingsDb.rpc('list_deleted_invoices', { p_org: org });
+    const { data, error } = await bookingsDb.rpc('list_deleted_invoices', { p_org: org, p_staff: this.auth.staffId() });
     if (error) { console.error('[BookingData] listDeletedInvoices:', error.message); return []; }
     return (data ?? []) as DeletedInvoice[];
   }
@@ -1008,19 +1008,6 @@ export class BookingDataService implements OnDestroy {
     tabs.forEach((tab, i) => { counts[tab] = results[i].count ?? 0; });
     return counts;
   }
-
-  /**
-   * Clients this worker has actually worked with.
-   *
-   * `clients()` itself stays ORG-WIDE on purpose: it feeds the booking form's picker,
-   * and a worker who could only choose from clients they had already worked with could
-   * never take on a new one. The page filters; the picker does not.
-   */
-  readonly clientsInScope = computed(() => {
-    if (!this.auth.staffId()) return this.clients();
-    const seen = new Set(this.bookings().map(b => b.client_id).filter((x): x is string => !!x));
-    return this.clients().filter(c => seen.has(c.id));
-  });
 
   private async fetchClients(): Promise<void> {
     const org = this.auth.orgId();
