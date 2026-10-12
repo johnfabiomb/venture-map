@@ -106,6 +106,12 @@
       <div class="fact"><span class="fact__k">Service</span><span class="fact__v">{{ b.service_name ?? '—' }}</span></div>
       <div class="fact"><span class="fact__k">Worker</span><span class="fact__v">{{ b.staff_name ?? '—' }}</span></div>
       <div class="fact"><span class="fact__k">Status</span><span class="fact__v">{{ b.status }}</span></div>
+      <!-- Internal audit trail (§26). Never reaches the client: the invoice is issued by
+           the organisation, not by a person. Hidden entirely for records that predate the
+           trail, rather than showing an "Added by —" that reads like missing data. -->
+      @if (b.created_by_name) {
+        <div class="fact"><span class="fact__k">Added by</span><span class="fact__v">{{ b.created_by_name }}</span></div>
+      }
       <!-- Production is no longer a create-time-only decision: a job can join the Work
            board at any point after it was booked. -->
       <div class="fact">

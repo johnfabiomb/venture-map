@@ -84,6 +84,7 @@ export interface WorkJob {
   doneAt: string | null;           // when it entered a terminal stage
   /** Terminal and aged past the org's archive window — off the board, in History. */
   isArchived: boolean;
+  createdByName: string | null;   // §26 audit trail
 }
 
 export interface TaskRow {
@@ -163,6 +164,10 @@ export interface OrgSettings {
     work_archive_days?: number;
   };
   features?: { work_board?: boolean };
+  /** Read-only here. Both are service_role-write-only in the DB; the UI reads them to
+   *  tell an organization whether it can actually take a card payment. */
+  stripe_charges_enabled?: boolean;
+  platform_charges_allowed?: boolean;
   invoice_details?: InvoiceDetails;
   invoice_settings?: InvoiceSettings;
 }
@@ -281,10 +286,19 @@ export class BookingAdminService {
     const { data } = await bookingsDb.from('staff').select('*').eq('org_id', orgId).order('name');
     return (data ?? []) as AdminStaff[];
   }
-  async saveStaff(orgId: string, s: Partial<AdminStaff>): Promise<void> {
+  /** Returns the worker's id — a NEW worker has to be linkable to a login in the same
+   *  action, and `user_id` is written only through `linkStaffUser` (it is validated
+   *  against org membership, so it must not be a plain column write). */
+  async saveStaff(orgId: string, s: Partial<AdminStaff>): Promise<string | null> {
     const row = { org_id: orgId, name: s.name, email: s.email ?? null, is_bookable: s.is_bookable ?? true };
-    if (s.id) await bookingsDb.from('staff').update(row).eq('id', s.id);
-    else await bookingsDb.from('staff').insert(row);
+    if (s.id) {
+      const { error } = await bookingsDb.from('staff').update(row).eq('id', s.id);
+      if (error) { console.error('[BookingAdmin] saveStaff:', error); return null; }
+      return s.id;
+    }
+    const { data, error } = await bookingsDb.from('staff').insert(row).select('id').single();
+    if (error) { console.error('[BookingAdmin] saveStaff:', error); return null; }
+    return (data as { id: string }).id;
   }
   async deleteStaff(id: string): Promise<void> {
     await bookingsDb.rpc('soft_delete', { p_table: 'staff', p_id: id });
@@ -305,7 +319,9 @@ export class BookingAdminService {
 
   // ── Org settings ──────────────────────────────────────────────────
   async getOrgSettings(orgId: string): Promise<OrgSettings | null> {
-    const { data } = await bookingsDb.from('organizations').select('timezone, currency, booking_params, features, invoice_details, invoice_settings').eq('id', orgId).maybeSingle();
+    const { data } = await bookingsDb.from('organizations')
+      .select('timezone, currency, booking_params, features, invoice_details, invoice_settings, stripe_charges_enabled, platform_charges_allowed')
+      .eq('id', orgId).maybeSingle();
     return (data as OrgSettings) ?? null;
   }
 
@@ -316,7 +332,8 @@ export class BookingAdminService {
   private static readonly WORK_BOARD_COLS =
     'id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active,'
     + ' assignee_id, assignee_name, due_at, client_name, service_name, description,'
-    + ' work_type, work_type_label, stage_label, stage_is_done, done_at, is_archived';
+    + ' work_type, work_type_label, stage_label, stage_is_done, done_at, is_archived,'
+    + ' created_by, created_by_name';
 
   private mapWorkJob(w: Record<string, unknown>): WorkJob {
     return {
@@ -338,6 +355,7 @@ export class BookingAdminService {
       stageIsDone: !!w['stage_is_done'],
       doneAt: (w['done_at'] as string | null) ?? null,
       isArchived: !!w['is_archived'],
+      createdByName: (w['created_by_name'] as string | null) ?? null,
     };
   }
 
@@ -551,7 +569,12 @@ export class BookingAdminService {
     }
   }
   async updateOrgSettings(orgId: string, patch: Partial<OrgSettings>): Promise<void> {
-    await bookingsDb.from('organizations').update(patch).eq('id', orgId);
+    // The payment-readiness flags are READ-only for an admin: `authenticated` holds no
+    // UPDATE privilege on those columns (§14/§26), and PostgREST fails the whole
+    // statement if one is named — so a caller that spread a loaded OrgSettings would
+    // silently stop being able to save anything at all.
+    const { stripe_charges_enabled: _s, platform_charges_allowed: _p, ...writable } = patch;
+    await bookingsDb.from('organizations').update(writable).eq('id', orgId);
   }
 
   // ── Integrations ──────────────────────────────────────────────────
@@ -614,6 +637,31 @@ export class BookingAdminService {
     return (data as 'ok' | 'no_user') ?? 'error';
   }
 
+  /**
+   * Every org member with their login email and the worker row they are linked to.
+   * Drives the "this worker signs in as…" picker on the Staff page.
+   */
+  async listMemberLogins(orgId: string): Promise<MemberLogin[]> {
+    const { data, error } = await bookingsDb.rpc('org_member_emails', { p_org: orgId });
+    if (error) { console.error('[BookingAdmin] listMemberLogins:', error); return []; }
+    return (data ?? []) as MemberLogin[];
+  }
+
+  /**
+   * Link a worker row to an org member's login — or clear it with an empty email.
+   *
+   * `staff.user_id` is what `current_staff_id()` resolves and what the "a worker may see
+   * their own bookings" policy is built on, but `saveStaff` never wrote the column, so a
+   * second worker could never be joined to the person who actually logs in. Goes through
+   * an RPC because the link must be validated against org membership — a worker must not
+   * be attachable to an arbitrary account.
+   */
+  async linkStaffUser(staffId: string, email: string | null): Promise<LinkStaffResult> {
+    const { data, error } = await bookingsDb.rpc('link_staff_user', { p_staff: staffId, p_email: email });
+    if (error) return { ok: false, error: error.message };
+    return (data ?? { ok: false }) as LinkStaffResult;
+  }
+
   async removeMember(orgId: string, userId: string): Promise<{ ok?: boolean; error?: string }> {
     const { error } = await bookingsDb.rpc('remove_org_member', { p_org: orgId, p_user: userId });
     if (error) return { error: error.message };
@@ -622,6 +670,21 @@ export class BookingAdminService {
 }
 
 export interface OrgMember { user_id: string; email: string; role: string; }
+
+/** An org member's login, plus the worker row they are linked to (if any). */
+export interface MemberLogin {
+  user_id: string;
+  email: string;
+  role: string;
+  staff_name: string | null;
+}
+
+export interface LinkStaffResult {
+  ok: boolean;
+  linked?: boolean;
+  error?: string;
+  staff_name?: string;
+}
 
 export interface ConnectStatus {
   connected: boolean;

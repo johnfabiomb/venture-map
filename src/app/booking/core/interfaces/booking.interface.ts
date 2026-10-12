@@ -57,6 +57,12 @@ export interface BookingSummary {
   work_count: number;
   /** The LEAST advanced stage across them — what is still owed. Null when none. */
   work_status: 'to_edit' | 'editing' | 'to_deliver' | 'delivered' | null;
+  /** Who ENTERED this booking (§26) — an internal audit trail, never shown to a client.
+   *  Null for anything created before the trail existed, or by the system (a webhook).
+   *  NB `created_by` on the table is a different, pre-existing TEXT field ('admin' |
+   *  'client') that drives slot blocking — this is `created_by_user`. */
+  created_by_user: string | null;
+  created_by_name: string | null;
 }
 
 /** Raw editable columns of a booking — used by the admin edit form. */

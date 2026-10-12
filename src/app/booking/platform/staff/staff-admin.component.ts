@@ -1,17 +1,24 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow, MemberLogin } from '@booking/core/services/booking-admin.service';
+import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 
-interface StaffForm { id?: string; name: string; email: string; is_bookable: boolean; }
+interface StaffForm {
+  id?: string; name: string; email: string; is_bookable: boolean;
+  /** The org-member login this worker signs in as ('' = not linked). */
+  loginEmail: string;
+  /** What it was when the form opened, so an unchanged link is not re-written. */
+  originalLogin: string;
+}
 interface SvcRow { serviceId: string; name: string; assigned: boolean; start: number; end: number; }
 
 @Component({
   selector: 'app-staff-admin',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, SelectComponent],
   templateUrl: './staff-admin.component.html',
   styleUrl: './staff-admin.component.scss',
 })
@@ -26,6 +33,22 @@ export class StaffAdminComponent implements OnInit {
   private assignments: StaffServiceRow[] = [];
   readonly loading = signal(true);
 
+  /** Org members who can sign in — a worker is linked to one of these, never to an
+   *  arbitrary address, so a login can only ever be someone with access already. */
+  readonly memberLogins = signal<MemberLogin[]>([]);
+  readonly loginOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Not linked', hint: 'this worker has no login' },
+    ...this.memberLogins().map(m => ({
+      value: m.email,
+      label: m.email,
+      hint: m.staff_name ? `${m.role} · already linked to ${m.staff_name}` : m.role,
+    })),
+  ]);
+  /** The login currently linked to a worker, for the roster line. */
+  loginFor(s: AdminStaff): string | null {
+    return this.memberLogins().find(m => m.user_id === s.user_id)?.email ?? null;
+  }
+
   readonly editingStaff = signal<StaffForm | null>(null);
   readonly managing = signal<AdminStaff | null>(null);
   readonly rows = signal<SvcRow[]>([]);
@@ -36,8 +59,12 @@ export class StaffAdminComponent implements OnInit {
   private async reload(): Promise<void> {
     const org = this.auth.orgId();
     if (org) {
-      const [st, sv, asg] = await Promise.all([this.admin.listStaff(org), this.admin.listServices(org), this.admin.listStaffServices()]);
+      const [st, sv, asg, logins] = await Promise.all([
+        this.admin.listStaff(org), this.admin.listServices(org), this.admin.listStaffServices(),
+        this.admin.listMemberLogins(org),
+      ]);
       this.staff.set(st); this.services.set(sv); this.assignments = asg;
+      this.memberLogins.set(logins);
     }
     this.loading.set(false);
   }
@@ -48,15 +75,43 @@ export class StaffAdminComponent implements OnInit {
   }
 
   // ── Staff add/edit ────────────────────────────────────────────────
-  addStaff(): void { this.editingStaff.set({ name: '', email: '', is_bookable: true }); }
-  editStaff(s: AdminStaff): void { this.editingStaff.set({ id: s.id, name: s.name, email: s.email ?? '', is_bookable: s.is_bookable }); }
+  addStaff(): void {
+    this.editingStaff.set({ name: '', email: '', is_bookable: true, loginEmail: '', originalLogin: '' });
+  }
+  editStaff(s: AdminStaff): void {
+    this.editingStaff.set({
+      id: s.id, name: s.name, email: s.email ?? '', is_bookable: s.is_bookable,
+      loginEmail: this.loginFor(s) ?? '', originalLogin: this.loginFor(s) ?? '',
+    });
+  }
   cancelStaff(): void { this.editingStaff.set(null); }
   async saveStaff(): Promise<void> {
     const f = this.editingStaff(); const org = this.auth.orgId();
     if (!f || !f.name.trim() || !org) return;
     const isNew = !f.id;
     try {
-      await this.admin.saveStaff(org, { id: f.id, name: f.name.trim(), email: f.email.trim() || null, is_bookable: f.is_bookable });
+      const id = await this.admin.saveStaff(org, {
+        id: f.id, name: f.name.trim(), email: f.email.trim() || null, is_bookable: f.is_bookable,
+      });
+      if (!id) { this.toast.error('Could not save the worker. Please try again.'); return; }
+
+      // The login link is a separate, validated write. Reported separately too: the
+      // worker IS saved even if the link is refused, and saying "could not save" would
+      // be a lie that makes someone retype the whole row.
+      const wanted = f.loginEmail.trim();
+      if (wanted !== f.originalLogin) {
+        const res = await this.admin.linkStaffUser(id, wanted || null);
+        if (!res.ok) {
+          await this.reload();
+          this.editingStaff.set(null);
+          this.toast.error(res.error === 'already_linked'
+            ? `Worker saved, but ${wanted} is already the login for "${res.staff_name}". One login, one worker.`
+            : res.error === 'not_a_member'
+              ? `Worker saved, but ${wanted} has no access to this organization yet. Add them under Settings → Team first.`
+              : 'Worker saved, but the login could not be linked.', 9000);
+          return;
+        }
+      }
       this.editingStaff.set(null);
       await this.reload();
       this.toast.success(`Worker "${f.name.trim()}" ${isNew ? 'added' : 'updated'}`);

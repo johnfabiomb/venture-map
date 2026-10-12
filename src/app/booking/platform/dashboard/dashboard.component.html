@@ -140,7 +140,16 @@
           <h2 class="card__title">Needs your attention</h2>
         </div>
 
-        @if (requests().length === 0 && outstanding() === 0) {
+        <!-- Setup, before anything else: a job you cannot be paid for is more urgent than
+             a job waiting to be confirmed. -->
+        @if (cardSetupNeeded()) {
+          <a class="attn-line attn-line--warn" routerLink="/bookings/settings" [queryParams]="{ tab: 'payments' }">
+            <span>Card payments are off — connect Stripe to let clients pay online</span>
+            <span class="attn-line__cta">Set up →</span>
+          </a>
+        }
+
+        @if (requests().length === 0 && outstanding() === 0 && !cardSetupNeeded()) {
           <p class="empty-line">All clear — nothing waiting on you.</p>
         }
 

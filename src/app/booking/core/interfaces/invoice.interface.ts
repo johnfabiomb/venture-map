@@ -121,6 +121,10 @@ export interface InvoiceListRow {
   is_overdue: boolean;
   /** Days past the due date; 0 when not overdue or when there is no due date. */
   days_overdue: number;
+  /** Who raised it (§26) — internal only. The invoice's legal issuer is the
+   *  organisation, so no person's name appears on the document itself. */
+  created_by: string | null;
+  created_by_name: string | null;
 }
 
 /**

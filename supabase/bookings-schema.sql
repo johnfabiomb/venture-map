@@ -624,7 +624,11 @@ SELECT
            ON ws.org_id = wi.org_id AND ws.key = wi.production_status AND ws.deleted_at IS NULL
     WHERE wb.booking_id = b.id
     ORDER BY COALESCE(ws.sort, 999)
-    LIMIT 1) AS work_status
+    LIMIT 1) AS work_status,
+  -- Who entered this booking. An INTERNAL audit trail only — see §26; nothing about it
+  -- reaches the client's invoice.
+  b.created_by_user,
+  public.creator_label(b.org_id, b.created_by_user) AS created_by_name
 FROM public.bookings b
 LEFT JOIN public.staff    st ON st.id = b.staff_id
 LEFT JOIN public.services s  ON s.id  = b.service_id
@@ -1404,7 +1408,9 @@ SELECT
    AND i.due_date < current_date
    AND GREATEST(0, gross.amount_gross - paid.amount_paid) > 0.005) AS is_overdue,
   -- GREATEST ignores NULLs in Postgres, so an invoice with no due date reads 0, not NULL.
-  GREATEST(0, current_date - i.due_date)                 AS days_overdue
+  GREATEST(0, current_date - i.due_date)                 AS days_overdue,
+  i.created_by,
+  public.creator_label(i.org_id, i.created_by) AS created_by_name
 FROM public.invoices i
 LEFT JOIN LATERAL (
   SELECT COALESCE(SUM(l.amount), 0) AS amount_gross FROM public.invoice_lines l
@@ -3180,7 +3186,9 @@ SELECT
   -- immediately, without touching any row.
   (COALESCE(ws.is_done, false) AND w.done_at IS NOT NULL
    AND w.done_at < now() - make_interval(days =>
-         GREATEST(COALESCE((o.booking_params->>'work_archive_days')::int, 3), 0))) AS is_archived
+         GREATEST(COALESCE((o.booking_params->>'work_archive_days')::int, 3), 0))) AS is_archived,
+  w.created_by,
+  public.creator_label(w.org_id, w.created_by) AS created_by_name
 FROM public.work_items w
 LEFT JOIN public.bookings      b  ON b.id  = w.booking_id
 LEFT JOIN public.clients       c  ON c.id  = b.client_id
@@ -3222,3 +3230,200 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.delete_work_type(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.delete_work_type(uuid) TO authenticated;
+
+
+-- ═══ 26. Ownership trail + multi-tenant governance ═════════════════════════
+-- Two separate jobs in one section, because they are the same question asked twice:
+-- "who is allowed to do this, and who actually did it".
+--
+-- WHO ACTUALLY DID IT — `created_by` on the records a person creates.
+-- Deliberately an INTERNAL audit trail and nothing more. An invoice's legal issuer is the
+-- ORGANIZATION, not an employee: Maltese VAT law cares about the registered business, so a
+-- person's name must NOT appear on the document. What it is for is the moment there is a
+-- second person in the org and someone asks "who entered this €200?".
+--
+-- `DEFAULT auth.uid()` means the app never sends it and therefore can never forge it —
+-- the value comes from the verified JWT inside the database. An Edge Function running on
+-- the service key has no auth.uid(), so its rows record NULL, which correctly reads as
+-- "the system did this" (a Stripe webhook, not a person).
+--
+-- ON DELETE SET NULL, never CASCADE: removing a user account must never delete the
+-- bookings, invoices or payments they happened to enter. Money records outlive staff.
+-- ⚠ NAME CLASH, and it is a trap worth naming: `bookings.created_by` ALREADY EXISTS as
+-- TEXT holding 'admin' | 'client'. It is not an audit field at all — it decides whether a
+-- tentative booking BLOCKS its slot (§5 slot_set_blocking) and gates the bk_client_i
+-- policy, and `booking_summary` already exposes it. Overloading that name would have
+-- broken double-booking prevention, so the audit column on bookings is `created_by_user`.
+-- `ADD COLUMN IF NOT EXISTS` hid this: it silently did nothing and the view then failed
+-- on creator_label(uuid, TEXT), which is the only reason it surfaced at all.
+ALTER TABLE public.bookings   ADD COLUMN IF NOT EXISTS created_by_user UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid();
+ALTER TABLE public.invoices   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid();
+ALTER TABLE public.payments   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid();
+ALTER TABLE public.work_items ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid();
+ALTER TABLE public.clients    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid();
+-- expenses (§22) already declared the column but with no default, so every cost recorded
+-- so far has a NULL creator. Give it the same default as the rest.
+ALTER TABLE public.expenses   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.expenses   ALTER COLUMN created_by SET DEFAULT auth.uid();
+-- NOT backfilled. Every existing row was created by the owner working alone, but writing
+-- his id onto them would be inventing an audit trail, and an audit trail you invented is
+-- worth nothing. NULL means "before we recorded this", and the UI says exactly that.
+
+-- Resolve a creator to something human. Prefers the person's STAFF name ("John Montaño")
+-- over their login email, because a name is what the owner recognises.
+-- SECURITY DEFINER only to reach auth.users. It cannot be used to enumerate anyone: it
+-- returns a value only when that user is a member of the org passed in, and RLS already
+-- stops a caller naming an org they are not in.
+CREATE OR REPLACE FUNCTION public.creator_label(p_org uuid, p_user uuid)
+RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (SELECT s.name FROM staff s
+      WHERE s.org_id = p_org AND s.user_id = p_user AND s.deleted_at IS NULL LIMIT 1),
+    (SELECT u.email::text FROM auth.users u
+       JOIN org_members m ON m.user_id = u.id AND m.org_id = p_org
+      WHERE u.id = p_user LIMIT 1)
+  ) WHERE p_user IS NOT NULL;
+$$;
+REVOKE ALL ON FUNCTION public.creator_label(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.creator_label(uuid, uuid) TO authenticated;
+
+-- ── WHO IS ALLOWED TO DO THIS ──────────────────────────────────────────────
+-- `is_org_admin` treats owner and admin identically, which is right for day-to-day work
+-- and wrong for one thing: granting the owner role. Without this an ADMIN could call
+-- add_org_member with their own email and role 'owner' and promote themselves, then
+-- remove the real owner (remove_org_member only protects the LAST owner, and by then
+-- there would be two). Privilege escalation in one call.
+CREATE OR REPLACE FUNCTION public.is_org_owner(p_org uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM org_members
+                  WHERE org_id = p_org AND user_id = auth.uid() AND role = 'owner');
+$$;
+REVOKE ALL ON FUNCTION public.is_org_owner(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_org_owner(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.add_org_member(p_org uuid, p_email text, p_role text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_uid UUID;
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  IF p_role NOT IN ('owner','admin','staff') THEN RAISE EXCEPTION 'bad_role'; END IF;
+  -- Only an owner may create another owner. See the note above.
+  IF p_role = 'owner' AND NOT (public.is_org_owner(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'owner_only' USING errcode = '42501';
+  END IF;
+  SELECT id INTO v_uid FROM auth.users WHERE lower(email) = lower(trim(p_email));
+  IF v_uid IS NULL THEN RETURN 'no_user'; END IF;
+  -- An admin must not be able to demote or re-role the OWNER either.
+  IF EXISTS (SELECT 1 FROM public.org_members
+              WHERE org_id = p_org AND user_id = v_uid AND role = 'owner')
+     AND NOT (public.is_org_owner(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'owner_only' USING errcode = '42501';
+  END IF;
+  INSERT INTO public.org_members (org_id, user_id, role) VALUES (p_org, v_uid, p_role)
+    ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+  RETURN 'ok';
+END $$;
+REVOKE ALL ON FUNCTION public.add_org_member(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.add_org_member(uuid, text, text) TO authenticated;
+
+-- ── Link a bookable worker to their login ──────────────────────────────────
+-- `staff.user_id` is what `current_staff_id()` resolves, and the `bk_staff_r` policy
+-- ("a worker may read their own bookings") is built on it — but NOTHING could ever write
+-- it: saveStaff() never sent the column, so every staff row but the seeded owner's had
+-- user_id NULL. A second worker was therefore un-linkable: a name on the roster with no
+-- connection to the person who logs in.
+-- The link is by EMAIL of an existing org member, so a worker can only ever be joined to
+-- someone who already has access to this organization — never to an arbitrary account.
+CREATE OR REPLACE FUNCTION public.link_staff_user(p_staff uuid, p_email text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org uuid; v_uid uuid; v_taken uuid;
+BEGIN
+  SELECT org_id INTO v_org FROM staff WHERE id = p_staff AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'not_found'); END IF;
+  IF NOT (public.is_org_admin(v_org) OR public.is_platform_admin()) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'forbidden');
+  END IF;
+
+  -- Clearing the link is a legitimate action (a worker leaves, the account is reused).
+  IF p_email IS NULL OR btrim(p_email) = '' THEN
+    UPDATE staff SET user_id = NULL WHERE id = p_staff;
+    RETURN jsonb_build_object('ok', true, 'linked', false);
+  END IF;
+
+  SELECT u.id INTO v_uid
+    FROM auth.users u
+    JOIN org_members m ON m.user_id = u.id AND m.org_id = v_org
+   WHERE lower(u.email) = lower(btrim(p_email));
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'not_a_member'); END IF;
+
+  -- staff_org_user_key is UNIQUE(org_id, user_id); say which worker holds it rather than
+  -- letting the caller see a raw 23505.
+  SELECT id INTO v_taken FROM staff
+   WHERE org_id = v_org AND user_id = v_uid AND id <> p_staff AND deleted_at IS NULL;
+  IF v_taken IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'already_linked',
+                              'staff_id', v_taken,
+                              'staff_name', (SELECT name FROM staff WHERE id = v_taken));
+  END IF;
+
+  UPDATE staff SET user_id = v_uid WHERE id = p_staff;
+  RETURN jsonb_build_object('ok', true, 'linked', true);
+END $$;
+REVOKE ALL ON FUNCTION public.link_staff_user(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.link_staff_user(uuid, text) TO authenticated;
+
+-- Which org members are not yet linked to a worker — drives the picker in Settings → Staff.
+CREATE OR REPLACE FUNCTION public.org_member_emails(p_org uuid)
+RETURNS TABLE(user_id uuid, email text, role text, staff_name text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  RETURN QUERY
+    SELECT m.user_id, u.email::text, m.role,
+           (SELECT s.name FROM staff s
+             WHERE s.org_id = p_org AND s.user_id = m.user_id AND s.deleted_at IS NULL LIMIT 1)
+      FROM org_members m JOIN auth.users u ON u.id = m.user_id
+     WHERE m.org_id = p_org
+     ORDER BY m.role, u.email;
+END $$;
+REVOKE ALL ON FUNCTION public.org_member_emails(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.org_member_emails(uuid) TO authenticated;
+
+-- ── Over-granted TRUNCATE ──────────────────────────────────────────────────
+-- A blanket GRANT ALL left anon and authenticated holding TRUNCATE on every table. RLS
+-- does NOT apply to TRUNCATE — it is table-level — so the privilege sidesteps every
+-- policy in this file: one statement would empty invoice_counters (destroying every
+-- org's invoice numbering) or org_google_accounts (disconnecting everyone's Google).
+-- Not reachable through PostgREST, which has no TRUNCATE verb, so this is defence in
+-- depth rather than an open door — but a privilege nobody needs should not be held.
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+
+-- ── May this org charge on the PLATFORM's Stripe account? ───────────────────
+-- Replaces the PLATFORM_FALLBACK_ORG_ID Edge Function secret. Same rule, but the answer
+-- lives where both the server and the UI can read it: with the identity hidden in an env
+-- var the admin screens could not tell "this org has no Stripe account and cannot charge"
+-- apart from "this org has no Stripe account and charges on the platform's" — so they
+-- could not warn a new organization that card payments were off, which is the whole
+-- problem being solved.
+--
+-- Defaults to FALSE: a new organization must connect its own Stripe account. The single
+-- grandfathered org is the platform owner's, flipped below.
+--
+-- ⚠ NOT added to the §14 column-level UPDATE grant, deliberately. `authenticated` has no
+-- blanket UPDATE on organizations, so leaving this column out of that list makes it
+-- writable by `service_role` only — an org admin must not be able to grant themselves
+-- the right to charge on someone else's Stripe account. Same reasoning as stripe_*.
+ALTER TABLE public.organizations
+  ADD COLUMN IF NOT EXISTS platform_charges_allowed BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN public.organizations.platform_charges_allowed IS
+  'May charge on the platform Stripe account when it has no connected account of its own. service_role-write-only; see §26.';

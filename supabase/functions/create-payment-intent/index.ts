@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as _cors } from '../_shared/cors.ts';
-import { platformStripe, resolveOrgStripe, chargeRouting } from '../_shared/stripe.ts';
+import { platformStripe, resolveOrgStripe, chargeRouting, isSetupError } from '../_shared/stripe.ts';
 const corsHeaders = { ..._cors, 'Content-Type': 'application/json' };
 
 Deno.serve(async (req) => {
@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
     // The client needs the connected account id to init Stripe.js for a direct charge.
     return new Response(JSON.stringify({ clientSecret: intent.client_secret, stripeAccount: orgStripe.accountId }), { headers: corsHeaders });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: (err as Error).message }),
+      { status: isSetupError(err) ? 400 : 500, headers: corsHeaders });
   }
 });

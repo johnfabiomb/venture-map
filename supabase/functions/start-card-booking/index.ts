@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkSlotAvailability } from '../_shared/google-calendar.ts';
-import { platformStripe, resolveOrgStripe, chargeRouting } from '../_shared/stripe.ts';
+import { platformStripe, resolveOrgStripe, chargeRouting, isSetupError } from '../_shared/stripe.ts';
 
 // Signed-in client starts a card booking for a given worker + service:
 //   resolve org from staff → expire stale holds → live Google check →
@@ -116,6 +116,6 @@ Deno.serve(async (req) => {
     return json({ clientSecret: intent.client_secret, bookingRef: booking.booking_ref,
                   stripeAccount: orgStripe.accountId });
   } catch (err) {
-    return json({ error: (err as Error).message }, 500);
+    return json({ error: (err as Error).message }, isSetupError(err) ? 400 : 500);
   }
 });

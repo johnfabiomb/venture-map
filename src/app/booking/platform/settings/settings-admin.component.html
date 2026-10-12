@@ -217,7 +217,14 @@
       @case ('team') {
         <div class="card">
           <h2 class="card__h">Team</h2>
-          <p class="hint">People who can manage this organization. They must have signed in to the booking app at least once before you can add them.</p>
+          <p class="hint">People who can manage this organization. They must have signed in to the booking app at least once before you can add them — send them the login page, let them sign in, then add their email here.</p>
+          <p class="hint">
+            An <strong>admin</strong> has full access: they can see and change every booking,
+            invoice and client in this organization, and remove other admins. There is no
+            narrower role yet. To make someone a <strong>bookable worker</strong> (so jobs can
+            be assigned to them), add them under <strong>Staff</strong> as well and link the
+            two with “Signs in as”.
+          </p>
 
           @if (membersLoading()) { <p class="muted">Loading…</p> }
           <div class="int">
@@ -227,6 +234,8 @@
                 <span class="badge">{{ m.role }}</span>
                 @if (m.role !== 'owner') {
                   <button class="link-btn link-btn--danger" (click)="removeMember(m)">Remove</button>
+                } @else {
+                  <span class="hint">owner — cannot be removed</span>
                 }
               </div>
             }

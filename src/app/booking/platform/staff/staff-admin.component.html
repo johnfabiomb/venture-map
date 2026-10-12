@@ -12,6 +12,19 @@
       <label class="field"><span>Name</span><input type="text" [(ngModel)]="f.name" placeholder="Worker name" /></label>
       <label class="field"><span>Email</span><input type="email" [(ngModel)]="f.email" placeholder="optional" /></label>
       <label class="check"><input type="checkbox" [(ngModel)]="f.is_bookable" /> Bookable (shown to clients)</label>
+      <!-- A worker row is a NAME ON THE ROSTER; a login is a PERSON WITH ACCESS. They are
+           separate records, and nothing could join them until now — so a second worker was
+           never connected to the person who actually signs in. Only existing org members
+           are offered: access is granted under Settings → Team, not here. -->
+      <label class="field">
+        <span>Signs in as</span>
+        <app-select [value]="f.loginEmail" (changed)="f.loginEmail = $event"
+                    [options]="loginOptions()" placeholder="Not linked" [clearable]="true" />
+      </label>
+      <p class="hint">
+        Links this worker to someone who can sign in. They must already be under
+        <strong>Settings → Team</strong>. One login belongs to one worker.
+      </p>
       <div class="editor__actions">
         <button class="btn btn--primary" [disabled]="!f.name.trim()" (click)="saveStaff()">Save</button>
         <button class="btn btn--ghost" (click)="cancelStaff()">Cancel</button>
@@ -49,7 +62,10 @@
         <div class="item" [class.item--off]="!s.is_bookable">
           <div class="item__main">
             <div class="item__name">{{ s.name }} @if (!s.is_bookable) { <span class="tag">not bookable</span> }</div>
-            <div class="item__meta">{{ servicesFor(s.id).join(' · ') || 'No services assigned' }}</div>
+            <div class="item__meta">
+              {{ servicesFor(s.id).join(' · ') || 'No services assigned' }}
+              @if (loginFor(s); as e) { <span class="tag">signs in as {{ e }}</span> }
+            </div>
           </div>
           <div class="item__actions">
             <button class="link-btn" (click)="manageServices(s)">Services &amp; hours</button>

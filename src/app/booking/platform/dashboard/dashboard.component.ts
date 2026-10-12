@@ -24,6 +24,16 @@ export class DashboardComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
 
+  /**
+   * Can this organization actually take a card payment? An org with no connected Stripe
+   * account and no platform permission cannot (§26) — and it used to find out when a
+   * client hit the pay page and the charge was refused. Surfaced here because a new
+   * organization has no way of knowing its payment setup is unfinished.
+   * `undefined` = not loaded yet, so nothing is claimed before the answer is known.
+   */
+  readonly cardPaymentsReady = signal<boolean | undefined>(undefined);
+  readonly cardSetupNeeded = computed(() => this.cardPaymentsReady() === false);
+
   readonly jobs = signal<WorkJob[]>([]);
   readonly tasks = signal<TaskRow[]>([]);
   readonly busyId = signal<string | null>(null);
@@ -143,7 +153,11 @@ export class DashboardComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();
     const org = this.auth.orgId();
-    if (org) this.staff.set(await this.admin.listStaff(org));
+    if (org) {
+      this.staff.set(await this.admin.listStaff(org));
+      const st = await this.admin.getOrgSettings(org);
+      this.cardPaymentsReady.set(!!(st?.stripe_charges_enabled || st?.platform_charges_allowed));
+    }
     await Promise.all([this.loadProduction(), this.loadEarnings(), this.loadProfit()]);
   }
 

@@ -69,6 +69,7 @@
                     <span class="job__tag">Personal</span>
                   }
                   @if (j.workTypeLabel) { <span class="job__tag job__tag--type">{{ j.workTypeLabel }}</span> }
+                  @if (j.createdByName) { <span class="job__by">by {{ j.createdByName }}</span> }
                   @if (j.isArchived) { <span class="job__tag job__tag--archived">Archived</span> }
                 </div>
                 @if (j.description) {

@@ -90,7 +90,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Date</th><th>Due</th><th>Client</th><th>Worker</th><th>Service</th>
+              <th>Invoice</th><th>Date</th><th>Due</th><th>Client</th><th>Worker</th><th>Raised by</th><th>Service</th>
               <th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
             </tr>
           </thead>
@@ -104,6 +104,9 @@
                 <td data-label="Due" [class.due]="r.is_overdue">{{ r.due_date ? (r.due_date | date:'d MMM y') : '—' }}</td>
                 <td class="ellipsis" data-label="Client">{{ r.client_name ?? '—' }}</td>
                 <td class="ellipsis" data-label="Worker">{{ r.staff_name ?? '—' }}</td>
+                <!-- Who RAISED it, which is not who the work is credited to. Internal
+                     only — the document's issuer is the organisation (§26). -->
+                <td class="ellipsis" data-label="Raised by">{{ r.created_by_name ?? '—' }}</td>
                 <td class="ellipsis" data-label="Service">{{ r.service_name ?? '—' }}</td>
                 <td class="num" data-label="Total">{{ r.amount_gross | currency:currency():'symbol':'1.0-2' }}</td>
                 <td class="num" data-label="Paid">{{ r.amount_paid | currency:currency():'symbol':'1.0-2' }}</td>

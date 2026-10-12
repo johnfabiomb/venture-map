@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as _cors } from '../_shared/cors.ts';
-import { platformStripe, resolveOrgStripe, chargeRouting } from '../_shared/stripe.ts';
+import { platformStripe, resolveOrgStripe, chargeRouting, isSetupError } from '../_shared/stripe.ts';
 const corsHeaders = { ..._cors, 'Content-Type': 'application/json' };
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: corsHeaders });
 
@@ -101,6 +101,6 @@ Deno.serve(async (req) => {
     // money actually moves, idempotently, by confirm-payment and stripe-webhook.
     return json({ clientSecret: intent.client_secret, stripeAccount: orgStripe.accountId, amount: balance });
   } catch (err) {
-    return json({ error: (err as Error).message }, 500);
+    return json({ error: (err as Error).message }, isSetupError(err) ? 400 : 500);
   }
 });

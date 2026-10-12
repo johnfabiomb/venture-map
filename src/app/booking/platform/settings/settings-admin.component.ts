@@ -46,6 +46,14 @@ export class SettingsAdminComponent implements OnInit {
   readonly tabs = ['general', 'booking', 'company', 'email', 'team', 'payments', 'integrations'] as const;
   readonly tab = signal<typeof this.tabs[number]>('general');
   setTab(t: typeof this.tabs[number]): void { this.tab.set(t); }
+  /** Open a named tab from `?tab=…`, so another page can link straight to the thing it is
+   *  telling you to fix — the dashboard's "card payments are off" points at Payments. */
+  private applyTabParam(): void {
+    const t = this.route.snapshot.queryParamMap.get('tab');
+    if (t && (this.tabs as readonly string[]).includes(t)) {
+      this.tab.set(t as typeof this.tabs[number]);
+    }
+  }
 
   // Team (members of the active org) + platform-admin org creation
   readonly members = signal<OrgMember[]>([]);
@@ -119,9 +127,18 @@ export class SettingsAdminComponent implements OnInit {
 
   readonly tzOptions: SelectOption[] = this.timezones.map(t => ({ value: t, label: t }));
   readonly currencyOptions: SelectOption[] = this.currencies.map(c => ({ value: c, label: c }));
+  /**
+   * 'staff' is NOT offered, and that is the fix for a real trap: it was listed as "Staff —
+   * a worker", which is exactly what you would pick for someone who shoots for you — but
+   * `resolveRole` only accepts owner/admin, so that person would sign in and be told they
+   * have no access, with nothing anywhere explaining why. There is no worker-level app
+   * yet. Being a bookable WORKER is a separate record (Settings → Staff) and does not
+   * need a role here.
+   * 'owner' is not offered either: the database only lets an owner create another owner
+   * (§26), so showing it to an admin would be an option that always fails.
+   */
   readonly roleOptions: SelectOption[] = [
-    { value: 'admin', label: 'Admin', hint: 'manages the organization' },
-    { value: 'staff', label: 'Staff', hint: 'a worker' },
+    { value: 'admin', label: 'Admin', hint: 'full access to this organization' },
   ];
 
   async ngOnInit(): Promise<void> {
@@ -169,6 +186,7 @@ export class SettingsAdminComponent implements OnInit {
       }
     }
     this.loading.set(false);
+    this.applyTabParam();
     this.checkIntegrations();
     this.loadMembers();
 

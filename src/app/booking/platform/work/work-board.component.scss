@@ -186,3 +186,6 @@
   font-size: 15px;
   line-height: 1;
 }
+
+/* Who made the card (§26) — a footnote, not a field: it matters only when someone asks. */
+.job__by { font-size: 10.5px; color: $text-3; }

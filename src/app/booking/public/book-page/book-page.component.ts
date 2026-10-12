@@ -44,6 +44,23 @@ const METHOD_LABELS: Record<string, string> = {
   card: 'Card', cash: 'Cash', revolut: 'Revolut', bank: 'Bank transfer', other: 'Other',
 };
 
+/**
+ * Server error CODES the customer might actually receive, turned into sentences they can
+ * act on. Without this the page printed the raw code — a client reading
+ * "payment_setup_incomplete" learns nothing and has no idea what to do next. Anything not
+ * listed is passed through, because the money functions also return real sentences
+ * ("Booking is already fully paid").
+ */
+const PAYMENT_ERROR: Record<string, string> = {
+  // The business has not finished connecting its payment account. Deliberately does not
+  // say that — it is not the customer's problem to diagnose, and "contact us" is the one
+  // useful instruction.
+  payment_setup_incomplete:
+    'Card payment isn’t available for this booking yet. Please get in touch and we’ll arrange payment with you directly.',
+  org_not_found:
+    'We couldn’t load this booking’s payment details. Please get in touch and we’ll sort it out.',
+};
+
 @Component({
   selector: 'app-book-page',
   standalone: true,
@@ -267,7 +284,8 @@ export class BookPageComponent implements OnInit {
       // paid", "This booking has been cancelled.", "Card payment is not enabled for this
       // booking" — never reached the client. The payload is on err.context.
       const body = await err?.context?.json?.().catch(() => null);
-      this.errorMessage.set(body?.error ?? err?.message ?? 'Something went wrong.');
+      const code = body?.error ?? err?.message ?? '';
+      this.errorMessage.set(PAYMENT_ERROR[code] ?? code ?? 'Something went wrong.');
       this.cardLoading.set(false);
       this.state.set(this.returnState);
     }
