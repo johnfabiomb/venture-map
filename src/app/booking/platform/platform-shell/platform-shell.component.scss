@@ -242,3 +242,32 @@
 
   .main { flex: 1; min-height: 0; }
 }
+
+// ── Worker scope switcher ─────────────────────────────────────────────────
+// Sits under the org link: org first, then who inside it.
+.who {
+  display: block; margin: 0 14px 14px;
+  &__label {
+    display: block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: $text-3; margin-bottom: 5px;
+  }
+  &__select {
+    width: 100%; padding: 8px 28px 8px 10px;
+    background: $card; border: 1px solid $border; border-radius: $radius-md;
+    font-family: inherit; font-size: 12.5px; font-weight: 600; color: $text;
+    appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
+    &:focus { outline: none; border-color: $accent; }
+  }
+}
+
+// Group headings. The first names the current scope, so the sidebar always states
+// whose numbers you are looking at; the second marks where org-wide settings begin.
+.nav__group {
+  padding: 0 16px; margin: 4px 0 6px;
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: $text-3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  &--org { margin-top: 14px; padding-top: 12px; border-top: 1px solid $border; }
+}

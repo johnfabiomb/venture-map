@@ -29,7 +29,7 @@
           <span class="summary__val summary__val--cost">−{{ t.expenses | currency:'EUR':'symbol':'1.0-2' }}</span>
         </div>
         <div class="summary__card summary__card--hero">
-          <span class="summary__label">Profit {{ year() }}</span>
+          <span class="summary__label">{{ bottomLineLabel() }} {{ year() }}</span>
           <span class="summary__val" [class.summary__val--ok]="t.profit >= 0" [class.summary__val--due]="t.profit < 0">
             {{ t.profit | currency:'EUR':'symbol':'1.0-2' }}
           </span>
@@ -42,6 +42,7 @@
           <span class="summary__note">already inside Income</span>
         </div>
       </div>
+      @if (scopeNote(); as n) { <p class="scope-note">{{ n }}</p> }
     }
 
     <div class="cols">
@@ -53,7 +54,7 @@
         } @else {
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Month</th><th class="num">Income</th><th class="num">Costs</th><th class="num">Profit</th></tr></thead>
+              <thead><tr><th>Month</th><th class="num">Income</th><th class="num">Costs</th><th class="num">{{ bottomLineLabel() }}</th></tr></thead>
               <tbody>
                 @for (m of byMonth(); track m.month) {
                   <tr>
@@ -101,7 +102,7 @@
       } @else {
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Client</th><th class="num">Income</th><th class="num">Costs</th><th class="num">Profit</th></tr></thead>
+            <thead><tr><th>Client</th><th class="num">Income</th><th class="num">Costs</th><th class="num">{{ bottomLineLabel() }}</th></tr></thead>
             <tbody>
               @for (c of byClient(); track c.client_name) {
                 <tr>

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -31,8 +31,10 @@ export class DashboardComponent implements OnInit {
   // ── Earnings (all money comes from SQL, never recomputed here) ─────
   readonly earnings = signal<Earnings | null>(null);
   readonly staff = signal<AdminStaff[]>([]);
-  /** '' = the whole organization; otherwise a single worker's staff id. */
-  readonly who = signal<string>('');
+  /** Mirrors the shell's global worker scope. Kept as a signal rather than a second
+   *  control: a page-level dropdown beside a global one disagrees the moment either
+   *  moves, and the money would differ between the chart and every other page. */
+  readonly who = computed(() => this.auth.staffId() ?? '');
   /** Cash received (by payment date) vs work done (by job date). */
   readonly basis = signal<EarningsBasis>('cash');
 
@@ -121,6 +123,11 @@ export class DashboardComponent implements OnInit {
   });
   readonly workEnabled = computed(() => !!this.auth.features().work_board);
 
+  constructor() {
+    // The shell can change scope while this page is open.
+    effect(() => { this.auth.staffId(); void this.loadEarnings(); void this.loadProfit(); });
+  }
+
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();
     const org = this.auth.orgId();
@@ -142,13 +149,14 @@ export class DashboardComponent implements OnInit {
     if (!org) return;
     this.earnings.set(await this.data.getEarnings(org, this.who() || null));
   }
-  async onWhoChange(id: string): Promise<void> { this.who.set(id); await this.loadEarnings(); }
 
   /** Year to date, org-wide. */
   private async loadProfit(): Promise<void> {
     const org = this.auth.orgId();
     if (!org) return;
     const y = this.taxYear;
+    // getProfit reads the global scope itself, so this follows the shell with no
+    // extra plumbing — and returns Contribution rather than Profit for a worker.
     this.profit.set(await this.data.getProfit(org, `${y}-01-01`, `${y}-12-31`));
   }
 

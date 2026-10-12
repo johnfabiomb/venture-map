@@ -39,7 +39,15 @@ export interface ProfitClient {
   profit: number;
 }
 
+/**
+ * Which question the figures answer, decided server-side so the UI cannot mislabel them:
+ *   'org'    — revenue − direct costs − overheads = **Profit**
+ *   'worker' — revenue − direct costs = **Contribution** (overheads belong to nobody)
+ */
+export type ProfitScope = 'org' | 'worker';
+
 export interface Profit {
+  scope: ProfitScope;
   totals: ProfitTotals;
   by_month: ProfitMonth[];
   by_category: ProfitCategory[];

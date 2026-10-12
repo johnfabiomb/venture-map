@@ -5,13 +5,8 @@
       <p class="page__sub">{{ now | date:'EEEE, d MMMM y' }}</p>
     </div>
     <div class="head-actions">
-      <!-- Who the figures are for. One worker or the whole organization. -->
-      @if (staff().length > 1) {
-        <select class="who-select" [value]="who()" (change)="onWhoChange($any($event.target).value)">
-          <option value="">Everyone</option>
-          @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-        </select>
-      }
+      <!-- The worker scope now lives in the shell, beside the organization switcher, so
+           every page agrees. A second dropdown here could disagree with it. -->
       <a class="btn btn--ghost" routerLink="/bookings/list">All bookings</a>
       <a class="btn btn--primary" routerLink="/bookings/new">+ New booking</a>
     </div>

@@ -44,6 +44,7 @@ export interface BookingSummary {
    *  minus this, so the two always agree. */
   expenses_total: number;
   total_paid: number;
+  client_id: string | null;
   client_name: string | null;
   client_email: string | null;
   service_name: string | null;

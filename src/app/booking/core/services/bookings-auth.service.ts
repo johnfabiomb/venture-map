@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 
 export type AuthState = 'loading' | 'signed-out' | 'no-access' | 'admin';
@@ -16,6 +16,18 @@ export class BookingsAuthService {
   readonly isPlatformAdmin = signal(false);
   /** The org's feature flags (e.g. work_board). */
   readonly features = signal<{ work_board?: boolean }>({});
+
+  // ── Worker scope ─────────────────────────────────────────────────────────
+  // A second axis alongside the org: null = the whole organization, otherwise one
+  // worker's slice of it. Deliberately lives here next to orgId and in the SAME cache
+  // entry — two stores would drift and leave a worker selected under an org they do not
+  // belong to. Clearing it on an org switch is what prevents exactly that.
+  readonly staffId = signal<string | null>(null);
+  /** Bookable workers in the active org — drives the switcher. */
+  readonly staff = signal<{ id: string; name: string }[]>([]);
+  readonly activeStaff = computed(() => this.staff().find(s => s.id === this.staffId()) ?? null);
+  /** True while looking at the whole organization rather than one person. */
+  readonly isOrgScope = computed(() => this.staffId() === null);
   private _initPromise: Promise<void> | null = null;
   private currentUserId: string | null = null;
   /** Last user we resolved — dedupes the getSession + onAuthStateChange double-run on load. */
@@ -33,6 +45,7 @@ export class BookingsAuthService {
     const cached = storedUserId ? this.readCache(storedUserId) : null;
     if (cached) {
       this.orgId.set(cached.org ?? null);
+      this.staffId.set(cached.staff ?? null);
       this.state.set('admin');
     }
 
@@ -113,12 +126,49 @@ export class BookingsAuthService {
     this.applyActiveOrg(orgId);
   }
 
+  /** Switch the worker scope. `null` = the whole organization. */
+  setActiveStaff(staffId: string | null): void {
+    if (staffId !== null && !this.staff().some(s => s.id === staffId)) return;
+    this.staffId.set(staffId);
+    this.persistCache();
+  }
+
+  /** Load the org's bookable workers for the switcher, dropping a stale selection. */
+  async loadStaff(): Promise<void> {
+    const org = this.orgId();
+    if (!org) { this.staff.set([]); return; }
+    const { data } = await bookingsDb
+      .from('staff').select('id, name')
+      .eq('org_id', org).is('deleted_at', null).eq('is_bookable', true)
+      .order('name');
+    const rows = (data ?? []) as { id: string; name: string }[];
+    this.staff.set(rows);
+    // A worker cached under another org would otherwise filter every query to nothing.
+    if (this.staffId() && !rows.some(r => r.id === this.staffId())) {
+      this.staffId.set(null);
+      this.persistCache();
+    }
+  }
+
+  private persistCache(): void {
+    if (!this.currentUserId) return;
+    try {
+      localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({
+        uid: this.currentUserId, org: this.orgId(), staff: this.staffId(),
+      }));
+    } catch { /* storage blocked */ }
+  }
+
   private applyActiveOrg(orgId: string): void {
     const orgChanged = this.orgId() !== orgId;
     this.orgId.set(orgId);
-    if (this.currentUserId) {
-      localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ uid: this.currentUserId, org: orgId }));
-    }
+    // Workers belong to an org, so a switch must drop the selection rather than carry a
+    // foreign staff id across and silently filter everything to zero rows.
+    if (orgChanged) { this.staffId.set(null); this.staff.set([]); }
+    this.persistCache();
+    // Always, not only on a change: on a cached boot the org is already set, so a
+    // change-gated load would leave the switcher empty until the next org switch.
+    void this.loadStaff();
     // Only blank the flags when actually switching org — re-resolving the same org
     // shouldn't flash dependent UI (e.g. the Work tab) off and back on.
     if (orgChanged) this.features.set({});
@@ -192,7 +242,7 @@ export class BookingsAuthService {
     } catch { return null; }
   }
 
-  private readCache(userId: string): { uid: string; org: string | null } | null {
+  private readCache(userId: string): { uid: string; org: string | null; staff?: string | null } | null {
     try {
       const raw = localStorage.getItem(ROLE_CACHE_KEY);
       if (!raw) return null;

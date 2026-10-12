@@ -2710,9 +2710,10 @@ GRANT ALL ON public.expenses TO service_role;
 -- bucketed by spent_on. Pairing accrual income against cash-dated costs would make every
 -- month wrong in both directions.
 CREATE OR REPLACE FUNCTION public.get_profit(
-  p_org  uuid,
-  p_from date DEFAULT NULL,
-  p_to   date DEFAULT NULL
+  p_org   uuid,
+  p_from  date DEFAULT NULL,
+  p_to    date DEFAULT NULL,
+  p_staff uuid DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
@@ -2730,6 +2731,7 @@ BEGIN
       FROM invoices i
       LEFT JOIN bookings b ON b.id = i.booking_id
      WHERE i.org_id = p_org AND i.deleted_at IS NULL AND i.status = 'issued'
+       AND (p_staff IS NULL OR i.staff_id = p_staff)
        AND (p_from IS NULL OR i.service_date >= p_from)
        AND (p_to   IS NULL OR i.service_date <= p_to)
   ),
@@ -2741,6 +2743,9 @@ BEGIN
       FROM expenses e
       LEFT JOIN bookings b ON b.id = e.booking_id
      WHERE e.org_id = p_org AND e.deleted_at IS NULL
+       -- Worker scope: only costs on that worker's jobs. Overheads (b.staff_id IS NULL
+       -- because there is no booking) fall out here, which is the whole point.
+       AND (p_staff IS NULL OR b.staff_id = p_staff)
        AND (p_from IS NULL OR e.spent_on >= p_from)
        AND (p_to   IS NULL OR e.spent_on <= p_to)
   ),
@@ -2755,6 +2760,8 @@ BEGIN
      GROUP BY m
   )
   SELECT jsonb_build_object(
+    -- 'org' → the total is Profit. 'worker' → it is Contribution, overheads excluded.
+    'scope', CASE WHEN p_staff IS NULL THEN 'org' ELSE 'worker' END,
     'totals', jsonb_build_object(
       'income',   COALESCE((SELECT SUM(amount) FROM inc), 0),
       'expenses', COALESCE((SELECT SUM(amount) FROM exp), 0),
@@ -2794,8 +2801,13 @@ END $$;
 -- SECURITY DEFINER over the whole org's money. Every new function here starts life as
 -- EXECUTE TO PUBLIC, so anon could call it; the is_org_admin gate above would reject it,
 -- but the grant is removed rather than relied upon.
-REVOKE ALL ON FUNCTION public.get_profit(uuid, date, date) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_profit(uuid, date, date) TO authenticated;
+
+-- SECURITY DEFINER over the whole org's money; every new function starts
+-- EXECUTE TO PUBLIC, so the grant is removed rather than relied upon.
+REVOKE ALL ON FUNCTION public.get_profit(uuid, date, date, uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_profit(uuid, date, date, uuid) TO authenticated;
+
 
 -- Which invoice this cost was actually charged on.
 --

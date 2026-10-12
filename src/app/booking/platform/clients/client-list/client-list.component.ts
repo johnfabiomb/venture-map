@@ -17,7 +17,7 @@ export class ClientListComponent {
   readonly data = inject(BookingDataService);
 
   /** The client list has no filter of its own, so it pages the whole set. */
-  readonly paged = paginate(this.data.clients);
+  readonly paged = paginate(this.data.clientsInScope);
 
   readonly editorOpen = signal(false);
   readonly editClient = signal<Client | null>(null);

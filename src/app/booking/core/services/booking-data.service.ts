@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
@@ -557,10 +557,17 @@ export class BookingDataService implements OnDestroy {
    * rows would quietly remove exactly the costs the P&L exists to surface.
    */
   async listExpenses(orgId: string, from?: string, to?: string): Promise<ExpenseRow[]> {
+    // In a worker scope only costs attached to THAT worker's jobs are theirs. Overheads
+    // (no booking, no worker) are the business's and stay in the organization view —
+    // see the two-level P&L in documentation/WORKER_SCOPE_AND_WORK_TASKS.md. Showing
+    // them in every worker view would double-count one insurance payment the moment two
+    // workers were compared.
+    const staff = this.auth.staffId();
     let q = bookingsDb
       .from('expenses')
       .select('id, org_id, booking_id, category, description, amount, spent_on, vendor, notes, billable, invoice_id, created_at, bookings(booking_ref, title, clients(name))')
       .eq('org_id', orgId);
+    if (staff) q = q.eq('bookings.staff_id', staff).not('booking_id', 'is', null);
     if (from) q = q.gte('spent_on', from);
     if (to) q = q.lte('spent_on', to);
     const { data, error } = await q.order('spent_on', { ascending: false }).order('created_at', { ascending: false });
@@ -585,6 +592,9 @@ export class BookingDataService implements OnDestroy {
   async getProfit(orgId: string, from?: string, to?: string): Promise<Profit | null> {
     const { data, error } = await bookingsDb.rpc('get_profit', {
       p_org: orgId, p_from: from ?? null, p_to: to ?? null,
+      // null = the whole organization (overheads included → Profit);
+      // a worker = their jobs only (overheads excluded → Contribution).
+      p_staff: this.auth.staffId(),
     });
     if (error) { console.error('[BookingData] getProfit:', error); return null; }
     return (data ?? null) as Profit | null;
@@ -616,11 +626,11 @@ export class BookingDataService implements OnDestroy {
   async queryInvoices(): Promise<InvoiceListRow[]> {
     const org = this.auth.orgId();
     if (!org) return [];
-    const { data, error } = await bookingsDb
+    const { data, error } = await this.scoped(bookingsDb
       .from('invoice_list')
       .select('*')
       .eq('org_id', org)
-      .eq('status', 'issued')
+      .eq('status', 'issued'))
       .order('number_seq', { ascending: false, nullsFirst: false });
     if (error) { console.error('[BookingData] queryInvoices:', error); return []; }
     return (data ?? []) as InvoiceListRow[];
@@ -900,11 +910,9 @@ export class BookingDataService implements OnDestroy {
   private async fetchBookings(): Promise<void> {
     const org = this.auth.orgId();
     if (!org) { this.bookings.set([]); return; }
-    const { data, error } = await bookingsDb
-      .from('booking_summary')
-      .select('*')
-      .eq('org_id', org)
-      .order('next_start_at', { ascending: false });
+    const query = this.scoped(
+      bookingsDb.from('booking_summary').select('*').eq('org_id', org));
+    const { data, error } = await query.order('next_start_at', { ascending: false });
     if (error) console.error('[BookingData] fetchBookings:', error);
     this.bookings.set((data ?? []) as BookingSummary[]);
   }
@@ -913,6 +921,17 @@ export class BookingDataService implements OnDestroy {
   private static readonly ACTIVE = ['booked', 'in_progress', 'done'];
 
   /** Apply a tab's filter + sort to a booking_summary query (server-side). */
+  /**
+   * Narrow a query to the active worker, or leave it org-wide.
+   *
+   * Every scoped list goes through this rather than each page remembering to filter:
+   * one of them forgetting is how a worker view ends up showing someone else's money.
+   */
+  private scoped(q: any, column = 'staff_id'): any {
+    const staff = this.auth.staffId();
+    return staff ? q.eq(column, staff) : q;
+  }
+
   private applyTabFilter(q: any, tab: BookingTab, nowIso: string): any {
     const A = BookingDataService.ACTIVE;
     switch (tab) {
@@ -942,7 +961,7 @@ export class BookingDataService implements OnDestroy {
     if (tab === 'deleted') return [];
     const nowIso = new Date().toISOString();
     let q = this.applyTabFilter(
-      bookingsDb.from('booking_summary').select('*').eq('org_id', org), tab, nowIso);
+      this.scoped(bookingsDb.from('booking_summary').select('*').eq('org_id', org)), tab, nowIso);
     // PostgREST `or` uses commas/parens as syntax — strip them from the user term.
     const s = search.trim().replace(/[,()]/g, ' ').trim();
     if (s) q = q.or(`booking_ref.ilike.%${s}%,client_name.ilike.%${s}%,title.ilike.%${s}%`);
@@ -964,12 +983,25 @@ export class BookingDataService implements OnDestroy {
     const tabs: BookingTab[] = ['upcoming', 'pending', 'unpaid', 'paid', 'past', 'external', 'cancelled', 'all'];
     const results = await Promise.all(tabs.map(tab =>
       this.applyTabFilter(
-        bookingsDb.from('booking_summary').select('*', { count: 'exact', head: true }).eq('org_id', org),
+        this.scoped(bookingsDb.from('booking_summary').select('*', { count: 'exact', head: true }).eq('org_id', org)),
         tab, nowIso)));
     const counts = { ...empty };
     tabs.forEach((tab, i) => { counts[tab] = results[i].count ?? 0; });
     return counts;
   }
+
+  /**
+   * Clients this worker has actually worked with.
+   *
+   * `clients()` itself stays ORG-WIDE on purpose: it feeds the booking form's picker,
+   * and a worker who could only choose from clients they had already worked with could
+   * never take on a new one. The page filters; the picker does not.
+   */
+  readonly clientsInScope = computed(() => {
+    if (!this.auth.staffId()) return this.clients();
+    const seen = new Set(this.bookings().map(b => b.client_id).filter((x): x is string => !!x));
+    return this.clients().filter(c => seen.has(c.id));
+  });
 
   private async fetchClients(): Promise<void> {
     const org = this.auth.orgId();

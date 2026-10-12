@@ -64,6 +64,15 @@ export class ExpensesAdminComponent implements OnInit {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   readonly totals = computed(() => this.profit()?.totals ?? null);
+
+  /** A worker never personally carries the insurance bill, so their bottom line is a
+   *  CONTRIBUTION toward covering the overheads — not the business's profit. Labelling
+   *  both "Profit" would invite summing two workers and double-counting one overhead. */
+  readonly isWorkerScope = computed(() => this.profit()?.scope === 'worker');
+  readonly bottomLineLabel = computed(() => this.isWorkerScope() ? 'Contribution' : 'Profit');
+  readonly scopeNote = computed(() => this.isWorkerScope()
+    ? 'One worker: their jobs only. Business overheads (software, insurance, gear) are not charged to a person — switch to the whole organization to see them.'
+    : '');
   readonly byCategory = computed(() => this.profit()?.by_category ?? []);
   readonly byMonth = computed(() => [...(this.profit()?.by_month ?? [])].reverse());
   /** Unattributed is a real bucket (overheads), so it is kept and labelled, not filtered. */

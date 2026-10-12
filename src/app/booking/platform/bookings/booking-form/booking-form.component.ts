@@ -96,6 +96,11 @@ export class BookingFormComponent implements OnInit {
       this.depositPercent = this.orgDefaults.depositPercent;
       this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
 
+      // Scoped to one worker → that IS the worker, so the field is pre-filled rather
+       // than asked for again. An edit or a clone still wins, since both set it from
+       // the source booking below.
+      if (this.auth.staffId()) this.staffId = this.auth.staffId()!;
+
       const id = this.route.snapshot.paramMap.get('id');
       // `?from=` is a CLONE, not an edit: it reuses this same form because the result is
       // a genuinely new booking, so it belongs on /bookings/new rather than its own route.

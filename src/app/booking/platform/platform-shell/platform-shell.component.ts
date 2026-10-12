@@ -16,6 +16,13 @@ import { ConfirmHostComponent } from '@booking/ui/confirm/confirm-host.component
 })
 export class PlatformShellComponent implements OnInit {
   readonly auth = inject(BookingsAuthService);
+
+  /** Switching worker changes what every page is allowed to show, so the shared caches
+   *  are re-pulled rather than left showing the previous person's rows. */
+  onWhoChange(value: string): void {
+    this.auth.setActiveStaff(value || null);
+    void this.data.load();
+  }
   readonly data = inject(BookingDataService);
   private readonly router = inject(Router);
 

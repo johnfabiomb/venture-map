@@ -42,7 +42,27 @@
       </a>
     }
 
+    <!-- Worker scope. A second axis under the org: the whole organization, or one
+         person's slice of it. Everything below follows it. -->
+    @if (auth.staff().length > 1) {
+      <label class="who">
+        <span class="who__label">Viewing</span>
+        <select class="who__select" [value]="auth.staffId() ?? ''"
+                (change)="onWhoChange($any($event.target).value)">
+          <option value="">Whole organization</option>
+          @for (w of auth.staff(); track w.id) {
+            <option [value]="w.id">{{ w.name }}</option>
+          }
+        </select>
+      </label>
+    }
+
     <nav class="nav">
+      <!-- Two groups, deliberately. Everything above the rule follows the worker scope;
+           everything below is the organization's and is the same whoever you are looking
+           at. Splitting them NOW is what makes a later "this worker sees only their own
+           things" a permission check rather than a rebuild. -->
+      <div class="nav__group">{{ auth.activeStaff()?.name ?? 'Organization' }}</div>
       <a class="nav__item" routerLink="/bookings/dashboard" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <rect x="3" y="3" width="6" height="8" rx="1.5"/><rect x="11" y="3" width="6" height="5" rx="1.5"/>
@@ -106,6 +126,9 @@
         <span>Services</span>
       </a>
 
+
+
+      <div class="nav__group nav__group--org">Organization</div>
       <a class="nav__item" routerLink="/bookings/staff" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="7" cy="7" r="3"/>
@@ -114,7 +137,6 @@
         </svg>
         <span>Staff</span>
       </a>
-
       <a class="nav__item" routerLink="/bookings/settings" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="10" cy="10" r="2.5"/>

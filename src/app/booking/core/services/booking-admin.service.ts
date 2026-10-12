@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
+import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ServicePricing } from '@booking/core/interfaces/org.interface';
 import { WorkingHoursConfig } from '@booking/core/interfaces/working-hours.interface';
 import { EmailTemplate } from '@booking/core/utils/invoice-email.util';
@@ -116,9 +117,23 @@ export interface OrgSettings {
 // RLS (is_org_admin) enforces that an admin only ever touches their own org.
 @Injectable({ providedIn: 'root' })
 export class BookingAdminService {
+  private readonly auth = inject(BookingsAuthService);
+
   // ── Services ──────────────────────────────────────────────────────
   async listServices(orgId: string): Promise<AdminService[]> {
-    const { data } = await bookingsDb.from('services').select('*').eq('org_id', orgId).order('name');
+    const staff = this.auth.staffId();
+    if (!staff) {
+      const { data } = await bookingsDb.from('services').select('*').eq('org_id', orgId).order('name');
+      return (data ?? []) as AdminService[];
+    }
+    // `staff_services` already records who offers what, so a worker scope just surfaces
+    // what the schema has always said rather than inventing a new rule.
+    const { data } = await bookingsDb
+      .from('services')
+      .select('*, staff_services!inner(staff_id)')
+      .eq('org_id', orgId)
+      .eq('staff_services.staff_id', staff)
+      .order('name');
     return (data ?? []) as AdminService[];
   }
   async saveService(orgId: string, s: Partial<AdminService>): Promise<void> {
@@ -171,9 +186,14 @@ export class BookingAdminService {
   // ── Work board (production) ───────────────────────────────────────
   /** All cards (active + backlog) from the work_board view — names/is_active resolved server-side. */
   async loadJobs(orgId: string): Promise<WorkJob[]> {
-    const { data } = await bookingsDb.from('work_board')
+    const staff = this.auth.staffId();
+    let q = bookingsDb.from('work_board')
       .select('id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active, assignee_id, assignee_name, due_at, client_name, service_name')
-      .eq('org_id', orgId).order('sort').order('created_at');
+      .eq('org_id', orgId);
+    // Assigned to this worker, OR unassigned — an unassigned card belongs to nobody and
+    // would otherwise vanish from every view, which is how work gets forgotten.
+    if (staff) q = q.or(`assignee_id.eq.${staff},assignee_id.is.null`);
+    const { data } = await q.order('sort').order('created_at');
     return ((data ?? []) as Array<Record<string, unknown>>).map(w => ({
       id: w['id'] as string, bookingId: (w['booking_id'] as string | null) ?? null,
       title: w['title'] as string,
