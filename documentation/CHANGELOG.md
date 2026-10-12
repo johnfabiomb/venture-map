@@ -6,6 +6,16 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Fixed
+- **The work board card was visually broken.** Dropping the new select into it replaced a native control styled at 11.5px/5px with one at 14px/12px, so the assignee overlapped the due date and the row overflowed the card. The old CSS also styled a `select` element that no longer existed, so none of it applied. The select gained a **compact `size="sm"`** for dense places, the card's row now wraps, and the due date can shrink instead of being pinned to 116px.
+- "No tasks" and "✓ all done" appeared together — "all done" now only shows when there are tasks to be done.
+- A card title was clipped to a stub like "video for…"; it wraps to two lines before truncating.
+- The ✎ button was a bare icon next to three boxed buttons; it matches them now.
+- Removed a rule that could never apply: it reached `.sel__trigger` inside a child component, which Angular's style encapsulation blocks.
+
+### Changed
+- **The board is usable on a phone.** Five 248px columns meant about a metre of sideways scrolling to find a stage and then vertical scrolling inside it. Below 760px it is one column per screen with scroll snapping, so a swipe moves a whole stage; the card's assignee and date each take a full line instead of fighting over 200px; and the row buttons go from 24px to 32px.
+
 ### Added
 - **One select for the whole admin.** A native `<select>` is drawn by the browser, so it looked different on every machine, could not match the dark sidebar, and could not show a colour, a secondary hint or a search box. `ui/select/` renders everything itself: searchable (automatically once a list passes seven), keyboard-navigable, clearable, with a light and a dark variant. All **23** native selects across 13 files are replaced; none remain. The panel goes through a **CDK overlay**, not an absolutely-positioned div — a dropdown inside a scrolling sidebar or a modal gets clipped by its ancestors otherwise, which is the classic reason hand-rolled selects break exactly where they are most needed.
 - **The Worker field disappears when the scope already says who.** Creating a booking or a work task inside a selected worker no longer asks a question the sidebar has already answered; a line names the worker instead.

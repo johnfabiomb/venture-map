@@ -33,6 +33,7 @@ export interface SelectOption {
   imports: [FormsModule, OverlayModule],
   template: `
     <button type="button" class="sel__trigger" #trigger
+            [class.sel__trigger--sm]="size() === 'sm'"
             [class.sel__trigger--dark]="variant() === 'dark'"
             [class.sel__trigger--open]="open()"
             [disabled]="disabled()"
@@ -101,6 +102,13 @@ export interface SelectOption {
     @media (max-width: 560px) { .sel__trigger { font-size: 16px; } }
     .sel__trigger:hover:not(:disabled) { border-color: #cbd5e1; }
     .sel__trigger--open { border-color: #F4A922; }
+    .sel__trigger--sm {
+      padding: 5px 8px; font-size: 11.5px; gap: 5px; border-width: 1px; border-radius: 6px;
+    }
+    /* Kept small on a phone too: this variant only appears where space is the constraint,
+       and it is a button, not a text field, so iOS has no focus-zoom to avoid. */
+    @media (max-width: 560px) { .sel__trigger--sm { font-size: 12px; } }
+    .sel__trigger--sm .sel__chev { width: 13px; height: 13px; }
     .sel__trigger:disabled { background: #f8fafc; color: #94a3b8; cursor: default; }
 
     /* The sidebar is dark; a white control there was the visual break. */
@@ -160,6 +168,9 @@ export class SelectComponent {
   readonly disabled = input(false);
   readonly clearable = input(false);
   readonly variant = input<'light' | 'dark'>('light');
+  /** 'sm' for dense places — a board card, a table row — where the default control is
+   *  taller than everything beside it and breaks the row. */
+  readonly size = input<'md' | 'sm'>('md');
   /** 'auto' shows the box once the list is long enough to be worth searching. */
   readonly searchable = input<boolean | 'auto'>('auto');
   readonly changed = output<string>();

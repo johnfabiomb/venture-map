@@ -63,8 +63,8 @@
                 <div class="job__manage">
                   <label class="job__assignee" [class.job__assignee--set]="j.assigneeId">
                     @if (j.assigneeId) { <span class="job__avatar">{{ initials(j.assigneeName) }}</span> }
-                    <app-select [value]="j.assigneeId ?? ''" (changed)="assign(j, $event)"
-                        [options]="assigneeOptions()" placeholder="Unassigned" [searchable]="false" />
+                    <app-select size="sm" [value]="j.assigneeId ?? ''" (changed)="assign(j, $event)"
+                                [options]="assigneeOptions()" placeholder="Unassigned" [searchable]="false" />
                   </label>
                   <input class="job__due" type="date" [class.job__due--overdue]="isOverdue(j)"
                          [value]="dueValue(j)" (change)="setDue(j, $any($event.target).value)" title="Deliver-by date" />
@@ -87,10 +87,12 @@
                   <input type="text" placeholder="+ add task" [(ngModel)]="newTask[j.id]" (keyup.enter)="add(j.id)" />
                 </div>
 
-                @if (remaining(j.id) > 0) {
-                  <div class="job__remaining">{{ remaining(j.id) }} left</div>
-                } @else {
-                  <div class="job__remaining job__remaining--done">✓ all done</div>
+                @if (tasksFor(j.id).length) {
+                  @if (remaining(j.id) > 0) {
+                    <div class="job__remaining">{{ remaining(j.id) }} left</div>
+                  } @else {
+                    <div class="job__remaining job__remaining--done">✓ all done</div>
+                  }
                 }
               </div>
             }
