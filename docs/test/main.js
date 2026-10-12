@@ -1,6 +1,6 @@
 import {
   BookingsAuthService
-} from "./chunk-SSEXQF66.js";
+} from "./chunk-CQ2KRTJY.js";
 import {
   Router,
   RouterOutlet,
@@ -123,84 +123,84 @@ var bookingRoutes = [
       __spreadValues({
         path: "login",
         canActivate: [loginGuard],
-        loadComponent: () => import("./chunk-IITLVU7A.js").then((m) => m.LoginComponent)
+        loadComponent: () => import("./chunk-GI5Q24LK.js").then((m) => m.LoginComponent)
       }, false ? { \u0275entryName: "src/app/booking/auth/login/login.component.ts" } : {}),
       __spreadValues({
         path: "",
         canActivate: [adminGuard],
-        loadComponent: () => import("./chunk-THC2N543.js").then((m) => m.PlatformShellComponent),
+        loadComponent: () => import("./chunk-T4I6AZ3A.js").then((m) => m.PlatformShellComponent),
         children: [
           { path: "", redirectTo: "dashboard", pathMatch: "full" },
           {
             path: "dashboard",
-            loadComponent: () => import("./chunk-DZHRTY4K.js").then((m) => m.DashboardComponent)
+            loadComponent: () => import("./chunk-MOBKOMLZ.js").then((m) => m.DashboardComponent)
           },
           {
             path: "list",
-            loadComponent: () => import("./chunk-E7KXM7B6.js").then((m) => m.BookingListComponent)
+            loadComponent: () => import("./chunk-NVM7MOIA.js").then((m) => m.BookingListComponent)
           },
           {
             path: "new",
-            loadComponent: () => import("./chunk-ITNKB3ZK.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-AEONKHBQ.js").then((m) => m.BookingFormComponent)
           },
           {
             path: ":id/edit",
-            loadComponent: () => import("./chunk-ITNKB3ZK.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-AEONKHBQ.js").then((m) => m.BookingFormComponent)
           },
           {
             path: "expenses",
-            loadComponent: () => import("./chunk-5I6M3L2A.js").then((m) => m.ExpensesAdminComponent)
+            loadComponent: () => import("./chunk-WY22WPXZ.js").then((m) => m.ExpensesAdminComponent)
           },
           {
             path: "organizations",
-            loadComponent: () => import("./chunk-CM4DUYZ3.js").then((m) => m.OrganizationsComponent)
+            loadComponent: () => import("./chunk-5GVCV3CH.js").then((m) => m.OrganizationsComponent)
           },
           {
             path: "invoices",
-            loadComponent: () => import("./chunk-EI2M7FUN.js").then((m) => m.InvoicesAdminComponent)
+            loadComponent: () => import("./chunk-34ZAEJQE.js").then((m) => m.InvoicesAdminComponent)
           },
           {
             // Standalone invoice — no booking, no time slot. Must precede 'invoices/edit/:invoiceId'
             // so 'new' isn't captured as an id.
             path: "invoices/new",
-            loadComponent: () => import("./chunk-MDK3GVGQ.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-CZNCYG3M.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the INVOICE id — the only way to open an invoice that has no booking.
             path: "invoices/edit/:invoiceId",
-            loadComponent: () => import("./chunk-MDK3GVGQ.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-CZNCYG3M.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the BOOKING id (kept: the booking detail page links here).
             // Literal segment, so it precedes the catch-all ':id' below.
             path: "invoice-edit/:id",
-            loadComponent: () => import("./chunk-MDK3GVGQ.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-CZNCYG3M.js").then((m) => m.InvoiceEditComponent)
           },
           {
             path: "clients",
-            loadComponent: () => import("./chunk-T5OGHCM4.js").then((m) => m.ClientListComponent)
+            loadComponent: () => import("./chunk-GIA2LKIB.js").then((m) => m.ClientListComponent)
           },
           {
             path: "services",
-            loadComponent: () => import("./chunk-LM5ZULUL.js").then((m) => m.ServicesAdminComponent)
+            loadComponent: () => import("./chunk-BVGQJX6U.js").then((m) => m.ServicesAdminComponent)
           },
           {
             path: "staff",
-            loadComponent: () => import("./chunk-5OZKC74B.js").then((m) => m.StaffAdminComponent)
+            loadComponent: () => import("./chunk-M2KC4BEB.js").then((m) => m.StaffAdminComponent)
           },
           {
             path: "settings",
-            loadComponent: () => import("./chunk-L23H4FBX.js").then((m) => m.SettingsAdminComponent)
+            loadComponent: () => import("./chunk-NWY22EBE.js").then((m) => m.SettingsAdminComponent)
           },
           {
             path: "work",
-            loadComponent: () => import("./chunk-XKKLGFN5.js").then((m) => m.WorkBoardComponent)
+            loadComponent: () => import("./chunk-IHOKWHT6.js").then((m) => m.WorkBoardComponent)
           },
           {
             // Keep LAST: ':id' matches a single segment, so it must come after all
             // the literal routes above (list/new/clients/…) to avoid shadowing them.
             path: ":id",
-            loadComponent: () => import("./chunk-AQQCFDFG.js").then((m) => m.BookingDetailComponent)
+            loadComponent: () => import("./chunk-GF5B5QDZ.js").then((m) => m.BookingDetailComponent)
           }
         ]
       }, false ? { \u0275entryName: "src/app/booking/platform/platform-shell/platform-shell.component.ts" } : {})
@@ -223,7 +223,7 @@ var routes = [
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-IHAFXO2D.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-BUVPVQXI.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 

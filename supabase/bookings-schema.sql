@@ -3048,3 +3048,177 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.delete_work_stage(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.delete_work_stage(uuid, uuid) TO authenticated;
+
+
+-- ═══ 25. Work tasks — type, description, and the Delivered archive ══════════
+-- Three gaps the board had:
+--   1. No DESCRIPTION. A card title is one line; the brief, the client's notes and the
+--      "don't forget the drone shot at 0:42" had nowhere to live, so they lived in the
+--      owner's head.
+--   2. No WORK TYPE. The calendar event's first line read "Work: To edit" — which is the
+--      BOARD COLUMN, not the kind of work. Nothing recorded whether an evening was an
+--      edit, a grade or an export, so the calendar could not say.
+--   3. No ARCHIVE. Everything ends in a terminal stage and stays there forever, so the
+--      Delivered column grows without limit and buries this week's work.
+ALTER TABLE public.work_items ADD COLUMN IF NOT EXISTS description TEXT;
+-- The work_types KEY (not its label) — same rule as production_status: labels are
+-- renameable, keys are referenced.
+ALTER TABLE public.work_items ADD COLUMN IF NOT EXISTS work_type TEXT;
+-- When the card ENTERED a terminal stage. Maintained by a trigger, never by the app:
+-- the archive countdown must not restart because something else on the card was saved.
+ALTER TABLE public.work_items ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ;
+
+-- ── The vocabulary of work, per organization ───────────────────────────────
+-- A TABLE rather than a TypeScript constant, because the calendar also needs the label:
+-- a constant would have to be duplicated into the Edge Function, and the two would drift
+-- the first time a type was renamed. Same shape as work_stages (§24) so the existing
+-- stage manager can be generalised to manage these too, with no migration.
+-- No colour: the calendar event's colour comes from the STAGE, and two sources for one
+-- colour is one too many.
+CREATE TABLE IF NOT EXISTS public.work_types (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id     UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  key        TEXT NOT NULL,
+  label      TEXT NOT NULL,
+  sort       INT  NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS work_types_org_key
+  ON public.work_types(org_id, key) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS work_types_org_idx ON public.work_types(org_id, sort);
+
+ALTER TABLE public.work_types ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS work_types_admin ON public.work_types;
+CREATE POLICY work_types_admin ON public.work_types FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+DROP POLICY IF EXISTS hide_deleted ON public.work_types;
+CREATE POLICY hide_deleted ON public.work_types
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.work_types TO authenticated;
+GRANT ALL ON public.work_types TO service_role;
+
+-- Seeded from what this studio actually does in a week. Nothing references these keys
+-- yet, so they are safe to rename or replace.
+INSERT INTO public.work_types (org_id, key, label, sort)
+SELECT o.id, v.key, v.label, v.sort
+FROM public.organizations o
+CROSS JOIN (VALUES
+  ('edit',      'Video edit',        1),
+  ('grade',     'Colour grade',      2),
+  ('photo',     'Photo edit',        3),
+  ('export',    'Export & deliver',  4),
+  ('revision',  'Client revisions',  5),
+  ('prep',      'Prep & planning',   6),
+  ('admin',     'Admin & invoicing', 7),
+  ('travel',    'Travel',            8),
+  ('other',     'Other',             9)
+) AS v(key, label, sort)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.work_types wt
+   WHERE wt.org_id = o.id AND wt.key = v.key AND wt.deleted_at IS NULL);
+
+-- ── done_at, maintained by the database ────────────────────────────────────
+-- "Terminal" is the stage's own is_done flag, never the literal 'delivered' — the owner
+-- can rename or add terminal columns, and a hardcoded string would stop matching.
+CREATE OR REPLACE FUNCTION public.work_items_track_done()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_done boolean;
+BEGIN
+  SELECT is_done INTO v_done FROM work_stages
+   WHERE org_id = NEW.org_id AND key = NEW.production_status AND deleted_at IS NULL;
+  IF COALESCE(v_done, false) THEN
+    -- Only stamp the FIRST arrival: editing a delivered card, or dragging it within the
+    -- column, must not push its archive date three more days into the future.
+    IF NEW.done_at IS NULL THEN NEW.done_at := now(); END IF;
+  ELSE
+    -- Moved back out of a terminal stage — it is live work again.
+    NEW.done_at := NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS work_items_track_done ON public.work_items;
+CREATE TRIGGER work_items_track_done
+  BEFORE INSERT OR UPDATE OF production_status ON public.work_items
+  FOR EACH ROW EXECUTE FUNCTION public.work_items_track_done();
+
+-- Backfill: cards already sitting in a terminal stage have no recorded arrival time and
+-- there is no history to recover one from. Dated from created_at — so a card that has
+-- been Delivered for months archives immediately, which is the point — rather than
+-- now(), which would hold the entire existing backlog on the board for another 3 days.
+UPDATE public.work_items w
+   SET done_at = w.created_at
+  FROM public.work_stages s
+ WHERE s.org_id = w.org_id AND s.key = w.production_status
+   AND s.deleted_at IS NULL AND s.is_done
+   AND w.done_at IS NULL AND w.deleted_at IS NULL;
+
+-- ── Board read model, extended ─────────────────────────────────────────────
+-- CREATE OR REPLACE VIEW can only APPEND columns, so every existing one is repeated in
+-- its original position and order.
+-- is_archived is computed ON READ, like is_active — this project has no cron, and a card
+-- must drop off the board on the day it ages out, not the next time something runs.
+CREATE OR REPLACE VIEW public.work_board AS
+SELECT
+  w.id, w.org_id, w.booking_id, w.title, w.production_status, w.sort,
+  w.activated_at, w.assignee_id, w.due_at, w.created_at,
+  b.start_at AS booking_start_at, b.end_at AS booking_end_at,
+  (w.activated_at IS NOT NULL OR (b.end_at IS NOT NULL AND b.end_at < now())) AS is_active,
+  COALESCE(c.name, b.contact_name) AS client_name,
+  s.name  AS service_name,
+  st.name AS assignee_name,
+  w.description,
+  w.work_type,
+  wt.label AS work_type_label,
+  ws.label AS stage_label,
+  COALESCE(ws.is_done, false) AS stage_is_done,
+  w.done_at,
+  -- Terminal AND aged out. Reading is_done from the stage (not from done_at alone) makes
+  -- this self-correcting: un-flag a stage as terminal and its cards return to the board
+  -- immediately, without touching any row.
+  (COALESCE(ws.is_done, false) AND w.done_at IS NOT NULL
+   AND w.done_at < now() - make_interval(days =>
+         GREATEST(COALESCE((o.booking_params->>'work_archive_days')::int, 3), 0))) AS is_archived
+FROM public.work_items w
+LEFT JOIN public.bookings      b  ON b.id  = w.booking_id
+LEFT JOIN public.clients       c  ON c.id  = b.client_id
+LEFT JOIN public.services      s  ON s.id  = b.service_id
+LEFT JOIN public.staff         st ON st.id = w.assignee_id
+LEFT JOIN public.organizations o  ON o.id  = w.org_id
+LEFT JOIN public.work_stages   ws ON ws.org_id = w.org_id AND ws.key = w.production_status
+                                 AND ws.deleted_at IS NULL
+LEFT JOIN public.work_types    wt ON wt.org_id = w.org_id AND wt.key = w.work_type
+                                 AND wt.deleted_at IS NULL
+WHERE (public.is_org_admin(w.org_id) OR public.is_platform_admin()) AND w.deleted_at IS NULL;
+GRANT SELECT ON public.work_board TO authenticated;
+
+-- Deleting a type must not leave cards pointing at one that is gone. Unlike a stage, a
+-- type is OPTIONAL — a card with no type is a valid card — so there is nothing to ask the
+-- caller: the cards are simply cleared. One transaction, because clearing the cards in the
+-- app would leave them holding a dead key if the second call failed, and `work_type` has
+-- no FK to stop that (it stores the KEY, like production_status, so a rename is free).
+CREATE OR REPLACE FUNCTION public.delete_work_type(p_type uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org uuid; v_key text; v_cleared int;
+BEGIN
+  SELECT org_id, key INTO v_org, v_key
+    FROM work_types WHERE id = p_type AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'not_found'); END IF;
+  -- SECURITY DEFINER bypasses RLS, so the org check has to be made here explicitly.
+  IF NOT public.is_org_admin(v_org) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'forbidden');
+  END IF;
+
+  UPDATE work_items SET work_type = NULL
+   WHERE org_id = v_org AND work_type = v_key AND deleted_at IS NULL;
+  GET DIAGNOSTICS v_cleared = ROW_COUNT;
+
+  UPDATE work_types SET deleted_at = now() WHERE id = p_type;
+  RETURN jsonb_build_object('ok', true, 'cleared', v_cleared);
+END $$;
+REVOKE ALL ON FUNCTION public.delete_work_type(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_work_type(uuid) TO authenticated;

@@ -2,14 +2,17 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff, WorkStage, colorHex } from '@booking/core/services/booking-admin.service';
 import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
 import { StageManagerComponent } from '@booking/ui/stage-manager/stage-manager.component';
+import { WorkSettingsComponent } from '@booking/ui/work-settings/work-settings.component';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
+import { onScopeChange } from '@booking/core/utils/scope-reload.util';
 
 // Backlog (waiting cards) followed by the org's own stages, which are ROWS now (§24) —
 // the owner adds, renames, reorders and removes them. A card sits in Backlog until its
@@ -21,7 +24,8 @@ type Board = Record<ColumnKey, WorkJob[]>;
 @Component({
   selector: 'app-work-board',
   standalone: true,
-  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent, StageManagerComponent, SelectComponent],
+  imports: [FormsModule, DatePipe, DragDropModule, CdkMenu, CdkMenuItem, CdkMenuTrigger,
+            WorkEditorComponent, StageManagerComponent, WorkSettingsComponent, SelectComponent],
   templateUrl: './work-board.component.html',
   styleUrl: './work-board.component.scss',
 })
@@ -40,6 +44,19 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   ]);
   private readonly columnKeys = computed(() => this.columns().map(c => c.key));
   readonly board = signal<Board>({ [BACKLOG]: [] });
+  /** Every card the server returned, archived ones included. `board` is what is RENDERED
+   *  and is mutated optimistically by drag-and-drop, so the full set is kept separately
+   *  rather than derived — a computed cannot be written to mid-drop. */
+  private readonly allJobs = signal<WorkJob[]>([]);
+  /**
+   * Terminal cards age off the board (§25). Everything ends up Delivered and stays there,
+   * so without this the last column grows without limit and buries this week's work —
+   * the same reason Jira hides completed issues once a sprint closes. They are not
+   * deleted and nothing moves: `is_archived` is computed on read from how long the card
+   * has sat in a terminal stage, and this button brings them back into view.
+   */
+  readonly showArchived = signal(false);
+  readonly archivedCount = computed(() => this.allJobs().filter(j => j.isArchived).length);
   stageHex(id: string | null): string { return colorHex(id); }
   readonly tasks = signal<TaskRow[]>([]);
   readonly staff = signal<AdminStaff[]>([]);
@@ -55,12 +72,18 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
 
   private realtime: RealtimeHandle | null = null;
 
-  /** Active cards past their deliver-by date (and not yet delivered). */
+  constructor() {
+    // The board is per-worker (loadJobs filters to the scope), so a switch must re-pull.
+    onScopeChange(this.auth, () => void this.reload());
+  }
+
+  /** Active cards past their deliver-by date, where the work is not finished. Keys off the
+   *  stage's own is_done flag — stages are renameable rows, so the string 'delivered' is
+   *  not a thing to compare against. */
   readonly overdueCount = computed(() => {
     const now = Date.now();
-    return Object.values(this.board()).flat()
-      .filter(j => j.isActive && j.production_status !== 'delivered'
-                && j.dueAt && new Date(j.dueAt).getTime() < now).length;
+    return this.allJobs()
+      .filter(j => j.isActive && !j.stageIsDone && j.dueAt && new Date(j.dueAt).getTime() < now).length;
   });
 
   // ── Work task editor (reserved time + linked jobs) ──────────────────────
@@ -78,6 +101,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   ]);
 
   readonly stagesOpen = signal(false);
+  readonly settingsOpen = signal(false);
   readonly editorOpen = signal(false);
   readonly editing = signal<WorkJob | null>(null);
 
@@ -90,8 +114,9 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   async onStagesChanged(): Promise<void> { await this.reload(); }
 
   async ngOnInit(): Promise<void> {
+    // No reload() here: the scope effect below fires as soon as orgId resolves, and again
+    // on every org / worker switch. Calling it here too would just fetch twice on load.
     await this.auth.initialize();
-    await this.reload();
     this.realtime = subscribeToChanges('work-board', ['tasks', 'bookings'], () => void this.reload());
   }
   ngOnDestroy(): void { this.realtime?.destroy(); }
@@ -106,15 +131,25 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
       this.tasks.set(tasks);
       this.jobOptions.set(jobOptions);
       this.staff.set(staff);
-      // Built from the CURRENT columns: a card whose stage was deleted mid-session would
-      // otherwise land on an undefined array and throw.
-      const grouped: Board = {};
-      for (const c of this.columns()) grouped[c.key] = [];
-      for (const j of jobs) (grouped[this.columnOf(j)] ??= []).push(j);
-      this.board.set(grouped);
+      this.allJobs.set(jobs);
+      this.regroup();
     }
     this.loading.set(false);
   }
+
+  /** Rebuild the rendered columns from `allJobs`. Built from the CURRENT columns: a card
+   *  whose stage was deleted mid-session would otherwise land on an undefined array. */
+  private regroup(): void {
+    const grouped: Board = {};
+    for (const c of this.columns()) grouped[c.key] = [];
+    for (const j of this.allJobs()) {
+      if (j.isArchived && !this.showArchived()) continue;
+      (grouped[this.columnOf(j)] ??= []).push(j);
+    }
+    this.board.set(grouped);
+  }
+
+  toggleArchived(): void { this.showArchived.update(v => !v); this.regroup(); }
 
   /** Which board column a card belongs to right now. */
   private columnOf(j: WorkJob): ColumnKey { return j.isActive ? j.production_status : 'backlog'; }
@@ -200,7 +235,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
     return name.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
   }
   isOverdue(j: WorkJob): boolean {
-    return !!j.dueAt && j.production_status !== 'delivered' && new Date(j.dueAt).getTime() < Date.now();
+    return !!j.dueAt && !j.stageIsDone && new Date(j.dueAt).getTime() < Date.now();
   }
   dueValue(j: WorkJob): string { return j.dueAt ? j.dueAt.slice(0, 10) : ''; }
   async setDue(j: WorkJob, value: string): Promise<void> {

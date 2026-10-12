@@ -39,10 +39,26 @@ export interface SelectOption {
             [disabled]="disabled()"
             [attr.aria-expanded]="open()" aria-haspopup="listbox"
             (click)="toggle()" (keydown)="onTriggerKey($event)">
-      @if (selected()?.color) { <span class="sel__dot" [style.background]="selected()!.color"></span> }
-      <span class="sel__value" [class.sel__value--empty]="!selected()">
-        {{ selected()?.label ?? placeholder() }}
-      </span>
+      @if (multiple()) {
+        @if (chosen().length) {
+          <span class="sel__chips">
+            @for (c of chosen(); track c.value) {
+              <span class="sel__chip">
+                {{ c.label }}
+                <span class="sel__chip-x" role="button" aria-label="Remove"
+                      (click)="removeOne(c.value, $event)">×</span>
+              </span>
+            }
+          </span>
+        } @else {
+          <span class="sel__value sel__value--empty">{{ placeholder() }}</span>
+        }
+      } @else {
+        @if (selected()?.color) { <span class="sel__dot" [style.background]="selected()!.color"></span> }
+        <span class="sel__value" [class.sel__value--empty]="!selected()">
+          {{ selected()?.label ?? placeholder() }}
+        </span>
+      }
       @if (clearable() && selected() && !disabled()) {
         <span class="sel__clear" role="button" aria-label="Clear" (click)="clear($event)">×</span>
       }
@@ -71,15 +87,15 @@ export interface SelectOption {
         <div class="sel__list">
           @for (o of filtered(); track o.value; let i = $index) {
             <button type="button" class="sel__opt"
-                    [class.sel__opt--on]="o.value === value()"
+                    [class.sel__opt--on]="isChosen(o.value)"
                     [class.sel__opt--active]="i === activeIndex()"
                     [disabled]="o.disabled"
-                    role="option" [attr.aria-selected]="o.value === value()"
+                    role="option" [attr.aria-selected]="isChosen(o.value)"
                     (mouseenter)="activeIndex.set(i)" (click)="pick(o)">
               @if (o.color) { <span class="sel__dot" [style.background]="o.color"></span> }
               <span class="sel__opt-label">{{ o.label }}</span>
               @if (o.hint) { <span class="sel__opt-hint">{{ o.hint }}</span> }
-              @if (o.value === value()) { <span class="sel__tick">✓</span> }
+              @if (isChosen(o.value)) { <span class="sel__tick">✓</span> }
             </button>
           } @empty {
             <p class="sel__empty">{{ query() ? 'Nothing matches “' + query() + '”' : 'Nothing to choose' }}</p>
@@ -132,6 +148,15 @@ export interface SelectOption {
     .sel__clear:hover { background: #f1f5f9; color: #475569; }
     .sel__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
+    .sel__chips { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+    .sel__chip {
+      display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+      padding: 2px 6px; border-radius: 6px; background: #f1f5f9;
+      font-size: 11.5px; font-weight: 600; color: #334155;
+    }
+    .sel__chip-x { color: #94a3b8; cursor: pointer; font-size: 13px; line-height: 1; }
+    .sel__chip-x:hover { color: #dc2626; }
+
     .sel__panel {
       background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
       box-shadow: 0 10px 30px rgba(15,23,42,0.16);
@@ -163,6 +188,9 @@ export interface SelectOption {
 })
 export class SelectComponent {
   readonly value = model<string>('');
+  /** Multi-select. `values` is the model then; `value` is ignored. */
+  readonly multiple = input(false);
+  readonly values = model<string[]>([]);
   readonly options = input<SelectOption[]>([]);
   readonly placeholder = input('Select…');
   readonly disabled = input(false);
@@ -188,6 +216,12 @@ export class SelectComponent {
   ];
 
   readonly selected = computed(() => this.options().find(o => o.value === this.value()) ?? null);
+  /** Chosen options in the order the OPTIONS list defines, not the click order — chips
+   *  that reshuffle as you tick are hard to scan. */
+  readonly chosen = computed(() => this.options().filter(o => this.values().includes(o.value)));
+  isChosen(v: string): boolean {
+    return this.multiple() ? this.values().includes(v) : v === this.value();
+  }
   readonly showSearch = computed(() => {
     const s = this.searchable();
     return s === 'auto' ? this.options().length > 7 : s;
@@ -214,17 +248,31 @@ export class SelectComponent {
     if (this.disabled()) return;
     if (this.open()) { this.close(); return; }
     this.query.set('');
-    this.activeIndex.set(Math.max(0, this.filtered().findIndex(o => o.value === this.value())));
+    this.activeIndex.set(Math.max(0, this.filtered().findIndex(o => this.isChosen(o.value))));
     this.open.set(true);
   }
   close(): void { this.open.set(false); this.query.set(''); }
 
   pick(o: SelectOption): void {
     if (o.disabled) return;
+    if (this.multiple()) {
+      // Stays open: picking several things one at a time, reopening between each, is the
+      // thing multi-selects exist to avoid.
+      const next = this.values().includes(o.value)
+        ? this.values().filter(v => v !== o.value)
+        : [...this.values(), o.value];
+      this.values.set(next);
+      return;
+    }
     this.value.set(o.value);
     this.changed.emit(o.value);
     this.close();
     this.triggerEl().nativeElement.focus();
+  }
+
+  removeOne(v: string, e: Event): void {
+    e.stopPropagation();           // or the trigger toggles the panel behind the chip
+    this.values.set(this.values().filter(x => x !== v));
   }
 
   clear(e: Event): void {

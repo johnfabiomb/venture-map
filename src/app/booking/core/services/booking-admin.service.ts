@@ -34,6 +34,16 @@ export interface WorkStage {
   color_id: string | null;
 }
 
+/** A kind of work — an edit, a grade, an export. Rows rather than a constant, because
+ *  the calendar event needs the label too and a constant would have to be duplicated
+ *  into the Edge Function. */
+export interface WorkType {
+  id: string;
+  key: string;
+  label: string;
+  sort: number;
+}
+
 /** Google's fixed event palette. There are no arbitrary colours, so the picker offers
  *  exactly what Google will actually render. */
 export const GCAL_COLORS: { id: string; name: string; hex: string }[] = [
@@ -65,6 +75,15 @@ export interface WorkJob {
   dueAt: string | null;        // deliver-by date
   clientName: string | null;
   serviceName: string | null;
+  description: string | null;
+  workType: string | null;         // work_types.key
+  workTypeLabel: string | null;    // resolved by the view
+  stageLabel: string | null;       // resolved by the view — stages are renameable
+  /** The stage's own terminal flag. Never compare a stage to the string 'delivered'. */
+  stageIsDone: boolean;
+  doneAt: string | null;           // when it entered a terminal stage
+  /** Terminal and aged past the org's archive window — off the board, in History. */
+  isArchived: boolean;
 }
 
 export interface TaskRow {
@@ -140,6 +159,8 @@ export interface OrgSettings {
     min_lead_minutes?: number;
     buffer_minutes?: number;
     cash_allowed?: boolean;
+    /** Days a card stays on the board after reaching a terminal stage (§25). Default 3. */
+    work_archive_days?: number;
   };
   features?: { work_board?: boolean };
   invoice_details?: InvoiceDetails;
@@ -290,16 +311,15 @@ export class BookingAdminService {
 
   // ── Work board (production) ───────────────────────────────────────
   /** All cards (active + backlog) from the work_board view — names/is_active resolved server-side. */
-  async loadJobs(orgId: string): Promise<WorkJob[]> {
-    const staff = this.auth.staffId();
-    let q = bookingsDb.from('work_board')
-      .select('id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active, assignee_id, assignee_name, due_at, client_name, service_name')
-      .eq('org_id', orgId);
-    // Assigned to this worker, OR unassigned — an unassigned card belongs to nobody and
-    // would otherwise vanish from every view, which is how work gets forgotten.
-    if (staff) q = q.or(`assignee_id.eq.${staff},assignee_id.is.null`);
-    const { data } = await q.order('sort').order('created_at');
-    return ((data ?? []) as Array<Record<string, unknown>>).map(w => ({
+  /** The `work_board` columns a WorkJob needs. One constant, because two call sites read
+   *  this view and a column added to only one of them is a field that is silently null. */
+  private static readonly WORK_BOARD_COLS =
+    'id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active,'
+    + ' assignee_id, assignee_name, due_at, client_name, service_name, description,'
+    + ' work_type, work_type_label, stage_label, stage_is_done, done_at, is_archived';
+
+  private mapWorkJob(w: Record<string, unknown>): WorkJob {
+    return {
       id: w['id'] as string, bookingId: (w['booking_id'] as string | null) ?? null,
       title: w['title'] as string,
       start_at: (w['booking_start_at'] as string | null) ?? null,
@@ -311,7 +331,26 @@ export class BookingAdminService {
       dueAt: (w['due_at'] as string | null) ?? null,
       clientName: (w['client_name'] as string | null) ?? null,
       serviceName: (w['service_name'] as string | null) ?? null,
-    }));
+      description: (w['description'] as string | null) ?? null,
+      workType: (w['work_type'] as string | null) ?? null,
+      workTypeLabel: (w['work_type_label'] as string | null) ?? null,
+      stageLabel: (w['stage_label'] as string | null) ?? null,
+      stageIsDone: !!w['stage_is_done'],
+      doneAt: (w['done_at'] as string | null) ?? null,
+      isArchived: !!w['is_archived'],
+    };
+  }
+
+  async loadJobs(orgId: string): Promise<WorkJob[]> {
+    const staff = this.auth.staffId();
+    let q = bookingsDb.from('work_board')
+      .select(BookingAdminService.WORK_BOARD_COLS)
+      .eq('org_id', orgId);
+    // Assigned to this worker, OR unassigned — an unassigned card belongs to nobody and
+    // would otherwise vanish from every view, which is how work gets forgotten.
+    if (staff) q = q.or(`assignee_id.eq.${staff},assignee_id.is.null`);
+    const { data } = await q.order('sort').order('created_at');
+    return ((data ?? []) as unknown as Array<Record<string, unknown>>).map(w => this.mapWorkJob(w));
   }
   /** Pull a backlog card onto the board (or push one back). */
   async activateCard(id: string): Promise<void> {
@@ -348,9 +387,65 @@ export class BookingAdminService {
     return (typeof row === 'string' ? row : (row as { id?: string } | null)?.id) ?? null;
   }
 
-  async renameWorkItem(id: string, title: string): Promise<void> {
-    const { error } = await bookingsDb.from('work_items').update({ title }).eq('id', id);
-    if (error) console.error('[BookingAdmin] renameWorkItem:', error);
+  /** Patch a card's own fields. Only the keys passed are written, so a caller that knows
+   *  about the title can never blank a description it has never heard of. */
+  async updateWorkItem(
+    id: string,
+    patch: { title?: string; description?: string | null; work_type?: string | null },
+  ): Promise<void> {
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await bookingsDb.from('work_items').update(patch).eq('id', id);
+    if (error) console.error('[BookingAdmin] updateWorkItem:', error);
+  }
+
+  /** The kinds of work this org does (§25). */
+  async listWorkTypes(orgId: string): Promise<WorkType[]> {
+    const { data, error } = await bookingsDb.from('work_types')
+      .select('id, key, label, sort').eq('org_id', orgId).order('sort');
+    if (error) { console.error('[BookingAdmin] listWorkTypes:', error); return []; }
+    return (data ?? []) as WorkType[];
+  }
+
+  /** Add or rename a type. New ones get a slug key derived from the label, uniquified
+   *  against existing keys so re-adding a deleted name can't collide with it. */
+  async saveWorkType(orgId: string, wt: Partial<WorkType> & { label: string }): Promise<{ error?: string }> {
+    const label = wt.label.trim();
+    if (wt.id) {
+      const { error } = await bookingsDb.from('work_types').update({ label }).eq('id', wt.id);
+      return error ? { error: error.message } : {};
+    }
+    const base = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'type';
+    const existing = await this.listWorkTypes(orgId);
+    let key = base, n = 2;
+    while (existing.some(e => e.key === key)) key = `${base}_${n++}`;
+    const sort = existing.length ? Math.max(...existing.map(e => e.sort)) + 1 : 1;
+    const { error } = await bookingsDb.from('work_types')
+      .insert({ org_id: orgId, key, label, sort });
+    return error ? { error: error.message } : {};
+  }
+  async reorderWorkTypes(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id, i) =>
+      bookingsDb.from('work_types').update({ sort: i + 1 }).eq('id', id)));
+  }
+  /** Soft-deletes the type AND clears it off the cards that used it, in one transaction —
+   *  `work_type` holds a KEY with no FK, so a half-done delete leaves a dead reference. */
+  async deleteWorkType(typeId: string): Promise<{ ok: boolean; cleared?: number; error?: string }> {
+    const { data, error } = await bookingsDb.rpc('delete_work_type', { p_type: typeId });
+    if (error) return { ok: false, error: error.message };
+    return (data ?? { ok: false }) as { ok: boolean; cleared?: number; error?: string };
+  }
+
+  /**
+   * Move a card to a board column. 'backlog' is not a stage — it is the absence of
+   * `activated_at` — so the two cases are different writes. Lives here rather than in the
+   * board component because the work editor's Status field performs the same move.
+   */
+  async moveWorkCard(
+    id: string, target: string, bookingId: string | null, isActive: boolean,
+  ): Promise<void> {
+    if (target === 'backlog') { await this.backlogCard(id); return; }
+    if (!isActive) await this.activateCard(id);
+    await this.setStage(id, target, bookingId);
   }
 
   /**
@@ -361,26 +456,13 @@ export class BookingAdminService {
    */
   async workItemForBooking(bookingId: string): Promise<WorkJob | null> {
     const { data } = await bookingsDb.from('work_board')
-      .select('id, title, production_status, booking_id, booking_start_at, booking_end_at, is_active, assignee_id, assignee_name, due_at, client_name, service_name')
+      .select(BookingAdminService.WORK_BOARD_COLS)
       .eq('booking_id', bookingId)
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
     if (!data) return null;
-    const w = data as Record<string, unknown>;
-    return {
-      id: w['id'] as string, bookingId: (w['booking_id'] as string | null) ?? null,
-      title: w['title'] as string,
-      start_at: (w['booking_start_at'] as string | null) ?? null,
-      bookingEndAt: (w['booking_end_at'] as string | null) ?? null,
-      production_status: w['production_status'] as ProductionStage,
-      isActive: !!w['is_active'],
-      assigneeId: (w['assignee_id'] as string | null) ?? null,
-      assigneeName: (w['assignee_name'] as string | null) ?? null,
-      dueAt: (w['due_at'] as string | null) ?? null,
-      clientName: (w['client_name'] as string | null) ?? null,
-      serviceName: (w['service_name'] as string | null) ?? null,
-    };
+    return this.mapWorkJob(data as unknown as Record<string, unknown>);
   }
   /** Remove a card from the board (soft delete via RPC). Never touches the booking — only
    *  unflags it. The work_items → tasks cascade trigger hides its checklist automatically. */

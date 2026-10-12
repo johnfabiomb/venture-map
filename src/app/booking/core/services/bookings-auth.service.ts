@@ -247,7 +247,9 @@ export class BookingsAuthService {
       const raw = localStorage.getItem(ROLE_CACHE_KEY);
       if (!raw) return null;
       const c = JSON.parse(raw);
-      return c?.uid === userId ? { uid: c.uid, org: c.org ?? null } : null;
+      // `staff` must be read back, not just written: without it the worker scope was
+      // persisted on every switch and then silently dropped on the next page load.
+      return c?.uid === userId ? { uid: c.uid, org: c.org ?? null, staff: c.staff ?? null } : null;
     } catch { return null; }
   }
 }

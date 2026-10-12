@@ -193,12 +193,13 @@ interface WorkSlotRow { id: string; start_at: string; end_at: string; label: str
  */
 export async function ensureWorkEvent(service: SupabaseClient, workItemId: string): Promise<string | null> {
   const { data } = await service.from('work_items')
-    .select('id, org_id, title, production_status, due_at, deleted_at, slots:booking_slots(id, start_at, end_at, label, google_event_id), links:work_item_bookings(booking:booking_id(booking_ref, title))')
+    .select('id, org_id, title, description, work_type, production_status, due_at, deleted_at, slots:booking_slots(id, start_at, end_at, label, google_event_id), links:work_item_bookings(booking:booking_id(booking_ref, title))')
     .eq('id', workItemId)
     .maybeSingle();
   if (!data) return null;
   const w = data as unknown as {
     id: string; org_id: string; title: string; production_status: string;
+    description: string | null; work_type: string | null;
     due_at: string | null; deleted_at: string | null;
     slots: WorkSlotRow[] | null;
     links: Array<{ booking: { booking_ref: string; title: string } | { booking_ref: string; title: string }[] | null }> | null;
@@ -207,10 +208,25 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
 
   // The stage's own Google colour, so post-production is visibly distinct from a shoot
   // at a glance in the calendar. Falls back to Banana when a stage has none set.
+  // The LABEL is read here too: stages are rows the owner renames (§24), so a hardcoded
+  // map would show a raw key like `client_review` the moment a column was added.
   const { data: stage } = await service.from('work_stages')
-    .select('color_id').eq('org_id', w.org_id).eq('key', w.production_status)
+    .select('label, color_id').eq('org_id', w.org_id).eq('key', w.production_status)
     .is('deleted_at', null).maybeSingle();
-  const colorId = (stage as { color_id: string | null } | null)?.color_id ?? '5';
+  const st = stage as { label: string; color_id: string | null } | null;
+  const colorId = st?.color_id ?? '5';
+  const stageLabel = st?.label ?? PROGRESS_LABEL[w.production_status] ?? w.production_status;
+
+  // What kind of work this is — an edit, a grade, an export. Separate from the stage:
+  // the stage says how far along it is, the type says what he is actually doing, and the
+  // event used to show the stage under the word "Work", which read as the wrong thing.
+  let typeLabel: string | null = null;
+  if (w.work_type) {
+    const { data: wt } = await service.from('work_types')
+      .select('label').eq('org_id', w.org_id).eq('key', w.work_type)
+      .is('deleted_at', null).maybeSingle();
+    typeLabel = (wt as { label: string } | null)?.label ?? w.work_type;
+  }
 
   // Same single-shared-calendar rule as bookings.
   const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
@@ -225,7 +241,10 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     .map(l => (Array.isArray(l.booking) ? l.booking[0] : l.booking))
     .filter((b): b is { booking_ref: string; title: string } => !!b);
 
-  const lines = [`Work: ${PROGRESS_LABEL[w.production_status] ?? w.production_status}`];
+  const lines = [`Work: ${typeLabel ?? stageLabel}`];
+  if (typeLabel) lines.push(`Stage: ${stageLabel}`);
+  // The brief, verbatim. It is the reason to open the event on the phone at all.
+  if (w.description?.trim()) lines.push('', w.description.trim());
   if (jobs.length) {
     lines.push('', 'For:');
     for (const j of jobs) lines.push(`• ${j.title} [${j.booking_ref}]`);

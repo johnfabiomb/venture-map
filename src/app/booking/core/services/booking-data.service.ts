@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { onScopeChange } from '@booking/core/utils/scope-reload.util';
 import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
@@ -15,6 +16,13 @@ import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime
 @Injectable()
 export class BookingDataService implements OnDestroy {
   private readonly auth = inject(BookingsAuthService);
+  constructor() {
+    // The shared caches follow the scope on their own. The shell used to call load() from
+    // ngOnInit and again from the worker switcher; owning it here means there is exactly
+    // one trigger, and a page that only reads `bookings()` needs no scope logic at all.
+    onScopeChange(this.auth, () => void this.load());
+  }
+
   readonly bookings = signal<BookingSummary[]>([]);
   readonly clients  = signal<Client[]>([]);
   readonly loading  = signal(false);

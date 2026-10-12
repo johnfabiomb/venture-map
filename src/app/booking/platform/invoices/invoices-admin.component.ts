@@ -1,10 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { BookingAdminService } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { onScopeChange } from '@booking/core/utils/scope-reload.util';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
@@ -39,7 +39,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -188,8 +188,18 @@ export class InvoicesAdminComponent implements OnInit {
   // never cancel out what another client still owes.
   readonly outstanding = computed(() => this.yearScoped().reduce((s, r) => s + r.balance_due, 0));
 
+  constructor() {
+    // Invoices carry a staff_id and queryInvoices() is scoped, so the list and the
+    // Deleted tab both have to re-pull when the worker being viewed changes. This is also
+    // the page's FIRST load — ngOnInit only resolves auth.
+    onScopeChange(this.auth, () => void this.loadAll());
+  }
+
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();
+  }
+
+  private async loadAll(): Promise<void> {
     const org = this.auth.orgId();
     if (org) {
       const s = await this.admin.getOrgSettings(org);

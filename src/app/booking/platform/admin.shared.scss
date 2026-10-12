@@ -18,6 +18,43 @@
 .page__sub { font-size: 13.5px; color: $text-2; margin: 0; }
 .muted { color: $text-2; font-size: 14px; }
 
+// Canonical CDK-menu popover. Three pages (booking detail, booking list, invoices) each
+// grew their own copy of this before it lived here, and the three have DRIFTED — 56 / 86 /
+// 72 declarations. Their local blocks still win by source order, so adding this changed
+// nothing for them; they should be deleted in a pass of their own, where the visual diff
+// can actually be looked at. New menus use this one.
+.menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: 6px;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14);
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    text-align: left;
+    background: none;
+    border: none;
+    border-radius: $radius-sm;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text-2;
+    cursor: pointer;
+    transition: background $transition;
+
+    &:hover, &:focus-visible { background: $bg; color: $text; outline: none; }
+    &--danger { color: $red; }
+    &--danger:hover, &--danger:focus-visible { background: rgba(239, 68, 68, 0.1); color: $red; }
+  }
+}
+
 .btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: $radius-md;
   font-size: 13.5px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent;

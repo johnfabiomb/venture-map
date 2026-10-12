@@ -24,11 +24,11 @@ export class PlatformShellComponent implements OnInit {
     ...this.auth.staff().map(w => ({ value: w.id, label: w.name })),
   ]);
 
-  /** Switching worker changes what every page is allowed to show, so the shared caches
-   *  are re-pulled rather than left showing the previous person's rows. */
+  /** Switching worker changes what every page is allowed to show. The re-pull is NOT done
+   *  here: BookingDataService reacts to the scope itself (onScopeChange), so the caches
+   *  follow for every page rather than only for the ones the switcher knows about. */
   onWhoChange(value: string): void {
     this.auth.setActiveStaff(value || null);
-    void this.data.load();
   }
   readonly data = inject(BookingDataService);
   private readonly router = inject(Router);
@@ -56,10 +56,8 @@ export class PlatformShellComponent implements OnInit {
   ngOnInit(): void {
     // Wait for getSession() to complete so the JWT is confirmed fresh before
     // any DB query runs — prevents the token-refresh race that hangs queries.
-    this.auth.initialize().then(() => {
-      if (this.auth.state() === 'admin') {
-        this.data.load();
-      }
-    });
+    // Resolving auth sets orgId, which is what BookingDataService's scope effect waits
+    // for — so the first load follows from this rather than being triggered here.
+    void this.auth.initialize();
   }
 }

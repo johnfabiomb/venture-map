@@ -167,3 +167,100 @@ booking form pre-fills the worker, menu split into worker-scoped and Organizatio
    or not IN ALL THE MODULES."* So: audit every module for created-by / ownership, and
    report what genuinely matters (VAT/accounting: an invoice's issuer is the ORG, not a
    person; but an internal audit trail of who raised it is normal and useful).
+
+---
+
+## Batch 2 (John, 2026-10-12) — done
+
+### Work task as a ticket
+Asked for: *"the job this cover should be a check first… we should also show status
+there and move the ticket by selecting the new status in the modal… try to include all
+the fields of the task in the modal, those that make sense, imagine Trello or Jira"*,
+then *"it needs to be searchable, there are so many bookings"*, then *"I would like to
+add a description… in the calendar it says 'Work: To edit' but I never selected to edit,
+I don't find any option to select what kind of work I'm gonna do"*.
+
+Shipped in `ui/work-editor/`: details (free text), **type of work**, **status**,
+checklist, a gated + searchable multi-select job picker, assignee always shown and
+pre-filled from the scope.
+
+**Why "work type" is a table and not a constant.** Payment methods are a TypeScript
+constant (`METHOD_LABEL`) and that is the obvious precedent — but the *calendar* needs
+the label too, so a constant would have to be duplicated into
+`supabase/functions/_shared/booking-event.ts`, and the two copies would disagree the
+first time a type was renamed. `work_types` (§25) mirrors `work_stages`' shape minus the
+colour, so the existing `ui/stage-manager/` can be generalised to manage both later with
+no migration. Managed from the board's **cog → Types of work & board**
+(`ui/work-settings/`), which is also where the archive window lives and where future
+work settings go — John: *"maybe a cog for that and we can add specific work settings when
+we need more things."* Deleting a type clears it off the tasks that used it via
+`delete_work_type`, in one transaction: `work_type` holds a key with no FK, so there is
+nothing in the database to stop a dead reference.
+
+**Why the calendar said "Work: To edit".** `ensureWorkEvent` built its first line from
+`PROGRESS_LABEL[production_status]` — a hardcoded map of the original four stages. Two
+bugs in one line: it showed the board COLUMN under the word "Work" (so it looked like a
+work type that had never been chosen), and it would print a raw key like `client_review`
+for any column added since stages became rows. It reads the type for that line now, and
+the stage's own label from `work_stages` for the line beneath.
+
+### Delivered work ages off the board
+Asked for: *"after a ticket was sent to deliver for over three or four days… it should go
+somewhere, a kind of backlog but not backlog — see how Jira does it, it goes away, you
+don't see it anymore unless you have a button to see the tickets that went through."*
+
+`work_items.done_at` (trigger-maintained) + `work_board.is_archived`, computed on read
+against `organizations.booking_params.work_archive_days` (default 3), plus a **History**
+toggle on the board. Deliberately:
+- **Nothing is deleted and nothing moves.** An archived card is still in its column with
+  its stage intact; only the board's filter changes. A "move it to an archive stage"
+  design would have rewritten `production_status` and lost where the work actually ended.
+- **`is_done` comes from the stage, not from `done_at`.** Un-flag a stage as terminal and
+  its cards return to the board immediately, with no backfill.
+- **The trigger stamps only the FIRST arrival**, so editing a delivered card — or
+  dragging it within its column — cannot push its archive date three more days out.
+- Existing delivered cards were backfilled from `created_at`, not `now()`: dating them
+  from now would have held the entire existing pile on the board for another three days,
+  which is the opposite of the point.
+
+### Scope reactivity (the bugs behind "some stuff is not working")
+Asked for: *"I want that viewing select of the worker to have a state so when I select
+John Montaño or Posveda it stays there even if I reload… also when I change the viewing
+for another worker the sidebar booking count doesn't update, in clients neither, and some
+tabs in the booking section don't update either."*
+
+Two distinct faults:
+1. **The scope was never read back.** `persistCache()` saved `staff`; `readCache()`
+   returned `{ uid, org }` and dropped it. Every page load silently reverted to the whole
+   organisation. One line.
+2. **Nothing re-queried on a switch.** `scoped()` applies the scope at query time, but a
+   query only re-runs when something asks it to, and every page had its own fetched state
+   and its own `ngOnInit`. The dashboard was the only page that got this right.
+
+Fixed by moving the rule out of the pages: `core/utils/scope-reload.util.ts`
+(`onScopeChange`). `BookingDataService` uses it for the shared caches — so the sidebar
+counts and anything reading `bookings()` now follow the scope with no page-level code —
+and the bookings list, invoices list and work board use it as their **first load as well
+as their refresh**, which is what keeps it from double-fetching.
+
+**The Clients count is unchanged on purpose.** Clients are organisation-wide by John's own
+decision (*"a client information is a client information, it doesn't change"*), so that
+number is the same whoever you are viewing. Nothing to fix there.
+
+### Also fixed while in here
+- The **stage manager had no trigger** — columns were editable in code only. Added a
+  **Columns** button.
+- The board compared stages to the literal `'delivered'` in `overdueCount` and
+  `isOverdue`, which is exactly what `is_done` exists to prevent.
+- Two `work_board` readers (`loadJobs`, `workItemForBooking`) each had their own column
+  list and mapping; a column added to one was silently null in the other. Now one
+  `WORK_BOARD_COLS` constant and one `mapWorkJob`.
+
+### Still open
+- `.menu` has three drifted local copies (56 / 86 / 72 declarations) in booking detail,
+  booking list and invoices. The canonical one is now in `admin.shared.scss`; the three
+  local blocks still win by source order, so they were left alone rather than reconciled
+  blind — deleting them wants its own pass with the visual diff in front of you.
+- The ownership / "who created it" audit across all modules (batch 1, item 3) is still
+  unstarted.
+- Reserved time still does not drive a "this week" view of post-production.

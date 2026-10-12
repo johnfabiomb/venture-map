@@ -1,6 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
@@ -27,7 +26,7 @@ import { Client } from '@booking/core/interfaces/booking.interface';
 @Component({
   selector: 'app-invoice-edit',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent],
+  imports: [FormsModule, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent],
   templateUrl: './invoice-edit.component.html',
   styleUrl: './invoice-edit.component.scss',
 })

@@ -6,6 +6,17 @@
     </div>
     <div class="work__head-actions">
       @if (overdueCount() > 0) { <span class="overdue-tag">{{ overdueCount() }} overdue</span> }
+      @if (archivedCount() > 0) {
+        <!-- Delivered work does not vanish, it just stops taking up the board. -->
+        <button class="btn btn--ghost btn--sm" (click)="toggleArchived()">
+          {{ showArchived() ? 'Hide history' : 'History (' + archivedCount() + ')' }}
+        </button>
+      }
+      <!-- One cog for how the board behaves. The stage manager existed with nothing
+           anywhere that opened it; a menu rather than a row of buttons because the next
+           work setting would be the point the header stopped being readable. -->
+      <button class="btn btn--ghost btn--sm work__cog" [cdkMenuTriggerFor]="workMenu"
+              title="Work settings" aria-label="Work settings">⚙</button>
       <button class="btn btn--primary btn--sm" (click)="toggleComposer()">+ New card</button>
     </div>
   </div>
@@ -40,7 +51,7 @@
           <div class="col__body" cdkDropList [cdkDropListData]="board()[col.key] || []"
                (cdkDropListDropped)="drop($event, col.key)">
             @for (j of (board()[col.key] || []); track j.id) {
-              <div class="job" cdkDrag>
+              <div class="job" [class.job--archived]="j.isArchived" cdkDrag>
                 <div class="job__drag-placeholder" *cdkDragPlaceholder></div>
                 <div class="job__top">
                   <div class="job__client" cdkDragHandle>⠿ {{ j.clientName || j.title }}</div>
@@ -57,7 +68,14 @@
                   } @else {
                     <span class="job__tag">Personal</span>
                   }
+                  @if (j.workTypeLabel) { <span class="job__tag job__tag--type">{{ j.workTypeLabel }}</span> }
+                  @if (j.isArchived) { <span class="job__tag job__tag--archived">Archived</span> }
                 </div>
+                @if (j.description) {
+                  <!-- Clamped: the brief can be long, and the card is a summary. The modal
+                       shows all of it. -->
+                  <p class="job__desc">{{ j.description }}</p>
+                }
 
                 <!-- Assignee + deliver-by date -->
                 <div class="job__manage">
@@ -103,7 +121,17 @@
     </div>
   }
 
+  <ng-template #workMenu>
+    <div class="menu" cdkMenu>
+      <button class="menu__item" cdkMenuItem (click)="stagesOpen.set(true)">Board columns…</button>
+      <button class="menu__item" cdkMenuItem (click)="settingsOpen.set(true)">Types of work &amp; board…</button>
+    </div>
+  </ng-template>
+
   <app-work-editor [(open)]="editorOpen" [job]="editing()" [staff]="staff()"
                    (saved)="onWorkSaved()" />
   <app-stage-manager [(open)]="stagesOpen" [stages]="stages()" (changed)="onStagesChanged()" />
+  <!-- Types are loaded by the work editor itself, but a rename changes the chip on every
+       card, so the board reloads too. -->
+  <app-work-settings [(open)]="settingsOpen" (changed)="onStagesChanged()" />
 </div>

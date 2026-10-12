@@ -6,6 +6,8 @@ import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { FormsModule } from '@angular/forms';
 import { map, debounceTime } from 'rxjs';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
+import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { onScopeChange } from '@booking/core/utils/scope-reload.util';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
@@ -65,6 +67,7 @@ const EMPTY_TEXT: Record<BookingTab, string> = {
 })
 export class BookingListComponent {
   readonly data = inject(BookingDataService);
+  private readonly auth = inject(BookingsAuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
@@ -124,19 +127,24 @@ export class BookingListComponent {
         void this.router.navigate([], { queryParams: { tab: restored }, queryParamsHandling: 'merge', replaceUrl: true });
       }
     }
-    // Re-query whenever the tab (URL) or the debounced search changes.
+    // Re-query whenever the tab (URL), the debounced search, or the WORKER SCOPE changes.
+    // The scope is read here and not just in scoped() because a query re-runs only when
+    // something asks it to — switching worker used to leave the rows on screen untouched.
     effect(() => {
       const tab = this.tab();
       const q = this.debouncedSearch();
+      this.auth.staffId();
       this.paged.reset();
       void this.loadRows(tab, q);
       // The Deleted tab is served by an RPC, not by loadRows — refresh it when opened so
       // it reflects anything deleted since the page loaded.
       if (tab === 'deleted') void this.loadDeleted();
     });
-    void this.refreshCounts();
-    // Once up front, so the tab's badge shows a count before it's ever opened.
-    void this.loadDeleted();
+    // The badges and the Deleted tab are per-scope too, and this is also their first load.
+    onScopeChange(this.auth, () => {
+      void this.refreshCounts();
+      void this.loadDeleted();
+    });
   }
 
   /** Navigate to a tab — pushes ?tab=… so it's a real, linkable URL, and remembers it. */
