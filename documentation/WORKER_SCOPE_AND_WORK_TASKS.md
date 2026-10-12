@@ -148,3 +148,21 @@ booking form pre-fills the worker, menu split into worker-scoped and Organizatio
 - A work block's calendar event is not deleted when the task itself is deleted (the
   booking path does this via `cancel-booking`); `deleteWorkItem` should pass its event
   ids to `sync-work-event`'s `deleteEventIds`.
+
+---
+
+## Next batch (John, 2026-10-12) — queued, not started
+
+1. **A real select component.** The native `<select>` looks different in every browser
+   and does not match the rest of the UI (his screenshot: the sidebar worker select vs
+   the form's Worker field). Wanted: a single universal control, browser-independent,
+   **with search**, in the spirit of select2 / ng-select. Then replace EVERY select in
+   the admin with it. Check what else it needs while building (clear, multi-select,
+   keyboard, empty state, mobile).
+2. **Hide the Worker field when the scope already says who.** Creating a booking or a
+   work task inside a selected worker must not ask again. Applies to every module.
+3. **Invoices should record who raised them** so it is visible who created what. He is
+   unsure whether this is right — *"check what legally and organizationally makes sense
+   or not IN ALL THE MODULES."* So: audit every module for created-by / ownership, and
+   report what genuinely matters (VAT/accounting: an invoice's issuer is the ORG, not a
+   person; but an internal audit trail of who raised it is normal and useful).

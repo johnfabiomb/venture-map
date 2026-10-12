@@ -2,7 +2,7 @@ import { Component, OnInit, computed, effect, inject, signal } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
-import { BookingAdminService, WorkJob, TaskRow, AdminStaff } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, WorkJob, TaskRow, AdminStaff, WorkStage } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -114,12 +114,24 @@ export class DashboardComponent implements OnInit {
   readonly showWorkerSplit = computed(() => !this.who() && this.byWorker().length > 1);
 
   // ── Production metrics ────────────────────────────────────────────
-  readonly inProduction = computed(() => this.jobs().filter(j => j.production_status !== 'delivered').length);
+  /** Stages are rows now (§24), so "not finished" comes from the stage's is_done flag
+   *  rather than comparing against the literal string 'delivered'. */
+  readonly stages = signal<WorkStage[]>([]);
+  private readonly doneKeys = computed(() =>
+    new Set(this.stages().filter(s => s.is_done).map(s => s.key)));
+  readonly inProduction = computed(() =>
+    this.jobs().filter(j => !this.doneKeys().has(j.production_status)).length);
   readonly openTasks = computed(() => this.tasks().filter(t => !t.is_done).length);
-  readonly stageCount = computed(() => {
-    const m = { to_edit: 0, editing: 0, to_deliver: 0, delivered: 0 };
-    for (const j of this.jobs()) m[j.production_status]++;
-    return m;
+
+  /** One count per stage, in board order — a fixed four-key object could not survive a
+   *  stage being added or renamed. */
+  readonly stageCounts = computed(() => {
+    const counts = new Map<string, number>();
+    for (const j of this.jobs()) counts.set(j.production_status, (counts.get(j.production_status) ?? 0) + 1);
+    return this.stages()
+      .filter(s => !s.is_done)
+      .map(s => ({ label: s.label, n: counts.get(s.key) ?? 0 }))
+      .filter(x => x.n > 0);
   });
   readonly workEnabled = computed(() => !!this.auth.features().work_board);
 
@@ -138,8 +150,9 @@ export class DashboardComponent implements OnInit {
   private async loadProduction(): Promise<void> {
     const org = this.auth.orgId();
     if (!org) return;
-    const [jobs, tasks] = await Promise.all([this.admin.loadJobs(org), this.admin.loadTasks(org)]);
-    this.jobs.set(jobs); this.tasks.set(tasks);
+    const [jobs, tasks, stages] = await Promise.all([
+      this.admin.loadJobs(org), this.admin.loadTasks(org), this.admin.listWorkStages(org)]);
+    this.jobs.set(jobs); this.tasks.set(tasks); this.stages.set(stages);
   }
 
   /** Re-read the money whenever the "who" filter changes. The basis toggle needs no

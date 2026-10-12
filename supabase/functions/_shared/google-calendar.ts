@@ -43,6 +43,9 @@ export async function createCalendarEvent(params: {
   /** Appended in brackets. Omit/empty for work blocks, which have no booking ref —
    *  otherwise every work event title ends in a stray "[]". */
   bookingRef?: string;
+  /** Google's own event colour, 1–11. Google has no arbitrary colours, so the stage
+   *  stores this id directly and the calendar can never disagree with the board. */
+  colorId?: string | null;
 }): Promise<string> {
   const token = await getAccessToken();
   const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
@@ -53,6 +56,7 @@ export async function createCalendarEvent(params: {
     location: params.location ?? undefined,
     start: { dateTime: params.startAt },
     end: { dateTime: params.endAt },
+    ...(params.colorId ? { colorId: params.colorId } : {}),
   };
 
   const res = await fetch(`${CALENDAR_BASE}/calendars/${calId}/events`, {
@@ -68,7 +72,7 @@ export async function createCalendarEvent(params: {
 
 export async function updateCalendarEvent(
   eventId: string,
-  fields: { summary?: string; description?: string; location?: string | null; startAt?: string; endAt?: string },
+  fields: { summary?: string; description?: string; location?: string | null; startAt?: string; endAt?: string; colorId?: string | null },
 ): Promise<void> {
   const token = await getAccessToken();
   const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
@@ -77,6 +81,7 @@ export async function updateCalendarEvent(
   if (fields.summary !== undefined) body.summary = fields.summary;
   if (fields.description !== undefined) body.description = fields.description;
   if (fields.location !== undefined) body.location = fields.location ?? undefined;
+  if (fields.colorId) body.colorId = fields.colorId;
   if (fields.startAt) body.start = { dateTime: fields.startAt };
   if (fields.endAt) body.end = { dateTime: fields.endAt };
   const res = await fetch(`${CALENDAR_BASE}/calendars/${calId}/events/${eventId}`, {

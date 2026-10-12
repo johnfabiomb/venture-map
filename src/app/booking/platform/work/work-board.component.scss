@@ -118,3 +118,9 @@
   font-size: 13px; line-height: 1; color: $text-3;
   &:hover { color: $accent; }
 }
+
+// The stage's Google Calendar colour, shown on the column head so the board and the
+// calendar read as the same system rather than two unrelated views.
+.col__dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-left: 6px;
+}

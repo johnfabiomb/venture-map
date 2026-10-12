@@ -205,6 +205,13 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
   };
   if (w.deleted_at) return null;
 
+  // The stage's own Google colour, so post-production is visibly distinct from a shoot
+  // at a glance in the calendar. Falls back to Banana when a stage has none set.
+  const { data: stage } = await service.from('work_stages')
+    .select('color_id').eq('org_id', w.org_id).eq('key', w.production_status)
+    .is('deleted_at', null).maybeSingle();
+  const colorId = (stage as { color_id: string | null } | null)?.color_id ?? '5';
+
   // Same single-shared-calendar rule as bookings.
   const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
   if (calendarOrg && w.org_id !== calendarOrg) return null;
@@ -236,12 +243,12 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     const summary = `${w.title}${part}`;
     if (s.google_event_id) {
       await updateCalendarEvent(s.google_event_id, {
-        summary, description, location: null, startAt: s.start_at, endAt: s.end_at,
+        summary, description, location: null, startAt: s.start_at, endAt: s.end_at, colorId,
       });
       ids.push(s.google_event_id);
     } else {
       const eventId = await createCalendarEvent({
-        title: `${w.title}${part}`, description, location: null,
+        title: `${w.title}${part}`, description, location: null, colorId,
         startAt: s.start_at, endAt: s.end_at,
         // Work has no booking ref; the helper appends this in brackets, and a blank one
         // would leave a stray "[]" on every event title.

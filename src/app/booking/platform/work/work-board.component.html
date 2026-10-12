@@ -29,16 +29,21 @@
     <p class="muted">Loading…</p>
   } @else {
     <div class="board" cdkDropListGroup>
-      @for (col of columns; track col.key) {
+      @for (col of columns(); track col.key) {
         <div class="col" [class.col--backlog]="col.key === 'backlog'">
           <div class="col__head">
             <span class="col__label">{{ col.label }}</span>
-            <span class="col__count">{{ board()[col.key].length }}</span>
+            @if (col.colorId) {
+              <!-- The same colour Google Calendar uses for this stage's reserved time,
+                   so the board and the calendar read as one thing. -->
+              <span class="col__dot" [style.background]="stageHex(col.colorId)"></span>
+            }
+            <span class="col__count">{{ (board()[col.key] || []).length }}</span>
           </div>
 
-          <div class="col__body" cdkDropList [cdkDropListData]="board()[col.key]"
+          <div class="col__body" cdkDropList [cdkDropListData]="board()[col.key] || []"
                (cdkDropListDropped)="drop($event, col.key)">
-            @for (j of board()[col.key]; track j.id) {
+            @for (j of (board()[col.key] || []); track j.id) {
               <div class="job" cdkDrag>
                 <div class="job__drag-placeholder" *cdkDragPlaceholder></div>
                 <div class="job__top">
@@ -104,4 +109,5 @@
 
   <app-work-editor [(open)]="editorOpen" [job]="editing()" [staff]="staff()"
                    (saved)="onWorkSaved()" />
+  <app-stage-manager [(open)]="stagesOpen" [stages]="stages()" (changed)="onStagesChanged()" />
 </div>

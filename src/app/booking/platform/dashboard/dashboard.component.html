@@ -188,7 +188,11 @@
 
         @if (workEnabled() && inProduction() > 0) {
           <a class="attn-line" routerLink="/bookings/work">
-            <span>{{ stageCount().to_edit }} to edit · {{ stageCount().editing }} editing · {{ stageCount().to_deliver }} to deliver</span>
+            <span>
+              @for (s of stageCounts(); track s.label; let last = $last) {
+                {{ s.n }} {{ s.label.toLowerCase() }}{{ last ? '' : ' · ' }}
+              } @empty { nothing in production }
+            </span>
             <span class="attn-line__cta">Work board →</span>
           </a>
         }

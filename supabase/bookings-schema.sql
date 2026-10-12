@@ -618,10 +618,12 @@ SELECT
   -- delivered but whose grade has not started is not "delivered".
   (SELECT wi.production_status FROM public.work_item_bookings wb
      JOIN public.work_items wi ON wi.id = wb.work_item_id AND wi.deleted_at IS NULL
+    -- Ordered by the STAGE's own sort (§24), not a hardcoded list: stages are rows now
+    -- and a new one would otherwise sort last and be reported as the outstanding work.
+    LEFT JOIN public.work_stages ws
+           ON ws.org_id = wi.org_id AND ws.key = wi.production_status AND ws.deleted_at IS NULL
     WHERE wb.booking_id = b.id
-    ORDER BY CASE wi.production_status
-               WHEN 'to_edit' THEN 1 WHEN 'editing' THEN 2
-               WHEN 'to_deliver' THEN 3 WHEN 'delivered' THEN 4 ELSE 5 END
+    ORDER BY COALESCE(ws.sort, 999)
     LIMIT 1) AS work_status
 FROM public.bookings b
 LEFT JOIN public.staff    st ON st.id = b.staff_id
@@ -2950,3 +2952,99 @@ SELECT w.id, w.booking_id, w.org_id
   FROM public.work_items w
  WHERE w.booking_id IS NOT NULL AND w.deleted_at IS NULL
 ON CONFLICT DO NOTHING;
+
+
+-- ═══ 24. Work stages — the board's columns, per organization ════════════════
+-- The four stages were a CHECK constraint, so renaming one or adding "Client review"
+-- meant a schema migration. They are rows now.
+--
+-- work_items.production_status keeps holding the stage KEY (text), so there is no data
+-- migration and every existing row stays valid — the CHECK is simply dropped and the
+-- seeded keys match what is already stored.
+CREATE TABLE IF NOT EXISTS public.work_stages (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id     UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  -- Stable slug stored on work_items. The LABEL can be renamed freely; the key must not
+  -- change, or every card sitting in that column would be orphaned.
+  key        TEXT NOT NULL,
+  label      TEXT NOT NULL,
+  sort       INT  NOT NULL DEFAULT 0,
+  -- Terminal stage: work finished. Drives "still owed" logic rather than a hardcoded
+  -- comparison with the string 'delivered'.
+  is_done    BOOLEAN NOT NULL DEFAULT false,
+  -- Google Calendar's own event colour (1–11). Stored as Google's id rather than a hex
+  -- so the calendar and the board cannot disagree — Google has no arbitrary colours.
+  color_id   TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS work_stages_org_key
+  ON public.work_stages(org_id, key) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS work_stages_org_idx ON public.work_stages(org_id, sort);
+
+ALTER TABLE public.work_stages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS work_stages_admin ON public.work_stages;
+CREATE POLICY work_stages_admin ON public.work_stages FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+DROP POLICY IF EXISTS hide_deleted ON public.work_stages;
+CREATE POLICY hide_deleted ON public.work_stages
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.work_stages TO authenticated;
+GRANT ALL ON public.work_stages TO service_role;
+
+-- Seed every org with exactly what the CHECK used to allow, so nothing moves.
+INSERT INTO public.work_stages (org_id, key, label, sort, is_done, color_id)
+SELECT o.id, v.key, v.label, v.sort, v.is_done, v.color_id
+FROM public.organizations o
+CROSS JOIN (VALUES
+  ('to_edit',    'To edit',    1, false, '5'),
+  ('editing',    'Editing',    2, false, '5'),
+  ('to_deliver', 'To deliver', 3, false, '5'),
+  ('delivered',  'Delivered',  4, true,  '2')
+) AS v(key, label, sort, is_done, color_id)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.work_stages ws
+   WHERE ws.org_id = o.id AND ws.key = v.key AND ws.deleted_at IS NULL);
+
+-- The constraints that made stages fixed.
+ALTER TABLE public.work_items DROP CONSTRAINT IF EXISTS work_items_production_status_check;
+ALTER TABLE public.bookings   DROP CONSTRAINT IF EXISTS bookings_production_status_check;
+
+-- Deleting a stage must not strand the cards sitting in it. The caller names where they
+-- go, and the move + the delete happen together — doing it in the app would leave cards
+-- pointing at a stage that no longer exists if the second call failed.
+CREATE OR REPLACE FUNCTION public.delete_work_stage(p_stage uuid, p_move_to uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org uuid; v_key text; v_target text; v_moved int; v_left int;
+BEGIN
+  SELECT org_id, key INTO v_org, v_key FROM work_stages
+   WHERE id = p_stage AND deleted_at IS NULL;
+  IF v_org IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'not_found'); END IF;
+  IF NOT (public.is_org_admin(v_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+
+  -- The last remaining stage cannot go: the board would have nowhere to put a card.
+  SELECT count(*) INTO v_left FROM work_stages
+   WHERE org_id = v_org AND deleted_at IS NULL AND id <> p_stage;
+  IF v_left = 0 THEN RETURN jsonb_build_object('ok', false, 'error', 'last_stage'); END IF;
+
+  SELECT key INTO v_target FROM work_stages
+   WHERE id = p_move_to AND org_id = v_org AND deleted_at IS NULL AND id <> p_stage;
+  IF v_target IS NULL THEN RETURN jsonb_build_object('ok', false, 'error', 'bad_target'); END IF;
+
+  UPDATE work_items SET production_status = v_target
+   WHERE org_id = v_org AND production_status = v_key AND deleted_at IS NULL;
+  GET DIAGNOSTICS v_moved = ROW_COUNT;
+
+  -- A booking mirrors its card's stage for the calendar description; keep them in step.
+  UPDATE bookings SET production_status = v_target
+   WHERE org_id = v_org AND production_status = v_key AND deleted_at IS NULL;
+
+  UPDATE work_stages SET deleted_at = now() WHERE id = p_stage;
+  RETURN jsonb_build_object('ok', true, 'moved', v_moved, 'to', v_target);
+END $$;
+REVOKE ALL ON FUNCTION public.delete_work_stage(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_work_stage(uuid, uuid) TO authenticated;

@@ -18,7 +18,39 @@ export interface AdminService {
   task_template: string[];
 }
 
-export type ProductionStage = 'to_edit' | 'editing' | 'to_deliver' | 'delivered';
+/** A stage key. Open string since §24: stages are rows the owner can add and rename,
+ *  not a fixed union. The four original keys are seeded for every org. */
+export type ProductionStage = string;
+
+/** A board column. */
+export interface WorkStage {
+  id: string;
+  key: string;
+  label: string;
+  sort: number;
+  /** Terminal — work finished. Drives "still owed" rather than comparing to 'delivered'. */
+  is_done: boolean;
+  /** Google Calendar event colour id (1–11), so the calendar matches the board. */
+  color_id: string | null;
+}
+
+/** Google's fixed event palette. There are no arbitrary colours, so the picker offers
+ *  exactly what Google will actually render. */
+export const GCAL_COLORS: { id: string; name: string; hex: string }[] = [
+  { id: '1',  name: 'Lavender', hex: '#7986cb' },
+  { id: '2',  name: 'Sage',     hex: '#33b679' },
+  { id: '3',  name: 'Grape',    hex: '#8e24aa' },
+  { id: '4',  name: 'Flamingo', hex: '#e67c73' },
+  { id: '5',  name: 'Banana',   hex: '#f6bf26' },
+  { id: '6',  name: 'Tangerine',hex: '#f4511e' },
+  { id: '7',  name: 'Peacock',  hex: '#039be5' },
+  { id: '8',  name: 'Graphite', hex: '#616161' },
+  { id: '9',  name: 'Blueberry',hex: '#3f51b5' },
+  { id: '10', name: 'Basil',    hex: '#0b8043' },
+  { id: '11', name: 'Tomato',   hex: '#d50000' },
+];
+export const colorHex = (id: string | null): string =>
+  GCAL_COLORS.find(c => c.id === id)?.hex ?? '#94a3b8';
 
 export interface WorkJob {
   id: string;                  // work_item id (the board's unit)
@@ -353,9 +385,68 @@ export class BookingAdminService {
   /** Remove a card from the board (soft delete via RPC). Never touches the booking — only
    *  unflags it. The work_items → tasks cascade trigger hides its checklist automatically. */
   async deleteWorkItem(id: string, bookingId: string | null): Promise<void> {
+    // Collect the calendar events FIRST: once the item is soft-deleted, ensureWorkEvent
+    // refuses to look at it and the events would sit in the calendar forever, claiming
+    // time that is no longer reserved — the worst possible failure for this feature.
+    const { data: slots } = await bookingsDb
+      .from('booking_slots').select('google_event_id')
+      .eq('work_item_id', id).is('deleted_at', null);
+    const eventIds = ((slots ?? []) as { google_event_id: string | null }[])
+      .map(r => r.google_event_id).filter((x): x is string => !!x);
+
     await bookingsDb.rpc('soft_delete', { p_table: 'work_items', p_id: id });
+    // Free the reserved time immediately. A soft-deleted work item keeps its slots
+    // blocking otherwise, because the EXCLUDE only ignores a deleted SLOT.
+    await bookingsDb.from('booking_slots').delete().eq('work_item_id', id);
+    if (eventIds.length) this.syncWorkEvent(id, eventIds);
     if (bookingId) await bookingsDb.from('bookings').update({ needs_production: false }).eq('id', bookingId);
   }
+  // ── Board stages (the columns) ───────────────────────────────────────────
+  async listWorkStages(orgId: string): Promise<WorkStage[]> {
+    const { data, error } = await bookingsDb.from('work_stages')
+      .select('id, key, label, sort, is_done, color_id')
+      .eq('org_id', orgId).order('sort');
+    if (error) { console.error('[BookingAdmin] listWorkStages:', error); return []; }
+    return (data ?? []) as WorkStage[];
+  }
+
+  /** Create or rename a stage. The KEY is generated once and never changes — renaming a
+   *  label must not orphan every card sitting in that column. */
+  async saveWorkStage(orgId: string, st: Partial<WorkStage> & { label: string }): Promise<{ error?: string }> {
+    if (st.id) {
+      const { error } = await bookingsDb.from('work_stages')
+        .update({ label: st.label.trim(), is_done: st.is_done ?? false, color_id: st.color_id ?? null })
+        .eq('id', st.id);
+      return error ? { error: error.message } : {};
+    }
+    const base = st.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'stage';
+    const existing = await this.listWorkStages(orgId);
+    // A re-added stage with the same name must not collide with the soft-deleted one.
+    let key = base, n = 2;
+    while (existing.some(e => e.key === key)) key = `${base}_${n++}`;
+    const sort = existing.length ? Math.max(...existing.map(e => e.sort)) + 1 : 1;
+    const { error } = await bookingsDb.from('work_stages').insert({
+      org_id: orgId, key, label: st.label.trim(), sort,
+      is_done: st.is_done ?? false, color_id: st.color_id ?? null,
+    });
+    return error ? { error: error.message } : {};
+  }
+
+  async reorderWorkStages(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id, i) =>
+      bookingsDb.from('work_stages').update({ sort: i + 1 }).eq('id', id)));
+  }
+
+  /** Delete a stage, moving its cards to another. Server-side so the move and the delete
+   *  cannot half-happen and leave cards pointing at a stage that is gone. */
+  async deleteWorkStage(stageId: string, moveToId: string): Promise<{ ok: boolean; moved?: number; error?: string }> {
+    const { data, error } = await bookingsDb.rpc('delete_work_stage',
+      { p_stage: stageId, p_move_to: moveToId });
+    if (error) return { ok: false, error: error.message };
+    const r = (data ?? {}) as { ok?: boolean; moved?: number; error?: string };
+    return { ok: !!r.ok, moved: r.moved, error: r.error };
+  }
+
   async loadTasks(orgId: string): Promise<TaskRow[]> {
     const { data } = await bookingsDb.from('tasks').select('id, work_item_id, title, is_done, due_at')
       .eq('org_id', orgId).order('sort').order('created_at');

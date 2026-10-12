@@ -2,33 +2,25 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff, WorkStage, colorHex } from '@booking/core/services/booking-admin.service';
 import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
+import { StageManagerComponent } from '@booking/ui/stage-manager/stage-manager.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
 
-// The board has a Backlog (waiting cards) followed by the four production stages.
-// A card sits in Backlog until its shoot is over (auto) or it's pulled in; the stages
-// are where active work moves.
-type ColumnKey = 'backlog' | ProductionStage;
-const STAGES: { key: ProductionStage; label: string }[] = [
-  { key: 'to_edit', label: 'To edit' },
-  { key: 'editing', label: 'Editing' },
-  { key: 'to_deliver', label: 'To deliver' },
-  { key: 'delivered', label: 'Delivered' },
-];
-const COLUMNS: { key: ColumnKey; label: string }[] = [{ key: 'backlog', label: 'Backlog' }, ...STAGES];
-const COLUMN_KEYS = COLUMNS.map(c => c.key);
-
+// Backlog (waiting cards) followed by the org's own stages, which are ROWS now (§24) —
+// the owner adds, renames, reorders and removes them. A card sits in Backlog until its
+// shoot is over (auto) or it's pulled in; the stages are where active work moves.
+type ColumnKey = string;                      // 'backlog' | any stage key
+const BACKLOG: ColumnKey = 'backlog';
 type Board = Record<ColumnKey, WorkJob[]>;
-const emptyBoard = (): Board => ({ backlog: [], to_edit: [], editing: [], to_deliver: [], delivered: [] });
 
 @Component({
   selector: 'app-work-board',
   standalone: true,
-  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent],
+  imports: [FormsModule, DatePipe, DragDropModule, WorkEditorComponent, StageManagerComponent],
   templateUrl: './work-board.component.html',
   styleUrl: './work-board.component.scss',
 })
@@ -38,8 +30,16 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
 
-  readonly columns = COLUMNS;
-  readonly board = signal<Board>(emptyBoard());
+  /** The org's stages, loaded with the board. */
+  readonly stages = signal<WorkStage[]>([]);
+  /** Backlog first, then the owner's stages in their order. */
+  readonly columns = computed<{ key: ColumnKey; label: string; colorId: string | null }[]>(() => [
+    { key: BACKLOG, label: 'Backlog', colorId: null },
+    ...this.stages().map(st => ({ key: st.key, label: st.label, colorId: st.color_id })),
+  ]);
+  private readonly columnKeys = computed(() => this.columns().map(c => c.key));
+  readonly board = signal<Board>({ [BACKLOG]: [] });
+  stageHex(id: string | null): string { return colorHex(id); }
   readonly tasks = signal<TaskRow[]>([]);
   readonly staff = signal<AdminStaff[]>([]);
   readonly loading = signal(true);
@@ -63,6 +63,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   });
 
   // ── Work task editor (reserved time + linked jobs) ──────────────────────
+  readonly stagesOpen = signal(false);
   readonly editorOpen = signal(false);
   readonly editing = signal<WorkJob | null>(null);
 
@@ -72,6 +73,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
     this.editorOpen.set(true);
   }
   async onWorkSaved(): Promise<void> { this.editing.set(null); await this.reload(); }
+  async onStagesChanged(): Promise<void> { await this.reload(); }
 
   async ngOnInit(): Promise<void> {
     await this.auth.initialize();
@@ -86,11 +88,15 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
       const [jobs, tasks, jobOptions, staff] = await Promise.all([
         this.admin.loadJobs(org), this.admin.loadTasks(org), this.admin.loadJobOptions(org), this.admin.listStaff(org),
       ]);
+      this.stages.set(await this.admin.listWorkStages(org));
       this.tasks.set(tasks);
       this.jobOptions.set(jobOptions);
       this.staff.set(staff);
-      const grouped = emptyBoard();
-      for (const j of jobs) grouped[this.columnOf(j)].push(j);
+      // Built from the CURRENT columns: a card whose stage was deleted mid-session would
+      // otherwise land on an undefined array and throw.
+      const grouped: Board = {};
+      for (const c of this.columns()) grouped[c.key] = [];
+      for (const j of jobs) (grouped[this.columnOf(j)] ??= []).push(j);
       this.board.set(grouped);
     }
     this.loading.set(false);
@@ -98,7 +104,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
 
   /** Which board column a card belongs to right now. */
   private columnOf(j: WorkJob): ColumnKey { return j.isActive ? j.production_status : 'backlog'; }
-  private columnLabel(key: ColumnKey): string { return COLUMNS.find(c => c.key === key)?.label ?? key; }
+  private columnLabel(key: ColumnKey): string { return this.columns().find(c => c.key === key)?.label ?? key; }
 
   tasksFor(workItemId: string): TaskRow[] { return this.tasks().filter(t => t.work_item_id === workItemId); }
   remaining(workItemId: string): number { return this.tasksFor(workItemId).filter(t => !t.is_done).length; }
@@ -156,13 +162,17 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   }
 
   // Arrow buttons — touch-friendly alternative to dragging (Backlog ‹—› stages).
-  canPrev(j: WorkJob): boolean { return COLUMN_KEYS.indexOf(this.columnOf(j)) > 0; }
-  canNext(j: WorkJob): boolean { return COLUMN_KEYS.indexOf(this.columnOf(j)) < COLUMN_KEYS.length - 1; }
+  canPrev(j: WorkJob): boolean { return this.columnKeys().indexOf(this.columnOf(j)) > 0; }
+  canNext(j: WorkJob): boolean {
+    const k = this.columnKeys();
+    return this.columnKeys().indexOf(this.columnOf(j)) < k.length - 1;
+  }
   async move(j: WorkJob, delta: number): Promise<void> {
-    const i = COLUMN_KEYS.indexOf(this.columnOf(j)) + delta;
-    if (i < 0 || i >= COLUMN_KEYS.length) return;
-    await this.moveTo(j, COLUMN_KEYS[i]);
-    this.toast.success(COLUMN_KEYS[i] === 'backlog' ? 'Moved to Backlog' : `Moved to ${this.columnLabel(COLUMN_KEYS[i])}`);
+    const keys = this.columnKeys();
+    const i = keys.indexOf(this.columnOf(j)) + delta;
+    if (i < 0 || i >= keys.length) return;
+    await this.moveTo(j, keys[i]);
+    this.toast.success(keys[i] === BACKLOG ? 'Moved to Backlog' : `Moved to ${this.columnLabel(keys[i])}`);
   }
 
   // ── Assignee + due date (Trello-style) ─────────────────────────────
