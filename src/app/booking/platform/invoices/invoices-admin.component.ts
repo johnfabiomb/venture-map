@@ -11,6 +11,7 @@ import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
+import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
 import { paginate } from '@booking/core/utils/pagination.util';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
@@ -38,7 +39,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })

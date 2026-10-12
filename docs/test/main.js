@@ -157,7 +157,7 @@ var bookingRoutes = [
           },
           {
             path: "invoices",
-            loadComponent: () => import("./chunk-4MMTJABH.js").then((m) => m.InvoicesAdminComponent)
+            loadComponent: () => import("./chunk-EI2M7FUN.js").then((m) => m.InvoicesAdminComponent)
           },
           {
             // Standalone invoice — no booking, no time slot. Must precede 'invoices/edit/:invoiceId'
@@ -200,7 +200,7 @@ var bookingRoutes = [
             // Keep LAST: ':id' matches a single segment, so it must come after all
             // the literal routes above (list/new/clients/…) to avoid shadowing them.
             path: ":id",
-            loadComponent: () => import("./chunk-5HO67XKE.js").then((m) => m.BookingDetailComponent)
+            loadComponent: () => import("./chunk-AQQCFDFG.js").then((m) => m.BookingDetailComponent)
           }
         ]
       }, false ? { \u0275entryName: "src/app/booking/platform/platform-shell/platform-shell.component.ts" } : {})
@@ -223,7 +223,7 @@ var routes = [
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-UPV5MVDY.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-IHAFXO2D.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 

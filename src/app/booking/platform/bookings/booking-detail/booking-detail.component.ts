@@ -10,6 +10,9 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PanelComponent } from '@booking/ui/panel/panel.component';
+import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
+import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
+import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
 import { DeliveryDialogComponent } from '@booking/ui/delivery-dialog/delivery-dialog.component';
 import { Payment, PaymentMethod, BookingSlot } from '@booking/core/interfaces/booking.interface';
@@ -26,7 +29,8 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   standalone: true,
   imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, ExpenseDialogComponent,
             PanelComponent, PaymentDialogComponent, DeliveryDialogComponent,
-            CdkMenuTrigger, CdkMenu, CdkMenuItem],
+            CdkMenuTrigger, CdkMenu, CdkMenuItem,
+            InvoiceActionsComponent, InvoiceSendComponent],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -52,6 +56,22 @@ export class BookingDetailComponent implements OnInit {
 
   // Delivery (what the client receives once paid)
   readonly delivery = signal<Delivery | null>(null);
+  // Send-by-email, hosted once for the page: the row menu only asks for it, so N rows
+  // do not mean N idle dialogs.
+  readonly sendOpen = signal(false);
+  readonly sendId = signal('');
+  readonly sendKind = signal<InvoiceEmailKind>('invoice');
+
+  onInvoiceSend(inv: InvoiceListRow, kind: InvoiceEmailKind): void {
+    this.sendId.set(inv.id);
+    this.sendKind.set(kind);
+    this.sendOpen.set(true);
+  }
+  /** Sending can ISSUE a draft, which gives it a number — so the list must re-read. */
+  async onInvoiceSent(): Promise<void> {
+    this.invoices.set(await this.data.listInvoicesForBooking(this.id));
+  }
+
   readonly deliveryDialogOpen = signal(false);
   readonly payDialogOpen = signal(false);
 
@@ -207,11 +227,6 @@ export class BookingDetailComponent implements OnInit {
 
   /** Open an invoice's editor — by booking for the original (keeps existing links and
    *  the "from=booking" return behaviour), by invoice id for any later one. */
-  invoiceEditLink(inv: InvoiceListRow): unknown[] {
-    return this.invoices()[0]?.id === inv.id
-      ? ['/bookings/invoice-edit', this.id]
-      : ['/bookings/invoices/edit', inv.id];
-  }
 
   /**
    * Raise an additional invoice against this job. This is the correct move when the

@@ -153,16 +153,27 @@
       @if (invoices().length === 0) {
         <p class="empty-line">No invoice raised yet.</p>
       } @else {
-        <ul class="items">
+        <!-- Listed the way the Invoices page lists them, with the SAME actions. Finishing
+             a job used to mean leaving the booking, opening Invoices and hunting for the
+             right row before you could send anything. -->
+        <ul class="invs">
           @for (inv of invoices(); track inv.id) {
-            <li class="items__row">
-              <span class="items__desc">
-                <a [routerLink]="invoiceEditLink(inv)">{{ inv.invoice_number ?? 'Draft' }}</a>
-                <span class="muted"> · {{ inv.amount_paid | currency:'EUR':'symbol':'1.0-2' }} paid</span>
+            <li class="inv">
+              <div class="inv__main">
+                <span class="inv__num">{{ inv.invoice_number ?? 'Draft' }}</span>
                 @if (inv.status !== 'issued') { <span class="tag">{{ inv.status }}</span> }
-                @if (inv.payment_status === 'paid') { <span class="tag tag--live">paid</span> }
-              </span>
-              <span class="items__amt">{{ inv.amount_gross | currency:'EUR':'symbol':'1.2-2' }}</span>
+                @if (inv.is_overdue) { <span class="tag tag--due">{{ inv.days_overdue }}d overdue</span> }
+                @else if (inv.payment_status === 'paid') { <span class="tag tag--live">paid</span> }
+                <span class="inv__money">
+                  {{ inv.amount_gross | currency:'EUR':'symbol':'1.2-2' }}
+                  @if (inv.balance_due > 0) {
+                    <span class="inv__due">· {{ inv.balance_due | currency:'EUR':'symbol':'1.0-2' }} due</span>
+                  }
+                </span>
+              </div>
+              <app-invoice-actions [invoice]="inv"
+                                   (send)="onInvoiceSend(inv, $event)"
+                                   (addCost)="openCostDialog()" />
             </li>
           }
         </ul>
@@ -278,6 +289,8 @@
                         [expense]="editingExpense()" (saved)="onCostSaved()" />
     <app-payment-dialog [(open)]="payDialogOpen" [bookingId]="id" [balance]="balance()"
                         [bookingRef]="booking()?.booking_ref ?? ''" (saved)="onPaymentSaved()" />
+    <app-invoice-send [(open)]="sendOpen" [invoiceId]="sendId()" [kind]="sendKind()"
+                      (sent)="onInvoiceSent()" />
     <app-delivery-dialog [(open)]="deliveryDialogOpen" [bookingId]="id" [delivery]="delivery()"
                          [paidInFull]="paidInFull()" (saved)="onDeliverySaved()" />
     }

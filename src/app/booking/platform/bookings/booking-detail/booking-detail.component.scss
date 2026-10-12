@@ -215,3 +215,16 @@
   a { font-size: 13px; font-weight: 600; color: $accent; text-decoration: none; overflow-wrap: anywhere;
       &:hover { text-decoration: underline; } }
 }
+
+// ── Invoice rows (same shape as the Invoices page) ────────────────────────
+.invs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.inv {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border: 1px solid $border; border-radius: $radius-md; background: $card;
+  &__main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  &__num { font-family: 'SF Mono', 'Fira Mono', monospace; font-size: 12.5px; font-weight: 700; color: $text; }
+  &__money { margin-left: auto; font-size: 13px; font-weight: 700; color: $text; white-space: nowrap; }
+  &__due { font-size: 11.5px; font-weight: 600; color: $red; }
+  @media (max-width: 560px) { &__money { margin-left: 0; } }
+}
+.tag--due { background: #fee2e2; color: #b91c1c; }

@@ -6,6 +6,13 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Added
+- **A booking lists its invoices the way the Invoices page does, with the same actions.** Having finished a job, sending the invoice meant leaving the booking, opening Invoices, finding the right row in the list and only then using its menu. The booking's Invoices panel now shows number, status, overdue badge, total and balance, with **Send by email**, **Send reminder**, **Copy share link**, **View / print**, **Edit** and **Add a cost** on each row. One shared `ui/invoice-actions/` menu serves both pages, so the two can never drift apart.
+
+### Fixed
+- **Editing a booking's second invoice opened its first.** `/bookings/invoice-edit/:bookingId` resolves to a booking's OLDEST invoice, and the Invoices page used that route for any booking-linked row. Live on BK-2026-094, which has two. The row menu is now keyed on the INVOICE id, where there is exactly one thing it can open. The booking-keyed route still exists, so links already in the wild keep working, and the two places that genuinely mean "the booking's invoice" (the header action and *What's billed*) still use it deliberately.
+
+
 ### Fixed
 - **The work board card was visually broken.** Dropping the new select into it replaced a native control styled at 11.5px/5px with one at 14px/12px, so the assignee overlapped the due date and the row overflowed the card. The old CSS also styled a `select` element that no longer existed, so none of it applied. The select gained a **compact `size="sm"`** for dense places, the card's row now wraps, and the due date can shrink instead of being pinned to 116px.
 - "No tasks" and "✓ all done" appeared together — "all done" now only shows when there are tasks to be done.
