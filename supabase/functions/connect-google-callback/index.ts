@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as _cors } from '../_shared/cors.ts';
-import { exchangeCodeForTokens, decodeIdTokenPayload, GMAIL_SEND_SCOPE } from '../_shared/google-oauth.ts';
+import { exchangeCodeForTokens, decodeIdTokenPayload, GMAIL_SEND_SCOPE, CALENDAR_SCOPE } from '../_shared/google-oauth.ts';
 
 // ⚠️ DEPLOY WITH --no-verify-jwt:
 //   supabase functions deploy connect-google-callback --no-verify-jwt --project-ref odmwjhysvvbhxytyefhv
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       .eq('state', state)
       .is('used_at', null)
       .gt('expires_at', new Date().toISOString())
-      .select('org_id, user_id')
+      .select('org_id, user_id, staff_id')
       .maybeSingle();
     if (consumeErr || !consumed) return fail('state');
 
@@ -77,7 +77,11 @@ Deno.serve(async (req) => {
     // actual CSRF guard: anyone can send this endpoint a `?state=` of their choosing, but
     // it only resolves to an org if it matches a row this app itself created for that org,
     // for a user who was authorized at start time.
-    const { org_id: orgId, user_id: userId } = consumed as { org_id: string; user_id: string };
+    // staff_id says WHICH connection this was: a worker's own calendar (§28) or the
+    // organisation's account. It comes from the stored state for the same CSRF reason the
+    // org id does — never from the query string.
+    const { org_id: orgId, user_id: userId, staff_id: staffId } =
+      consumed as { org_id: string; user_id: string; staff_id: string | null };
 
     // Must match connect-google-start's redirect_uri byte-for-byte (Google requires it).
     const redirectUri = `${Deno.env.get('SUPABASE_URL')!}/functions/v1/connect-google-callback`;
@@ -85,25 +89,39 @@ Deno.serve(async (req) => {
 
     if (!tokens.refresh_token) return fail('no_refresh_token');
     const scopes = tokens.scope.split(' ').filter(Boolean);
-    if (!scopes.includes(GMAIL_SEND_SCOPE)) return fail('scope');
+    // A WORKER is connecting a diary, not a mailbox: requiring gmail.send here would
+    // reject a perfectly good calendar connection, and asking a second shooter for
+    // permission to send mail as them would be wrong anyway.
+    const required = staffId ? CALENDAR_SCOPE : GMAIL_SEND_SCOPE;
+    if (!scopes.includes(required)) return fail('scope');
 
     const identity = decodeIdTokenPayload(tokens.id_token);
     if (!identity.email || !identity.sub) return fail('identity');
 
-    const { error: storeErr } = await service.rpc('google_store_credentials', {
-      p_org: orgId,
-      p_email: identity.email,
-      p_sub: identity.sub,
-      p_scopes: scopes,
-      p_refresh_token: tokens.refresh_token,
-      p_user: userId,
-    });
+    const { error: storeErr } = staffId
+      ? await service.rpc('staff_google_store_credentials', {
+          p_staff: staffId,
+          p_email: identity.email,
+          p_sub: identity.sub,
+          p_scopes: scopes,
+          p_refresh_token: tokens.refresh_token,
+          p_user: userId,
+        })
+      : await service.rpc('google_store_credentials', {
+          p_org: orgId,
+          p_email: identity.email,
+          p_sub: identity.sub,
+          p_scopes: scopes,
+          p_refresh_token: tokens.refresh_token,
+          p_user: userId,
+        });
     if (storeErr) {
-      console.error('[connect-google-callback] google_store_credentials failed:', storeErr.message);
+      console.error('[connect-google-callback] store failed:', storeErr.message);
       return fail('store_failed');
     }
 
-    return to('google=connected');
+    // Land back on the tab the connection was started from, rather than the default one.
+    return to(staffId ? 'google=connected&tab=staff' : 'google=connected');
   } catch (err) {
     console.error('[connect-google-callback] failed:', (err as Error).message);
     return fail('unknown');

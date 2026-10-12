@@ -217,7 +217,7 @@
       @case ('team') {
         <div class="card">
           <h2 class="card__h">Team</h2>
-          <p class="hint">People who can manage this organization. They must have signed in to the booking app at least once before you can add them — send them the login page, let them sign in, then add their email here.</p>
+          <p class="hint">People who can manage this organization.</p>
           <p class="hint">
             An <strong>admin</strong> has full access: they can see and change every booking,
             invoice and client in this organization, and remove other admins. There is no
@@ -241,15 +241,49 @@
             }
           </div>
 
+          @if (invites().length) {
+            <h3 class="sub-h">Waiting to be claimed</h3>
+            <p class="hint">These people get access automatically the first time they sign in with that address. Nothing else to do.</p>
+            <div class="int">
+              @for (i of invites(); track i.id) {
+                <div class="int__row">
+                  <span class="int__name">{{ i.email }}</span>
+                  <span class="badge">{{ i.role }}</span>
+                  @if (i.staff_name) { <span class="badge">worker: {{ i.staff_name }}</span> }
+                  @if (i.expired) { <span class="badge badge--overdue">expired</span> }
+                  <button class="link-btn link-btn--danger" (click)="revokeInvite(i)">Cancel</button>
+                </div>
+              }
+            </div>
+          }
+
+          <h3 class="sub-h">Invite someone</h3>
           <div class="grid">
-            <label class="field"><span>Add member by email</span><input type="email" [(ngModel)]="newMemberEmail" placeholder="person@email.com" /></label>
+            <label class="field"><span>Email</span><input type="email" [(ngModel)]="newMemberEmail" placeholder="person@email.com" /></label>
             <label class="field"><span>Role</span>
               <app-select [value]="newMemberRole" (changed)="newMemberRole = $any($event)" [options]="roleOptions" [searchable]="false" />
             </label>
+            <!-- Optional, and the reason an invitation beats "add them later": filling this
+                 in means they arrive already assignable to jobs, instead of needing a
+                 second trip through Settings → Staff once they show up. -->
+            <label class="field">
+              <span>Also add as a worker <em>optional</em></span>
+              <input type="text" [(ngModel)]="newMemberStaffName" placeholder="Their name on the roster" />
+            </label>
+            <label class="field">
+              <span>Their colour on the shared calendar</span>
+              <app-select [value]="newMemberColor" (changed)="newMemberColor = $event" [options]="colorOptions" [searchable]="false" />
+            </label>
           </div>
           <div class="actions">
-            <button class="btn btn--primary" [disabled]="addingMember()" (click)="addMember()">{{ addingMember() ? 'Adding…' : 'Add member' }}</button>
+            <button class="btn btn--primary" [disabled]="addingMember() || !newMemberEmail.trim()" (click)="addMember()">
+              {{ addingMember() ? 'Sending…' : 'Send invitation' }}
+            </button>
           </div>
+          <p class="hint">
+            They don't need an account yet. If they already have one they are added straight
+            away; if not, the invitation waits and is applied the moment they first sign in.
+          </p>
           <p class="hint">To create or switch organizations, use the org name at the top of the sidebar.</p>
         </div>
       }
@@ -325,6 +359,41 @@
               } @else if (checking()) { <span class="int__detail">checking…</span> }
             </div>
           </div>
+
+          <h3 class="sub-h">Shared team calendar</h3>
+          <p class="hint">
+            Each worker's jobs always go to <strong>their own</strong> calendar — connect those
+            under <strong>Staff</strong>. This is an extra, read-only overview: a single
+            calendar showing everyone, each person in their own colour.
+          </p>
+          <p class="hint">
+            Overlaps on it are normal and mean nothing — two people can shoot at the same
+            time. It is never used to decide whether someone is free; that always comes from
+            that one worker's own calendar.
+          </p>
+          <label class="check">
+            <input type="checkbox" [ngModel]="calendarMirror()" (ngModelChange)="setCalendarMirror($event)" name="calMirror" />
+            Copy every booking to one shared calendar
+          </label>
+          @if (calendarMirror()) {
+            <div class="grid">
+              <label class="field">
+                <span>Calendar</span>
+                <input type="text" [ngModel]="calendarIdValue()" (ngModelChange)="calendarIdValue.set($event)"
+                       name="calId" placeholder="primary" />
+              </label>
+            </div>
+            <p class="hint">
+              <strong>primary</strong> is the main calendar of the Google account connected
+              under <strong>Email</strong>. To use a separate one, paste its Calendar ID from
+              Google Calendar → Settings → that calendar → Integrate calendar.
+            </p>
+            <div class="actions">
+              <button class="btn btn--primary" [disabled]="saving()" (click)="saveCalendarSettings()">
+                {{ saving() ? 'Saving…' : 'Save calendar settings' }}
+              </button>
+            </div>
+          }
 
           <p class="hint">
             To connect or fix these, follow the step-by-step guide in

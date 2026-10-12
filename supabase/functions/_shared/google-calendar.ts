@@ -1,14 +1,33 @@
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3';
 
-async function getAccessToken(): Promise<string> {
+/**
+ * WHICH calendar an operation acts on, and with whose authority.
+ *
+ * Every function here takes this OPTIONAL and falls back to the legacy single-account env
+ * credential when it is omitted — so adding per-worker calendars (§28) changed no existing
+ * call site and could not alter the behaviour of the one calendar already in production.
+ * Callers that care — the booking event writer, and anything reading availability — pass
+ * one explicitly. See `_shared/google-targets.ts` for how they are resolved.
+ */
+export interface CalendarTarget {
+  accessToken: string;
+  /** A Google calendar id, or the literal 'primary'. */
+  calendarId: string;
+  /** Only for error messages, so a failure says WHOSE calendar failed. */
+  label?: string;
+}
+
+/** Swap a refresh token for an access token. Exported so the per-worker and per-org
+ *  credentials use exactly the same exchange as the legacy one. */
+export async function exchangeRefreshToken(refreshToken: string): Promise<string> {
   const res = await fetch(OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')!,
       client_secret: Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')!,
-      refresh_token: Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')!,
+      refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
@@ -17,13 +36,32 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+async function getAccessToken(): Promise<string> {
+  return exchangeRefreshToken(Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')!);
+}
+
+/** The legacy single-account calendar, from the Edge Function env. */
+export async function envCalendarTarget(): Promise<CalendarTarget> {
+  return {
+    accessToken: await getAccessToken(),
+    calendarId: Deno.env.get('GOOGLE_CALENDAR_ID')!,
+    label: 'shared calendar',
+  };
+}
+
+/** Resolve an optional target to a concrete one. Omitted = the legacy env calendar. */
+async function resolve(t?: CalendarTarget): Promise<{ token: string; calId: string }> {
+  const target = t ?? await envCalendarTarget();
+  return { token: target.accessToken, calId: encodeURIComponent(target.calendarId) };
+}
+
 export async function checkSlotAvailability(
   startAt: string,
   endAt: string,
   excludeEventId?: string,
+  target?: CalendarTarget,
 ): Promise<boolean> {
-  const token = await getAccessToken();
-  const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
+  const { token, calId } = await resolve(target);
   const url = `${CALENDAR_BASE}/calendars/${calId}/events?timeMin=${encodeURIComponent(startAt)}&timeMax=${encodeURIComponent(endAt)}&singleEvents=true`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -46,9 +84,10 @@ export async function createCalendarEvent(params: {
   /** Google's own event colour, 1–11. Google has no arbitrary colours, so the stage
    *  stores this id directly and the calendar can never disagree with the board. */
   colorId?: string | null;
+  /** Which calendar to create it on. Omitted = the legacy shared calendar. */
+  target?: CalendarTarget;
 }): Promise<string> {
-  const token = await getAccessToken();
-  const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
+  const { token, calId } = await resolve(params.target);
 
   const body = {
     summary: params.bookingRef ? `${params.title} [${params.bookingRef}]` : params.title,
@@ -73,9 +112,9 @@ export async function createCalendarEvent(params: {
 export async function updateCalendarEvent(
   eventId: string,
   fields: { summary?: string; description?: string; location?: string | null; startAt?: string; endAt?: string; colorId?: string | null },
+  target?: CalendarTarget,
 ): Promise<void> {
-  const token = await getAccessToken();
-  const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
+  const { token, calId } = await resolve(target);
   // PATCH only the keys provided; nest start/end as Google expects.
   const body: Record<string, unknown> = {};
   if (fields.summary !== undefined) body.summary = fields.summary;
@@ -92,9 +131,8 @@ export async function updateCalendarEvent(
   if (!res.ok) throw new Error(`GCal update failed (${res.status}): ${await res.text()}`);
 }
 
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
-  const token = await getAccessToken();
-  const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
+export async function deleteCalendarEvent(eventId: string, target?: CalendarTarget): Promise<void> {
+  const { token, calId } = await resolve(target);
   const res = await fetch(`${CALENDAR_BASE}/calendars/${calId}/events/${eventId}`, {
     method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
   });
@@ -146,8 +184,10 @@ function occupiesTime(e: RawGoogleEvent): boolean {
  * knowingly) and public availability uses it to BLOCK (a customer may not). Both must
  * agree on what "busy" means, or the two views contradict each other.
  */
-export async function listBusyEvents(timeMin: string, timeMax: string): Promise<GoogleBusyEvent[]> {
-  const items = await listEvents(timeMin, timeMax) as RawGoogleEvent[];
+export async function listBusyEvents(
+  timeMin: string, timeMax: string, target?: CalendarTarget,
+): Promise<GoogleBusyEvent[]> {
+  const items = await listEvents(timeMin, timeMax, target) as RawGoogleEvent[];
   return items
     .filter(occupiesTime)
     .map(e => ({
@@ -160,9 +200,10 @@ export async function listBusyEvents(timeMin: string, timeMax: string): Promise<
     .filter(e => e.start && e.end);
 }
 
-export async function listEvents(timeMin: string, timeMax: string): Promise<unknown[]> {
-  const token = await getAccessToken();
-  const calId = encodeURIComponent(Deno.env.get('GOOGLE_CALENDAR_ID')!);
+export async function listEvents(
+  timeMin: string, timeMax: string, target?: CalendarTarget,
+): Promise<unknown[]> {
+  const { token, calId } = await resolve(target);
   const url = `${CALENDAR_BASE}/calendars/${calId}/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });

@@ -58,7 +58,39 @@ which is what the page used to print.
 
 ---
 
-## 2. The calendar: no leak, but no calendar either
+## 2. The calendar — RESOLVED 2026-10-13 (§28)
+
+**This section described the gap. It is now built.** Two levels:
+
+- **Each worker connects their own Google account** (Settings → Staff → *Connect Google*).
+  That calendar is their real diary: it is the **only** calendar read to decide whether
+  they are free, and it receives their own jobs.
+- **The organisation can also keep one shared calendar** (Settings → Integrations) showing
+  everyone, each person in their own colour. It is **write-only**.
+
+⚠ **The shared calendar is never read for availability**, and that is the correctness of
+the whole feature rather than a detail. It holds every worker's jobs, so two people
+shooting at the same hour appear on it as an overlap when they are not one. Reading it
+would report the whole company busy whenever any single person was, and get worse with
+every hire. Overlaps there are expected and mean nothing. Double-booking is prevented
+where it is genuinely true: `booking_slots_no_overlap` (partitioned by worker) plus that
+one worker's own calendar.
+
+Mirroring defaults to **off**. That default is load-bearing: the owner's org already has a
+connected Google account whose primary calendar IS the calendar the legacy credential
+writes to, so turning mirroring on for everyone would have written every existing booking
+there a second time.
+
+**Not verified end to end**, and this is the one thing in this document that is not. The
+Google leg needs a second real Google account and a browser consent screen, which cannot
+be done from a terminal. What WAS verified: the availability engine still blocks the right
+hours after the refactor (BK-2026-134 at 09:00 UTC correctly blocks 11:00 Malta;
+BK-2026-139 blocks 15:00–16:00), and every changed function type-checks and deploys. The
+legacy path is unchanged by construction — `CalendarTarget` is an **optional** parameter
+that falls back to exactly the previous env credential, so no existing call site changed
+behaviour. **How to test it is in §8.**
+
+## 2b. The original finding (for the record)
 
 **Another org's bookings cannot reach the owner's Google Calendar.** `ensureBookingEvent`
 and `ensureWorkEvent` both return early unless the booking's org matches the
@@ -153,19 +185,25 @@ No hardcoded owner email, calendar id or base URL was found in any Edge Function
 A **login** and a **bookable worker** are two different records. Most of the confusion
 here comes from that, so do both.
 
-1. **She signs in once.** Send her `https://johnfabiomb.com/bookings/login`. Google or a
-   magic link. She will land on a "no access" screen — that is expected, and it is what
-   creates her account. Nothing can add her before this: `add_org_member` returns
-   `no_user` for an email that has never signed in.
-2. **Give her access.** Settings → Team → her email → role **Admin** → Add member.
-   Admin is now the only role offered, on purpose (see below). She can reload and she is
-   in.
-3. **Make her a bookable worker.** Settings → Staff → **+ Add worker** → her name →
-   **Signs in as: her email**. This is what lets jobs be assigned to her, puts her in the
-   "Viewing" switcher, and connects the roster name to the person who logs in.
-4. **Give her services and hours.** Settings → Staff → *Services & hours* on her row.
+**Updated 2026-10-13: invitations (§27) removed the awkward first step.** She no longer
+has to sign in before you can set her up.
+
+1. **Invite her.** Settings → **Team** → her email → role **Admin** → fill in *Also add as
+   a worker* with her name and pick her calendar colour → **Send invitation**. If she
+   already has an account she is added on the spot and the toast says so; if not, the
+   invitation waits.
+2. **She signs in.** Send her `https://johnfabiomb.com/bookings/login` (Google or a magic
+   link). The invitation is claimed on that first page load — `claim_org_invites()` runs
+   inside `resolveRole` **before** membership is read — so she lands with access and her
+   worker row already created and linked to her login. No "no access" screen.
+3. **Give her services and hours.** Settings → Staff → *Services & hours* on her row.
    Without this she is bookable in name only and the availability picker has nothing to
    offer.
+4. **Connect her calendar.** Settings → Staff → her row → **Connect Google**, signed in as
+   her. See §8 for how to check it landed on the right calendar.
+
+The older manual path still works if you prefer it: create the worker under Staff and set
+**"Signs in as"** to her email once she has an account.
 
 **Fixed while here — the trap that would have caught you at step 2.** The Team tab offered
 a **"Staff — a worker"** role, which is exactly what you would pick for someone who shoots
@@ -220,14 +258,45 @@ Shown in: booking detail ("Added by"), the Invoices table ("Raised by"), and the
 
 ---
 
-## 8. What is still open
+## 8. How to test the calendars
 
-1. **Per-org Google Calendar** (§2) — the real blocker for a second *organization*. Needs
-   a second Google account to test.
-2. **No worker-level role** (§4). Anyone given access is a full admin of that org.
-3. **No audit of changes, only of creation.** `created_by` says who made a record, not who
-   last edited or deleted one. If "who changed this price" ever matters, that is an
-   `updated_by` column plus a history table, which is a different piece of work.
-4. **The compromised `sbp_` personal access token** in `fpv-pilot-page/credentials` is
+30 seconds each, in this order.
+
+**A — your own calendar still works (regression).** Create a booking for yourself as
+usual. The event should appear on your Google Calendar exactly as it always has. Nothing
+about your setup changed: you have no worker-level calendar connected, so you fall through
+to the same credential as before.
+
+**B — a second worker's own calendar.** Settings → **Staff** → her row → **Connect
+Google** → sign in **as her** (the consent screen is pre-filled with her address — if it
+offers yours, stop; connecting the wrong account is tedious to unpick). Her row should
+then read *"Calendar: her@email"*. Now create a booking assigned to **her**. The event
+must land on **her** calendar and **not** on yours. That is the whole feature in one check.
+
+**C — her diary blocks her, and not you.** Put a personal event on her Google calendar for
+some hour. Open a new booking, pick **her**, go to that day: that hour should warn as
+busy. Switch the worker to **you** on the same day: it must **not** be busy. If it blocks
+you too, something is reading the wrong calendar — tell me, because that is the bug this
+design exists to prevent.
+
+**D — the shared overview (optional).** Settings → **Integrations** → tick *Copy every
+booking to one shared calendar*. Give each worker a colour under Staff. New bookings then
+appear on both that worker's calendar and the shared one, colour-coded by person. Overlaps
+on it are normal — do not read anything into them.
+
+**If a connection breaks**, her Staff row shows the last error, and
+`staff_calendar_status` surfaces it — so a dead token is visible rather than silently
+producing no events.
+
+## 9. What is still open
+
+1. **No worker-level role** (§4). Anyone given access is a full admin of that org: they
+   see and can change every booking, invoice, client, payment and cost. The worker scope in
+   the sidebar is a view filter, not a permission. This is the next real piece of work, and
+   it needs a decision first — what should a worker see? Their own jobs and nothing else,
+   or their own jobs plus the client list? Prices? That answer shapes the RLS.
+2. **Calendar OAuth is unverified end to end** (§2) — needs a second Google account and a
+   browser. §8 is the 30-second test.
+3. **The compromised `sbp_` personal access token** in `fpv-pilot-page/credentials` is
    still not rotated. It grants full control of the project. Unrelated to multi-tenancy
    and more urgent than all of it.

@@ -67,6 +67,36 @@
               @if (loginFor(s); as e) { <span class="tag">signs in as {{ e }}</span> }
             </div>
           </div>
+          <!-- Their OWN Google calendar. This is the only calendar consulted for their
+               availability — the organisation's shared one is an overview of everybody, so
+               reading it would make two workers shooting at once look like a clash. -->
+          <div class="cal">
+            @if (calendarFor(s.id); as c) {
+              @if (c.connected) {
+                <span class="cal__state cal__state--on">
+                  <span class="cal__dot" [style.background]="hex(c.calendar_color_id)"></span>
+                  Calendar: {{ c.google_email }}
+                </span>
+                @if (!c.can_calendar) {
+                  <span class="cal__warn">reconnect needed — no calendar permission</span>
+                }
+                @if (c.last_error) { <span class="cal__warn">last error: {{ c.last_error }}</span> }
+                <button class="link-btn link-btn--danger" [disabled]="calendarBusy() === s.id"
+                        (click)="disconnectCalendar(s)">Disconnect</button>
+              } @else {
+                <span class="cal__state">No calendar connected — their jobs won't reach any diary</span>
+                <button class="link-btn" [disabled]="calendarBusy() === s.id" (click)="connectCalendar(s)">
+                  {{ calendarBusy() === s.id ? 'Opening Google…' : 'Connect Google' }}
+                </button>
+              }
+              <label class="cal__color">
+                <span>Colour</span>
+                <app-select size="sm" [value]="c.calendar_color_id ?? ''" (changed)="setColor(s, $event)"
+                            [options]="colorOptions" [searchable]="false" placeholder="No colour" />
+              </label>
+            }
+          </div>
+
           <div class="item__actions">
             <button class="link-btn" (click)="manageServices(s)">Services &amp; hours</button>
             <button class="link-btn" (click)="editStaff(s)">Edit</button>

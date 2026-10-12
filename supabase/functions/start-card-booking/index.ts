@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkSlotAvailability } from '../_shared/google-calendar.ts';
+import { availabilityCalendar } from '../_shared/google-targets.ts';
 import { platformStripe, resolveOrgStripe, chargeRouting, isSetupError } from '../_shared/stripe.ts';
 
 // Signed-in client starts a card booking for a given worker + service:
@@ -71,11 +72,14 @@ Deno.serve(async (req) => {
     await service.from('bookings').update({ status: 'expired' })
       .eq('staff_id', staffId).eq('status', 'hold').lt('hold_expires_at', new Date().toISOString());
 
-    // Final live Google check — only for the org that owns the shared calendar;
-    // other orgs rely on the DB no-overlap constraint below (multi-tenant safe).
-    const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
-    if (!calendarOrg || orgId === calendarOrg) {
-      const free = await checkSlotAvailability(startIso, endIso);
+    // Final live check against THIS WORKER's calendar (§28) — their own if connected,
+    // else the legacy shared one for the org that owns it. Never the organisation's
+    // overview calendar: it carries every worker's jobs, so a colleague's shoot at the
+    // same hour would wrongly reject this booking. Orgs with no calendar at all rely on
+    // the DB no-overlap constraint below, which is the real guarantee either way.
+    const calTarget = await availabilityCalendar(service, orgId, staffId);
+    if (calTarget) {
+      const free = await checkSlotAvailability(startIso, endIso, undefined, calTarget);
       if (!free) return json({ error: 'slot_taken' });
     }
 

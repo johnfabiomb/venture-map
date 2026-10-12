@@ -1,4 +1,5 @@
-import { createCalendarEvent, updateCalendarEvent } from './google-calendar.ts';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, CalendarTarget } from './google-calendar.ts';
+import { bookingCalendars, noteWorkerCalendarError } from './google-targets.ts';
 
 // Single source of truth for the Google Calendar event of a booking.
 // Composes a human overview (payment status + work progress) and creates the event
@@ -32,6 +33,8 @@ interface SlotRow {
   /** "Pre-shoot planning", "Filming day" … — surfaced in the event title. */
   label: string | null;
   google_event_id: string | null;
+  /** The copy on the organisation's shared overview calendar (§28), if any. */
+  org_event_id: string | null;
 }
 
 interface BookingRow {
@@ -113,17 +116,27 @@ function composeDescription(b: BookingRow): string {
  */
 export async function ensureBookingEvent(service: SupabaseClient, bookingId: string): Promise<string | null> {
   const { data } = await service.from('bookings')
-    .select('id, org_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, client:client_id(name), service:service_id(name), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id)')
+    .select('id, org_id, staff_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, client:client_id(name), service:service_id(name), staffRow:staff_id(calendar_color_id), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id)')
     .eq('id', bookingId)
     .single();
   if (!data) return null;
-  const b = data as BookingRow & { org_id: string };
+  const b = data as BookingRow & {
+    org_id: string; staff_id: string | null;
+    staffRow?: { calendar_color_id: string | null } | Array<{ calendar_color_id: string | null }> | null;
+  };
 
-  // Multi-tenant: there is ONE shared Google Calendar (the platform owner's). Only that
-  // org pushes events to it; other orgs run DB-only (availability is DB-driven and the
-  // no-overlap constraint still prevents double-booking). Per-org calendars are future.
-  const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
-  if (calendarOrg && b.org_id !== calendarOrg) return null;
+  // WHERE this booking's events go (§28): the assigned worker's own calendar when they
+  // have connected one, otherwise the legacy shared calendar — and that only for the org
+  // which owns it, so another tenant's jobs can never appear on the platform owner's
+  // diary. `mirror` is the organisation-wide overview, used only alongside a worker's own
+  // calendar (see bookingCalendars for why).
+  const cals = await bookingCalendars(service, b.org_id, b.staff_id);
+  if (!cals.primary) return null;   // no calendar configured for this org — DB only
+  // The worker's own colour on the shared calendar, so an overview of five people is
+  // readable at a glance. Not applied to their personal calendar: that is their diary and
+  // their colour scheme, not ours.
+  const sr = Array.isArray(b.staffRow) ? b.staffRow[0] : b.staffRow;
+  const mirrorColor = sr?.calendar_color_id ?? null;
 
   // Only confirmed bookings live on the calendar. (Cancellation handles deletion.)
   if (!BLOCKING_STATUSES.includes(b.status)) return b.google_event_id ?? null;
@@ -135,7 +148,7 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
   // Legacy bookings without slot rows fall back to the booking's own start/end envelope.
   const slots: SlotRow[] = (b.slots ?? []).slice().sort((x, y) => x.start_at.localeCompare(y.start_at));
   if (slots.length === 0) {
-    slots.push({ id: 'envelope', start_at: b.start_at, end_at: b.end_at, label: null, google_event_id: b.google_event_id });
+    slots.push({ id: 'envelope', start_at: b.start_at, end_at: b.end_at, label: null, google_event_id: b.google_event_id, org_event_id: null });
   }
 
   const eventIds: string[] = [];
@@ -151,21 +164,54 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
       : (slots.length > 1 ? ` (${i + 1}/${slots.length})` : '');
     const summary = `${b.title}${part} [${b.booking_ref}]`;
 
-    if (slot.google_event_id) {
-      await updateCalendarEvent(slot.google_event_id, {
-        summary, description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
-      });
-      eventIds.push(slot.google_event_id);
-    } else {
-      const eventId = await createCalendarEvent({
-        // No ref here — createCalendarEvent appends it from `bookingRef`, which is what
-        // keeps it last in the title on the create path too.
-        title: `${b.title}${part}`,
-        description, location: b.location, startAt: slot.start_at, endAt: slot.end_at, bookingRef: b.booking_ref,
-      });
-      eventIds.push(eventId);
-      if (slot.id !== 'envelope') {
-        await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', slot.id);
+    // The worker's own (or legacy) calendar — the one that matters, so a failure here is
+    // thrown to the caller.
+    try {
+      if (slot.google_event_id) {
+        await updateCalendarEvent(slot.google_event_id, {
+          summary, description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
+        }, cals.primary);
+        eventIds.push(slot.google_event_id);
+      } else {
+        const eventId = await createCalendarEvent({
+          // No ref here — createCalendarEvent appends it from `bookingRef`, which is what
+          // keeps it last in the title on the create path too.
+          title: `${b.title}${part}`,
+          description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
+          bookingRef: b.booking_ref, target: cals.primary,
+        });
+        eventIds.push(eventId);
+        if (slot.id !== 'envelope') {
+          await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', slot.id);
+        }
+      }
+    } catch (err) {
+      // Record WHOSE calendar failed before rethrowing, so Settings can show a dead
+      // connection instead of the owner wondering why events stopped appearing.
+      if (cals.primaryIsWorker) await noteWorkerCalendarError(service, b.staff_id, err);
+      throw err;
+    }
+
+    // The shared overview. Best-effort on purpose: it is a convenience copy, and failing
+    // the whole booking sync because a secondary calendar rejected a write would make the
+    // overview MORE important than the worker's own diary, which is backwards.
+    if (cals.mirror && slot.id !== 'envelope') {
+      try {
+        if (slot.org_event_id) {
+          await updateCalendarEvent(slot.org_event_id, {
+            summary, description, location: b.location,
+            startAt: slot.start_at, endAt: slot.end_at, colorId: mirrorColor,
+          }, cals.mirror);
+        } else {
+          const orgEventId = await createCalendarEvent({
+            title: `${b.title}${part}`, description, location: b.location,
+            startAt: slot.start_at, endAt: slot.end_at, bookingRef: b.booking_ref,
+            colorId: mirrorColor, target: cals.mirror,
+          });
+          await service.from('booking_slots').update({ org_event_id: orgEventId }).eq('id', slot.id);
+        }
+      } catch (err) {
+        console.warn('[calendar] org mirror write failed:', (err as Error).message);
       }
     }
   }
@@ -180,7 +226,10 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
 }
 
 // ── Work blocks ─────────────────────────────────────────────────────────────
-interface WorkSlotRow { id: string; start_at: string; end_at: string; label: string | null; google_event_id: string | null; }
+interface WorkSlotRow {
+  id: string; start_at: string; end_at: string; label: string | null;
+  google_event_id: string | null; org_event_id: string | null;
+}
 
 /**
  * Ensure a work item's reserved time is on the calendar — one event per block, exactly
@@ -193,13 +242,14 @@ interface WorkSlotRow { id: string; start_at: string; end_at: string; label: str
  */
 export async function ensureWorkEvent(service: SupabaseClient, workItemId: string): Promise<string | null> {
   const { data } = await service.from('work_items')
-    .select('id, org_id, title, description, work_type, production_status, due_at, deleted_at, slots:booking_slots(id, start_at, end_at, label, google_event_id), links:work_item_bookings(booking:booking_id(booking_ref, title))')
+    .select('id, org_id, assignee_id, title, description, work_type, production_status, due_at, deleted_at, assignee:assignee_id(calendar_color_id), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id), links:work_item_bookings(booking:booking_id(booking_ref, title))')
     .eq('id', workItemId)
     .maybeSingle();
   if (!data) return null;
   const w = data as unknown as {
     id: string; org_id: string; title: string; production_status: string;
-    description: string | null; work_type: string | null;
+    description: string | null; work_type: string | null; assignee_id: string | null;
+    assignee?: { calendar_color_id: string | null } | Array<{ calendar_color_id: string | null }> | null;
     due_at: string | null; deleted_at: string | null;
     slots: WorkSlotRow[] | null;
     links: Array<{ booking: { booking_ref: string; title: string } | { booking_ref: string; title: string }[] | null }> | null;
@@ -228,9 +278,16 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     typeLabel = (wt as { label: string } | null)?.label ?? w.work_type;
   }
 
-  // Same single-shared-calendar rule as bookings.
-  const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
-  if (calendarOrg && w.org_id !== calendarOrg) return null;
+  // Same two-level resolution as a booking (§28): the assignee's own calendar if they
+  // have connected one, else the legacy shared calendar for the org that owns it.
+  const cals = await bookingCalendars(service, w.org_id, w.assignee_id);
+  if (!cals.primary) return null;
+  // On the worker's OWN calendar the colour says what KIND of work this is (the stage), so
+  // editing is visibly different from a shoot. On the shared calendar it says WHO — five
+  // people's post-production is only readable if each person has a colour. Two different
+  // questions, so deliberately two different colours.
+  const asg = Array.isArray(w.assignee) ? w.assignee[0] : w.assignee;
+  const mirrorColor = asg?.calendar_color_id ?? colorId;
 
   const slots = (w.slots ?? []).slice().sort((a, b) => a.start_at.localeCompare(b.start_at));
   if (slots.length === 0) return null;   // no reserved time → nothing to show
@@ -260,21 +317,46 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     const label = s.label?.trim();
     const part = label ? ` — ${label}` : (slots.length > 1 ? ` (${i + 1}/${slots.length})` : '');
     const summary = `${w.title}${part}`;
-    if (s.google_event_id) {
-      await updateCalendarEvent(s.google_event_id, {
-        summary, description, location: null, startAt: s.start_at, endAt: s.end_at, colorId,
-      });
-      ids.push(s.google_event_id);
-    } else {
-      const eventId = await createCalendarEvent({
-        title: `${w.title}${part}`, description, location: null, colorId,
-        startAt: s.start_at, endAt: s.end_at,
-        // Work has no booking ref; the helper appends this in brackets, and a blank one
-        // would leave a stray "[]" on every event title.
-        bookingRef: '',
-      });
-      ids.push(eventId);
-      await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', s.id);
+    try {
+      if (s.google_event_id) {
+        await updateCalendarEvent(s.google_event_id, {
+          summary, description, location: null, startAt: s.start_at, endAt: s.end_at, colorId,
+        }, cals.primary);
+        ids.push(s.google_event_id);
+      } else {
+        const eventId = await createCalendarEvent({
+          title: `${w.title}${part}`, description, location: null, colorId,
+          startAt: s.start_at, endAt: s.end_at,
+          // Work has no booking ref; the helper appends this in brackets, and a blank one
+          // would leave a stray "[]" on every event title.
+          bookingRef: '', target: cals.primary,
+        });
+        ids.push(eventId);
+        await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', s.id);
+      }
+    } catch (err) {
+      if (cals.primaryIsWorker) await noteWorkerCalendarError(service, w.assignee_id, err);
+      throw err;
+    }
+
+    // Shared overview, best-effort — same reasoning as a booking's.
+    if (cals.mirror) {
+      try {
+        if (s.org_event_id) {
+          await updateCalendarEvent(s.org_event_id, {
+            summary, description, location: null,
+            startAt: s.start_at, endAt: s.end_at, colorId: mirrorColor,
+          }, cals.mirror);
+        } else {
+          const orgEventId = await createCalendarEvent({
+            title: `${w.title}${part}`, description, location: null, colorId: mirrorColor,
+            startAt: s.start_at, endAt: s.end_at, bookingRef: '', target: cals.mirror,
+          });
+          await service.from('booking_slots').update({ org_event_id: orgEventId }).eq('id', s.id);
+        }
+      } catch (err) {
+        console.warn('[calendar] org mirror write failed (work):', (err as Error).message);
+      }
     }
   }
   return ids[0] ?? null;

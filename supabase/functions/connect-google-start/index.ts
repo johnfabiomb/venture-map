@@ -27,14 +27,31 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'auth required' }, 401);
-    const { orgId } = await req.json() as { orgId: string };
-    if (!orgId) return json({ error: 'orgId required' }, 400);
+    // Two shapes: connect the ORGANISATION's account (Gmail + the shared overview
+    // calendar), or connect ONE WORKER's own calendar (§28). Same consent flow, same
+    // registered OAuth client; what differs is which row the callback writes to.
+    const { orgId: bodyOrg, staffId } = await req.json() as { orgId?: string; staffId?: string };
+    if (!bodyOrg && !staffId) return json({ error: 'orgId or staffId required' }, 400);
+
+    let orgId = bodyOrg ?? '';
+    let staffEmail: string | null = null;
 
     const url = Deno.env.get('SUPABASE_URL')!;
     const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: 'not signed in' }, 401);
+
+    // A worker's org is derived from the worker, never taken from the request — otherwise
+    // an admin of org A could pass staffId from org B alongside their own orgId and bind a
+    // Google account to someone else's worker.
+    if (staffId) {
+      const { data: staff } = await service.from('staff')
+        .select('org_id, email').eq('id', staffId).is('deleted_at', null).maybeSingle();
+      if (!staff) return json({ error: 'unknown worker' }, 404);
+      orgId = staff.org_id as string;
+      staffEmail = (staff.email as string | null) ?? null;
+    }
 
     // Authorize: caller must be owner/admin of THIS org.
     const { data: member } = await service.from('org_members')
@@ -57,7 +74,7 @@ Deno.serve(async (req) => {
     const state = crypto.randomUUID() + crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     const { error: stateErr } = await service.from('google_oauth_states')
-      .insert({ state, org_id: orgId, user_id: user.id, expires_at: expiresAt });
+      .insert({ state, org_id: orgId, user_id: user.id, staff_id: staffId ?? null, expires_at: expiresAt });
     if (stateErr) throw stateErr;
 
     // Derived, never hardcoded (roadmap rule F9): this function's own deployed URL. Must
@@ -68,9 +85,17 @@ Deno.serve(async (req) => {
     // Prefill the consent screen with the address this org already intends to send from,
     // if they've set one — skips Google's account picker when it's obvious which account
     // they mean to connect.
-    const { data: org } = await service.from('organizations')
-      .select('invoice_settings').eq('id', orgId).maybeSingle();
-    const loginHint = (org?.invoice_settings as { email_from?: string } | null)?.email_from;
+    // For a worker, hint THEIR address — they are connecting their own diary, and
+    // defaulting to the organisation's sending address would invite them to connect the
+    // wrong Google account, which is a mistake that is tedious to unpick.
+    let loginHint: string | undefined;
+    if (staffId) {
+      loginHint = staffEmail ?? undefined;
+    } else {
+      const { data: org } = await service.from('organizations')
+        .select('invoice_settings').eq('id', orgId).maybeSingle();
+      loginHint = (org?.invoice_settings as { email_from?: string } | null)?.email_from;
+    }
 
     const authorizeUrl = oauthAuthorizeUrl({ clientId, redirectUri, scopes: CONNECT_SCOPES, state, loginHint });
     return json({ url: authorizeUrl });

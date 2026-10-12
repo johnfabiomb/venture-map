@@ -236,12 +236,23 @@ export class BookingDataService implements OnDestroy {
    * "unknown", never as "free": silently showing a failed lookup as empty is exactly
    * how a double booking slips through unnoticed.
    */
-  async getCalendarBusy(fromIso: string, toIso: string): Promise<CalendarBusy[] | null> {
+  /**
+   * One WORKER's live Google busy entries. `staffId` is required: with per-worker
+   * calendars (§28) "the calendar" is no longer a single thing, and asking without saying
+   * whose would mean showing one person's diary against another person's availability.
+   *
+   * Returns `null` for "could not check" — never an empty array, which would render as
+   * "free" and is how a double booking happens.
+   */
+  async getCalendarBusy(staffId: string, fromIso: string, toIso: string): Promise<CalendarBusy[] | null> {
+    if (!staffId) return null;
     const { data, error } = await bookingsDb.functions
-      .invoke('calendar-busy', { body: { from: fromIso, to: toIso } });
+      .invoke('calendar-busy', { body: { staffId, from: fromIso, to: toIso } });
     if (error) { console.warn('[BookingData] getCalendarBusy:', error.message); return null; }
-    const payload = data as { events?: CalendarBusy[]; error?: string } | null;
+    const payload = data as { events?: CalendarBusy[]; error?: string; configured?: boolean } | null;
     if (!payload || payload.error) { console.warn('[BookingData] getCalendarBusy:', payload?.error); return null; }
+    // No calendar connected for this worker is a definite, correct answer — there is
+    // nothing to warn about — so it is an empty list, not a failure.
     return payload.events ?? [];
   }
 

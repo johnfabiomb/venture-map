@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BookingAdminService, ConnectStatus, OrgMember, InvoiceDetails, InvoiceSettings } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, ConnectStatus, OrgMember, OrgInvite, InvoiceDetails, InvoiceSettings, GCAL_COLORS } from '@booking/core/services/booking-admin.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -58,6 +58,19 @@ export class SettingsAdminComponent implements OnInit {
   // Team (members of the active org) + platform-admin org creation
   readonly members = signal<OrgMember[]>([]);
   readonly membersLoading = signal(false);
+  /** Invitations sent but not yet claimed (§27). */
+  readonly invites = signal<OrgInvite[]>([]);
+  // ── Shared organisation calendar (§28) ───────────────────────────────────
+  readonly calendarMirror = signal(false);
+  readonly calendarIdValue = signal('primary');
+  /** Optional: also create a bookable worker when the invitation is claimed, so the new
+   *  person is usable the moment they arrive instead of needing a second setup pass. */
+  newMemberStaffName = '';
+  newMemberColor = '';
+  readonly colorOptions: SelectOption[] = [
+    { value: '', label: 'No colour' },
+    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+  ];
   newMemberEmail = '';
   newMemberRole = 'admin';
   readonly addingMember = signal(false);
@@ -155,6 +168,8 @@ export class SettingsAdminComponent implements OnInit {
         this.minLeadMinutes = p.min_lead_minutes ?? 120;
         this.cashAllowed = p.cash_allowed ?? true;
         this.workBoard = s.features?.work_board ?? false;
+        this.calendarMirror.set(s.calendar_mirror ?? false);
+        this.calendarIdValue.set(s.calendar_id || 'primary');
 
         const inv = s.invoice_details ?? {};
         this.legalName = inv.legal_name ?? '';
@@ -332,32 +347,80 @@ export class SettingsAdminComponent implements OnInit {
     } finally { this.saving.set(false); }
   }
 
+  /** Turning the overview on/off saves immediately: a checkbox that silently needs a
+   *  separate Save is how people end up believing a setting is on when it is not. */
+  async setCalendarMirror(on: boolean): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org) return;
+    this.calendarMirror.set(on);
+    await this.admin.updateOrgSettings(org, { calendar_mirror: on });
+    this.toast.success(on ? 'Shared calendar on' : 'Shared calendar off');
+  }
+
+  async saveCalendarSettings(): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org || this.saving()) return;
+    this.saving.set(true);
+    try {
+      await this.admin.updateOrgSettings(org, {
+        calendar_mirror: this.calendarMirror(),
+        calendar_id: this.calendarIdValue().trim() || 'primary',
+      });
+      this.toast.success('Calendar settings saved');
+    } finally { this.saving.set(false); }
+  }
+
   async loadMembers(): Promise<void> {
     const org = this.auth.orgId();
     if (!org) return;
     this.membersLoading.set(true);
-    try { this.members.set(await this.admin.listMembers(org)); }
-    finally { this.membersLoading.set(false); }
+    try {
+      const [members, invites] = await Promise.all([
+        this.admin.listMembers(org), this.admin.listInvites(org),
+      ]);
+      this.members.set(members);
+      this.invites.set(invites);
+    } finally { this.membersLoading.set(false); }
   }
 
+  /**
+   * Invite rather than add. `invite_org_member` adds them immediately if they already have
+   * an account and otherwise leaves an invitation to be claimed on their first sign-in —
+   * so there is no longer a "tell them to register, wait, then come back" step, and no
+   * "no access" wall for them to hit in the middle of it.
+   */
   async addMember(): Promise<void> {
     const org = this.auth.orgId();
     const email = this.newMemberEmail.trim();
     if (!org || !email || this.addingMember()) return;
     this.addingMember.set(true);
     try {
-      const res = await this.admin.addMember(org, email, this.newMemberRole);
-      if (res === 'ok') {
-        this.toast.success('Member added');
-        this.newMemberEmail = '';
-        this.loadMembers();
-        this.auth.refresh();
-      } else if (res === 'no_user') {
-        this.toast.error('That person must sign in to the booking app once before you can add them.');
-      } else {
-        this.toast.error('Could not add member.');
+      const res = await this.admin.inviteMember(
+        org, email, this.newMemberRole, this.newMemberStaffName.trim(), this.newMemberColor || null);
+      if (!res.ok) {
+        this.toast.error(res.error === 'bad_email' ? 'That does not look like an email address.'
+                       : res.error === 'owner_only' ? 'Only the owner can invite another owner.'
+                       : 'Could not send that invitation.');
+        return;
       }
+      this.newMemberEmail = ''; this.newMemberStaffName = ''; this.newMemberColor = '';
+      this.loadMembers();
+      this.auth.refresh();
+      this.toast.success(res.added_now
+        ? 'Added — they already had an account, so they have access now.'
+        : 'Invitation saved. They get access the first time they sign in with that address.', 8000);
     } finally { this.addingMember.set(false); }
+  }
+
+  async revokeInvite(i: OrgInvite): Promise<void> {
+    if (!(await this.confirm.ask({
+      title: 'Cancel invitation',
+      message: `Cancel the invitation for ${i.email}? They will not get access if they sign in.`,
+      confirmLabel: 'Cancel invitation', danger: true,
+    }))) return;
+    await this.admin.revokeInvite(i.id);
+    this.loadMembers();
+    this.toast.info('Invitation cancelled');
   }
 
   async removeMember(m: OrgMember): Promise<void> {

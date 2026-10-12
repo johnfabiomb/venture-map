@@ -15,3 +15,24 @@
     input { width: 56px; padding: 7px 9px; border: 1.5px solid $border; border-radius: $radius-md; font-size: 13.5px; } }
   .btn { margin-left: auto; }
 }
+
+/* Per-worker calendar (§28) — their own diary, plus their colour on the shared overview. */
+.cal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.cal__state { color: var(--color-text-muted, #6b7280); display: inline-flex; align-items: center; gap: 6px; }
+.cal__state--on { color: var(--color-text-secondary, #374151); font-weight: 600; }
+.cal__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cal__warn { color: #b45309; font-weight: 600; }
+.cal__color { display: inline-flex; align-items: center; gap: 6px; }
+.cal__color > span { color: var(--color-text-muted, #6b7280); }
+.cal__color app-select { min-width: 132px; }
+@media (max-width: 560px) {
+  .cal { gap: 6px 10px; }
+  .cal__color { width: 100%; }
+}

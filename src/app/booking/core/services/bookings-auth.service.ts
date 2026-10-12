@@ -192,6 +192,15 @@ export class BookingsAuthService {
     this.currentUserId = userId;
 
     try {
+      // Claim any invitation waiting for this address BEFORE reading membership (§27).
+      // Order matters: an invited person's very first sign-in has no org_members row yet,
+      // so without this they would land on "no access" and the invitation would only take
+      // effect on some later visit — which is the dead end invitations exist to remove.
+      // Cheap and idempotent: one statement that matches nothing for an existing member,
+      // and resolveRole itself runs once per session.
+      const { error: claimErr } = await bookingsDb.rpc('claim_org_invites');
+      if (claimErr) console.warn('[BookingsAuth] claim_org_invites:', claimErr.message);
+
       // Admin = owner/admin of one OR MORE organizations.
       const { data, error } = await bookingsDb
         .from('org_members')

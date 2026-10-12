@@ -16,14 +16,24 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'auth required' }, 401);
-    const { orgId } = await req.json() as { orgId: string };
-    if (!orgId) return json({ error: 'orgId required' }, 400);
+    // Either the organisation's account or ONE worker's calendar (§28).
+    const { orgId: bodyOrg, staffId } = await req.json() as { orgId?: string; staffId?: string };
+    if (!bodyOrg && !staffId) return json({ error: 'orgId or staffId required' }, 400);
+    let orgId = bodyOrg ?? '';
 
     const url = Deno.env.get('SUPABASE_URL')!;
     const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: 'not signed in' }, 401);
+
+    // Derived from the worker, never trusted from the request — see connect-google-start.
+    if (staffId) {
+      const { data: staff } = await service.from('staff')
+        .select('org_id').eq('id', staffId).maybeSingle();
+      if (!staff) return json({ error: 'unknown worker' }, 404);
+      orgId = staff.org_id as string;
+    }
 
     const { data: member } = await service.from('org_members')
       .select('role').eq('org_id', orgId).eq('user_id', user.id).maybeSingle();
@@ -32,7 +42,9 @@ Deno.serve(async (req) => {
     // google_send_credentials is service_role ONLY (it decrypts the Vault secret) — the one
     // place allowed to see the raw refresh token, and only for as long as it takes to
     // revoke it below.
-    const { data: creds, error: credErr } = await service.rpc('google_send_credentials', { p_org: orgId });
+    const { data: creds, error: credErr } = staffId
+      ? await service.rpc('staff_calendar_credentials', { p_staff: staffId })
+      : await service.rpc('google_send_credentials', { p_org: orgId });
     if (credErr) throw credErr;
     const refreshToken = (creds as { refresh_token?: string } | null)?.refresh_token;
     if (!refreshToken) {
@@ -55,7 +67,9 @@ Deno.serve(async (req) => {
     // exposed to the API — it is not, by default — so both steps go through one
     // service-role RPC instead of being attempted best-effort from here. Revoking at
     // GOOGLE stays above: Postgres cannot make an outbound call.
-    const { error: delErr } = await service.rpc('google_delete_credentials', { p_org: orgId });
+    const { error: delErr } = staffId
+      ? await service.rpc('staff_google_delete_credentials', { p_staff: staffId })
+      : await service.rpc('google_delete_credentials', { p_org: orgId });
     if (delErr) throw delErr;
 
     return json({ ok: true });

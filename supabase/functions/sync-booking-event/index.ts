@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ensureBookingEvent } from '../_shared/booking-event.ts';
 import { deleteCalendarEvent } from '../_shared/google-calendar.ts';
+import { deleteEventFromAny } from '../_shared/google-targets.ts';
 
 // Admin-only. Refreshes a booking's Google Calendar event description so it mirrors
 // the current payment + production state. Called after the admin records a cash
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'not signed in' }, 401);
 
     const { data: booking } = await service.from('bookings')
-      .select('org_id').eq('id', bookingId).maybeSingle();
+      .select('org_id, staff_id').eq('id', bookingId).maybeSingle();
     if (!booking) return json({ error: 'not_found' });
 
     const { data: member } = await service.from('org_members')
@@ -37,9 +38,14 @@ Deno.serve(async (req) => {
 
     // Delete calendar events orphaned by an edit (time blocks that were moved or removed),
     // then re-sync so the remaining/new events match the booking's current slots + title.
+    // An orphan id could be on the worker's own calendar OR the organisation's overview
+    // (§28) and the caller does not know which, so both are tried. Deleting against only
+    // one would return 404 — which reads as success — and leave the real event in place.
     for (const eid of (deleteEventIds ?? [])) {
       if (!eid) continue;
-      try { await deleteCalendarEvent(eid); } catch (e) { console.error('orphan event delete failed:', (e as Error).message); }
+      try {
+        await deleteEventFromAny(service, booking.org_id, booking.staff_id ?? null, eid, deleteCalendarEvent);
+      } catch (e) { console.error('orphan event delete failed:', (e as Error).message); }
     }
     const eventId = await ensureBookingEvent(service, bookingId);
     return json({ ok: true, event_id: eventId });

@@ -332,7 +332,8 @@ export class AvailabilityPickerComponent {
     this.gcalState.set('loading');
     const from = this.slotStart(date, 0).toISOString();
     const to = new Date(this.slotStart(date, SLOTS - 1).getTime() + SLOT_MIN * 60_000).toISOString();
-    const events = await this.data.getCalendarBusy(from, to);
+    // Whose diary — the worker this picker is showing, not "the" calendar (§28).
+    const events = await this.data.getCalendarBusy(this.staffId(), from, to);
 
     // The owner may have moved to another day while this was in flight; a late response
     // must not paint one day's events onto another.

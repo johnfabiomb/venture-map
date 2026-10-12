@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow, MemberLogin } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow, MemberLogin, StaffCalendar, GCAL_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -35,6 +35,53 @@ export class StaffAdminComponent implements OnInit {
 
   /** Org members who can sign in — a worker is linked to one of these, never to an
    *  arbitrary address, so a login can only ever be someone with access already. */
+  // ── Calendars (§28) ──────────────────────────────────────────────────────
+  /** Each worker's own Google calendar connection. Their diary is the only calendar read
+   *  for their availability; the organisation's shared one is an overview, never read. */
+  readonly calendars = signal<StaffCalendar[]>([]);
+  readonly calendarBusy = signal('');
+  readonly colorOptions: SelectOption[] = [
+    { value: '', label: 'No colour' },
+    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+  ];
+  calendarFor(staffId: string): StaffCalendar | undefined {
+    return this.calendars().find(c => c.staff_id === staffId);
+  }
+  hex(id: string | null): string { return colorHex(id); }
+
+  async connectCalendar(s: AdminStaff): Promise<void> {
+    if (this.calendarBusy()) return;
+    this.calendarBusy.set(s.id);
+    try {
+      const res = await this.admin.connectStaffCalendar(s.id);
+      if (!res.url) { this.toast.error(res.error ?? 'Could not start the Google connection.'); return; }
+      // Same-tab redirect, like the Stripe and org-Google flows: Google refuses to render
+      // its consent screen inside an iframe, and a popup is blocked as often as not.
+      window.location.href = res.url;
+    } finally { this.calendarBusy.set(''); }
+  }
+
+  async disconnectCalendar(s: AdminStaff): Promise<void> {
+    const cal = this.calendarFor(s.id);
+    if (!(await this.confirm.ask({
+      title: `Disconnect ${s.name}'s calendar`,
+      message: `New jobs for ${s.name} will stop appearing on ${cal?.google_email ?? 'their calendar'}, and their real diary will no longer block bookings. Events already created are left alone.`,
+      confirmLabel: 'Disconnect', danger: true,
+    }))) return;
+    this.calendarBusy.set(s.id);
+    try {
+      const res = await this.admin.disconnectStaffCalendar(s.id);
+      if (!res.ok) { this.toast.error(res.error ?? 'Could not disconnect.'); return; }
+      await this.reload();
+      this.toast.info('Calendar disconnected');
+    } finally { this.calendarBusy.set(''); }
+  }
+
+  async setColor(s: AdminStaff, colorId: string): Promise<void> {
+    await this.admin.setStaffCalendarColor(s.id, colorId || null);
+    await this.reload();
+  }
+
   readonly memberLogins = signal<MemberLogin[]>([]);
   readonly loginOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'Not linked', hint: 'this worker has no login' },
@@ -59,12 +106,13 @@ export class StaffAdminComponent implements OnInit {
   private async reload(): Promise<void> {
     const org = this.auth.orgId();
     if (org) {
-      const [st, sv, asg, logins] = await Promise.all([
+      const [st, sv, asg, logins, cals] = await Promise.all([
         this.admin.listStaff(org), this.admin.listServices(org), this.admin.listStaffServices(),
-        this.admin.listMemberLogins(org),
+        this.admin.listMemberLogins(org), this.admin.listStaffCalendars(org),
       ]);
       this.staff.set(st); this.services.set(sv); this.assignments = asg;
       this.memberLogins.set(logins);
+      this.calendars.set(cals);
     }
     this.loading.set(false);
   }

@@ -164,6 +164,11 @@ export interface OrgSettings {
     work_archive_days?: number;
   };
   features?: { work_board?: boolean };
+  /** The shared organisation calendar (§28). Admin-writable — and they had to be added to
+   *  the §14 column grant for that to be true, or the save would do nothing and say it
+   *  worked. Each worker's OWN calendar is separate (`staff_google_accounts`). */
+  calendar_id?: string;
+  calendar_mirror?: boolean;
   /** Read-only here. Both are service_role-write-only in the DB; the UI reads them to
    *  tell an organization whether it can actually take a card payment. */
   stripe_charges_enabled?: boolean;
@@ -320,7 +325,7 @@ export class BookingAdminService {
   // ── Org settings ──────────────────────────────────────────────────
   async getOrgSettings(orgId: string): Promise<OrgSettings | null> {
     const { data } = await bookingsDb.from('organizations')
-      .select('timezone, currency, booking_params, features, invoice_details, invoice_settings, stripe_charges_enabled, platform_charges_allowed')
+      .select('timezone, currency, booking_params, features, invoice_details, invoice_settings, stripe_charges_enabled, platform_charges_allowed, calendar_id, calendar_mirror')
       .eq('id', orgId).maybeSingle();
     return (data as OrgSettings) ?? null;
   }
@@ -662,6 +667,64 @@ export class BookingAdminService {
     return (data ?? { ok: false }) as LinkStaffResult;
   }
 
+  // ── Calendars (§28) ───────────────────────────────────────────────
+  /** Every worker's calendar connection state. Never returns a token. */
+  async listStaffCalendars(orgId: string): Promise<StaffCalendar[]> {
+    const { data, error } = await bookingsDb.rpc('staff_calendar_status', { p_org: orgId });
+    if (error) { console.error('[BookingAdmin] listStaffCalendars:', error); return []; }
+    return (data ?? []) as StaffCalendar[];
+  }
+
+  /** The colour this worker's jobs get on the ORGANISATION's shared calendar. Not applied
+   *  to their own calendar — that is their diary and their colour scheme. */
+  async setStaffCalendarColor(staffId: string, colorId: string | null): Promise<void> {
+    const { error } = await bookingsDb.from('staff')
+      .update({ calendar_color_id: colorId }).eq('id', staffId);
+    if (error) console.error('[BookingAdmin] setStaffCalendarColor:', error);
+  }
+
+  /** Start Google consent for a WORKER's own calendar. Returns the URL to send them to. */
+  async connectStaffCalendar(staffId: string): Promise<{ url?: string; error?: string }> {
+    const { data, error } = await bookingsDb.functions.invoke('connect-google-start', { body: { staffId } });
+    if (error) return { error: error.message };
+    const p = data as { url?: string; error?: string } | null;
+    return p?.url ? { url: p.url } : { error: p?.error ?? 'could not start' };
+  }
+
+  async disconnectStaffCalendar(staffId: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await bookingsDb.functions.invoke('disconnect-google', { body: { staffId } });
+    if (error) return { ok: false, error: error.message };
+    const p = data as { ok?: boolean; error?: string } | null;
+    return p?.error ? { ok: false, error: p.error } : { ok: true };
+  }
+
+  // ── Invitations (§27) ─────────────────────────────────────────────
+  /**
+   * Invite someone by email. If they already have an account they are added immediately
+   * (`added_now`), otherwise the invitation waits and is claimed on their first sign-in —
+   * which is the point: nobody has to register, hit a "no access" wall, and come back.
+   */
+  async inviteMember(orgId: string, email: string, role: string,
+                     staffName?: string, staffColor?: string | null): Promise<InviteResult> {
+    const { data, error } = await bookingsDb.rpc('invite_org_member', {
+      p_org: orgId, p_email: email, p_role: role,
+      p_staff_name: staffName || null, p_staff_color: staffColor || null,
+    });
+    if (error) return { ok: false, error: error.message };
+    return (data ?? { ok: false }) as InviteResult;
+  }
+
+  async listInvites(orgId: string): Promise<OrgInvite[]> {
+    const { data, error } = await bookingsDb.rpc('list_org_invites', { p_org: orgId });
+    if (error) { console.error('[BookingAdmin] listInvites:', error); return []; }
+    return (data ?? []) as OrgInvite[];
+  }
+
+  async revokeInvite(id: string): Promise<void> {
+    const { error } = await bookingsDb.from('org_invites').delete().eq('id', id);
+    if (error) console.error('[BookingAdmin] revokeInvite:', error);
+  }
+
   async removeMember(orgId: string, userId: string): Promise<{ ok?: boolean; error?: string }> {
     const { error } = await bookingsDb.rpc('remove_org_member', { p_org: orgId, p_user: userId });
     if (error) return { error: error.message };
@@ -672,6 +735,25 @@ export class BookingAdminService {
 export interface OrgMember { user_id: string; email: string; role: string; }
 
 /** An org member's login, plus the worker row they are linked to (if any). */
+export interface OrgInvite {
+  id: string;
+  email: string;
+  role: string;
+  staff_name: string | null;
+  created_at: string;
+  expires_at: string;
+  expired: boolean;
+}
+
+export interface InviteResult {
+  ok: boolean;
+  /** True when they already had an account and were added straight away. */
+  added_now?: boolean;
+  invite_id?: string;
+  email?: string;
+  error?: string;
+}
+
 export interface MemberLogin {
   user_id: string;
   email: string;
@@ -684,6 +766,20 @@ export interface LinkStaffResult {
   linked?: boolean;
   error?: string;
   staff_name?: string;
+}
+
+/** One worker's calendar connection, as the Staff page is allowed to see it (no token). */
+export interface StaffCalendar {
+  staff_id: string;
+  staff_name: string;
+  calendar_color_id: string | null;
+  connected: boolean;
+  google_email: string | null;
+  can_calendar: boolean;
+  calendar_id: string | null;
+  connected_at: string | null;
+  last_used_at: string | null;
+  last_error: string | null;
 }
 
 export interface ConnectStatus {

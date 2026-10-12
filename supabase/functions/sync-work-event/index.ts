@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ensureWorkEvent } from '../_shared/booking-event.ts';
 import { deleteCalendarEvent } from '../_shared/google-calendar.ts';
+import { deleteEventFromAny } from '../_shared/google-targets.ts';
 
 // Admin-only. Pushes a work item's reserved time blocks to Google Calendar, so
 // post-production shows up beside the shoots rather than living only in the app.
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'not signed in' }, 401);
 
     const { data: item } = await service.from('work_items')
-      .select('org_id').eq('id', workItemId).maybeSingle();
+      .select('org_id, assignee_id').eq('id', workItemId).maybeSingle();
     if (!item) return json({ error: 'not_found' });
 
     const { data: member } = await service.from('org_members')
@@ -36,9 +37,12 @@ Deno.serve(async (req) => {
     if (!member || !['owner', 'admin'].includes(member.role)) return json({ error: 'forbidden' }, 403);
 
     // Blocks that were moved or removed leave their events behind otherwise.
+    // Both calendars, for the same reason as a booking's — see sync-booking-event.
     for (const eid of (deleteEventIds ?? [])) {
       if (!eid) continue;
-      try { await deleteCalendarEvent(eid); } catch (e) { console.error('orphan work event delete failed:', (e as Error).message); }
+      try {
+        await deleteEventFromAny(service, item.org_id, item.assignee_id ?? null, eid, deleteCalendarEvent);
+      } catch (e) { console.error('orphan work event delete failed:', (e as Error).message); }
     }
     const eventId = await ensureWorkEvent(service, workItemId);
     return json({ ok: true, event_id: eventId });

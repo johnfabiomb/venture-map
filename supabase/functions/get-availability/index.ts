@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { listBusyEvents } from '../_shared/google-calendar.ts';
+import { availabilityCalendar } from '../_shared/google-targets.ts';
 
 // Public, read-only availability for ONE worker offering ONE service.
 // Window = that staff↔service pairing's working_hours (staff_services) minus the
@@ -96,12 +97,15 @@ Deno.serve(async (req) => {
     // customer is offered times the owner is already committed to, and only finds out when
     // start-card-booking's live check rejects them after they have entered card details.
     //
-    // Only for the org that owns the shared calendar; other tenants have their own diaries
-    // and must not be filtered by this one.
-    const calendarOrg = Deno.env.get('CALENDAR_ORG_ID');
-    if (!calendarOrg || staff.org_id === calendarOrg) {
+    // THIS WORKER's calendar — their own if they have connected one (§28), else the
+    // legacy shared one for the org that owns it. Never the organisation's overview
+    // calendar: it carries every worker's jobs, so two people shooting at once look like
+    // an overlap, and reading it would close the whole company's availability whenever
+    // any one person was busy.
+    const calTarget = await availabilityCalendar(sb, staff.org_id, staffId);
+    if (calTarget) {
       try {
-        for (const e of await listBusyEvents(winStart, winEnd)) {
+        for (const e of await listBusyEvents(winStart, winEnd, calTarget)) {
           // All-day entries carry a plain date. They are a note for the owner, not a
           // closure — blocking the whole day on "Anniversary" would cost real bookings,
           // and the owner sees those as a warning in the admin picker instead.

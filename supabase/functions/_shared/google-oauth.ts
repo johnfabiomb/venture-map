@@ -19,12 +19,12 @@ const OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 const OPENID_SCOPE = 'openid';
 const EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';
-// Not used by this feature yet (send-invoice-email only ever needs GMAIL_SEND_SCOPE) —
-// requested up front anyway so that when per-org Google Calendars are built (see
-// booking-event.ts's "Per-org calendars are future" note / MULTI_TENANT_ROADMAP.md),
-// an org that already connected Gmail doesn't have to sit through a second consent
-// screen. include_granted_scopes below makes this additive rather than a re-ask.
-const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
+// Requested up front long before it was used, which turned out to be exactly right: §28
+// now builds on it, and an org that had already connected Gmail did not have to sit
+// through a second consent screen. It is the scope a WORKER's calendar connection
+// requires (the callback checks for this one, not gmail.send — a second shooter is
+// connecting a diary, not handing over their mailbox).
+export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
 
 /** Scopes requested when an org connects its Google account. */
 export const CONNECT_SCOPES: string[] = [OPENID_SCOPE, EMAIL_SCOPE, GMAIL_SEND_SCOPE, CALENDAR_SCOPE];

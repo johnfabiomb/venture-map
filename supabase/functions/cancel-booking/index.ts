@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { deleteCalendarEvent } from '../_shared/google-calendar.ts';
+import { bookingCalendars } from '../_shared/google-targets.ts';
 import { platformStripe, resolveOrgStripe } from '../_shared/stripe.ts';
 
 // Admin cancels a booking: optionally refunds its completed card payments via
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'not signed in' }, 401);
 
     const { data: booking } = await service.from('bookings')
-      .select('id, org_id, google_event_id, status, slots:booking_slots(id, google_event_id)').eq('id', bookingId).maybeSingle();
+      .select('id, org_id, staff_id, google_event_id, status, slots:booking_slots(id, google_event_id, org_event_id)').eq('id', bookingId).maybeSingle();
     if (!booking) return json({ error: 'not_found' });
 
     const { data: member } = await service.from('org_members')
@@ -72,15 +73,31 @@ Deno.serve(async (req) => {
     // forget an id once we know it's actually gone, so a transient failure doesn't orphan
     // the event on the calendar with no way back.
     let calendarCleared = true;
-    const slots = (booking.slots ?? []) as Array<{ id: string; google_event_id: string | null }>;
+    // Both calendars a block can live on (§28): the worker's own (or the legacy shared
+    // one) and the organisation's overview. Each id is deleted from the calendar it is
+    // actually on, rather than guessed — a delete aimed at the wrong calendar returns 404,
+    // which deleteCalendarEvent treats as success, and the real event would survive.
+    const cals = await bookingCalendars(service, booking.org_id, booking.staff_id ?? null);
+    const slots = (booking.slots ?? []) as Array<{ id: string; google_event_id: string | null; org_event_id: string | null }>;
     for (const slot of slots) {
-      if (!slot.google_event_id) continue;
-      try {
-        await deleteCalendarEvent(slot.google_event_id);
-        await service.from('booking_slots').update({ google_event_id: null }).eq('id', slot.id);
-      } catch (e) {
-        calendarCleared = false;
-        console.error('GCal slot delete failed:', (e as Error).message);
+      if (slot.google_event_id && cals.primary) {
+        try {
+          await deleteCalendarEvent(slot.google_event_id, cals.primary);
+          await service.from('booking_slots').update({ google_event_id: null }).eq('id', slot.id);
+        } catch (e) {
+          calendarCleared = false;
+          console.error('GCal slot delete failed:', (e as Error).message);
+        }
+      }
+      if (slot.org_event_id && cals.mirror) {
+        try {
+          await deleteCalendarEvent(slot.org_event_id, cals.mirror);
+          await service.from('booking_slots').update({ org_event_id: null }).eq('id', slot.id);
+        } catch (e) {
+          // The overview is a convenience copy; a stale entry there must not stop the
+          // cancellation from being reported as done.
+          console.error('GCal org-mirror delete failed:', (e as Error).message);
+        }
       }
     }
     // Legacy bookings store the event id on the booking row itself.

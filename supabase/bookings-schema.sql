@@ -943,7 +943,7 @@ GRANT SELECT ON public.work_board TO authenticated;
 -- cannot touch where the money lands.
 REVOKE UPDATE ON public.organizations FROM authenticated;
 GRANT  UPDATE (name, timezone, currency, booking_params, features, invoice_details,
-               invoice_settings)
+               invoice_settings, calendar_id, calendar_mirror)
   ON public.organizations TO authenticated;
 -- ⚠ ADDING A COLUMN HERE IS NOT OPTIONAL. The blanket UPDATE was revoked above, so a new
 -- organizations column is invisible to admin writes until it is named in this list — and
@@ -3406,6 +3406,21 @@ GRANT EXECUTE ON FUNCTION public.org_member_emails(uuid) TO authenticated;
 -- Not reachable through PostgREST, which has no TRUNCATE verb, so this is defence in
 -- depth rather than an open door — but a privilege nobody needs should not be held.
 REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+-- ⚠ The line above is not enough on its own, and finding that out is the useful part:
+-- `REVOKE … ON ALL TABLES` only touches tables that exist when it runs, and this database
+-- has a DEFAULT PRIVILEGE (`ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public`)
+-- granting `Dxtm` — TRUNCATE, REFERENCES, TRIGGER, MAINTAIN — on every NEW table. Two
+-- tables created minutes later in §27/§28 had it straight back. So the default itself has
+-- to change, or this is a chore that silently undoes itself on every migration.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE TRUNCATE ON TABLES FROM anon, authenticated;
+-- Note for whoever reads this next: the same default also grants MAINTAIN (PG17+), which
+-- allows CLUSTER/REINDEX and therefore exclusive locks. Left alone deliberately — it
+-- cannot destroy data and is not reachable through PostgREST, and narrowing privileges
+-- Supabase's own tooling may rely on is not worth doing blind. TRUNCATE is revoked because
+-- it DOES destroy data and bypasses RLS. A table created by `supabase_admin` (e.g. from
+-- the dashboard SQL editor) inherits a far wider default — full read/write to anon — so
+-- create tables through this file, not the dashboard.
 
 -- ── May this org charge on the PLATFORM's Stripe account? ───────────────────
 -- Replaces the PLATFORM_FALLBACK_ORG_ID Edge Function secret. Same rule, but the answer
@@ -3427,3 +3442,495 @@ ALTER TABLE public.organizations
 
 COMMENT ON COLUMN public.organizations.platform_charges_allowed IS
   'May charge on the platform Stripe account when it has no connected account of its own. service_role-write-only; see §26.';
+
+
+-- ═══ 27. Invitations — set someone up BEFORE they have an account ══════════
+-- `add_org_member` resolves an email against auth.users and returns 'no_user' when it
+-- finds nothing, so the only way to give someone access was: tell them to go and sign in,
+-- wait for them to hit a bare "no access" screen, then go back into Settings and add them.
+-- Three steps, two of them in the wrong order, and a confusing dead end in the middle.
+--
+-- An invitation is the record that they are EXPECTED. It is written first, sits waiting,
+-- and is claimed by the account that signs in with that address — so the new person's
+-- very first page load already has their access and, if the invite says so, their worker
+-- row too.
+-- Needed by apply_invite_staff below; the colour is what §28 paints a worker's jobs with
+-- on the shared organisation calendar.
+ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS calendar_color_id TEXT;
+
+CREATE TABLE IF NOT EXISTS public.org_invites (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  -- Stored lowercased and trimmed; matched the same way. Google and magic-link sign-ins
+  -- can differ in case from whatever the owner typed.
+  email       TEXT NOT NULL CHECK (email = lower(btrim(email)) AND position('@' in email) > 1),
+  role        TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('owner','admin','staff')),
+  -- Optional: also make them a bookable worker on acceptance. This is the "set up straight
+  -- away" part — without it the owner still has to go and create the worker row by hand
+  -- after they arrive, which is the manual step the invitation exists to remove.
+  staff_name  TEXT,
+  staff_color TEXT,                       -- Google event colour id 1–11 for their jobs
+  invited_by  UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- A forgotten invitation should not grant access years later.
+  expires_at  TIMESTAMPTZ NOT NULL DEFAULT now() + interval '30 days',
+  accepted_at TIMESTAMPTZ,
+  accepted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+-- One OPEN invitation per address per org. Accepted ones are kept as history, so the
+-- index is partial rather than a plain unique constraint.
+CREATE UNIQUE INDEX IF NOT EXISTS org_invites_open_email
+  ON public.org_invites(org_id, email) WHERE accepted_at IS NULL;
+CREATE INDEX IF NOT EXISTS org_invites_email_idx ON public.org_invites(email) WHERE accepted_at IS NULL;
+
+ALTER TABLE public.org_invites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS invites_admin ON public.org_invites;
+CREATE POLICY invites_admin ON public.org_invites FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+-- Nothing for the INVITEE: at claim time they are not a member yet, so no policy could
+-- match them anyway. Claiming goes through claim_org_invites(), which is SECURITY DEFINER
+-- and keys off the caller's own verified email — never off anything they can pass in.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.org_invites TO authenticated;
+GRANT ALL ON public.org_invites TO service_role;
+
+-- Invite someone. Mirrors add_org_member's authorisation exactly, including the rule that
+-- only an owner may hand out 'owner' — an invitation must not be a way around §26.
+CREATE OR REPLACE FUNCTION public.invite_org_member(
+  p_org uuid, p_email text, p_role text DEFAULT 'admin',
+  p_staff_name text DEFAULT NULL, p_staff_color text DEFAULT NULL)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_email text := lower(btrim(p_email)); v_uid uuid; v_id uuid;
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  IF p_role NOT IN ('owner','admin','staff') THEN RAISE EXCEPTION 'bad_role'; END IF;
+  IF p_role = 'owner' AND NOT (public.is_org_owner(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'owner_only' USING errcode = '42501';
+  END IF;
+  IF position('@' in v_email) < 2 THEN RETURN jsonb_build_object('ok', false, 'error', 'bad_email'); END IF;
+
+  -- Already has an account? Then there is nothing to wait for — add them now and say so,
+  -- rather than leaving an invitation that will never be claimed because they are already
+  -- signed in and will never hit the claim path again.
+  SELECT id INTO v_uid FROM auth.users WHERE lower(email) = v_email;
+  IF v_uid IS NOT NULL THEN
+    INSERT INTO public.org_members (org_id, user_id, role) VALUES (p_org, v_uid, p_role)
+      ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+    PERFORM public.apply_invite_staff(p_org, v_uid, p_staff_name, p_staff_color);
+    RETURN jsonb_build_object('ok', true, 'added_now', true, 'email', v_email);
+  END IF;
+
+  INSERT INTO public.org_invites (org_id, email, role, staff_name, staff_color, invited_by)
+  VALUES (p_org, v_email, p_role, NULLIF(btrim(p_staff_name),''), p_staff_color, auth.uid())
+  ON CONFLICT (org_id, email) WHERE accepted_at IS NULL
+  DO UPDATE SET role = EXCLUDED.role, staff_name = EXCLUDED.staff_name,
+                staff_color = EXCLUDED.staff_color, invited_by = EXCLUDED.invited_by,
+                created_at = now(), expires_at = now() + interval '30 days'
+  RETURNING id INTO v_id;
+  RETURN jsonb_build_object('ok', true, 'added_now', false, 'invite_id', v_id, 'email', v_email);
+END $$;
+REVOKE ALL ON FUNCTION public.invite_org_member(uuid, text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.invite_org_member(uuid, text, text, text, text) TO authenticated;
+
+-- Create / link the worker row an invitation asked for. Shared by both paths above so
+-- "invite someone who already has an account" and "invite someone who doesn't" cannot
+-- drift into doing different things.
+CREATE OR REPLACE FUNCTION public.apply_invite_staff(
+  p_org uuid, p_user uuid, p_staff_name text, p_staff_color text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_staff uuid;
+BEGIN
+  IF p_staff_name IS NULL OR btrim(p_staff_name) = '' THEN RETURN NULL; END IF;
+  -- Already linked to a worker in this org? Leave it alone: re-inviting someone must not
+  -- create a duplicate roster entry, and staff_org_user_key would reject it anyway.
+  SELECT id INTO v_staff FROM staff
+   WHERE org_id = p_org AND user_id = p_user AND deleted_at IS NULL LIMIT 1;
+  IF v_staff IS NOT NULL THEN RETURN v_staff; END IF;
+
+  INSERT INTO staff (org_id, user_id, name, email, is_bookable, calendar_color_id)
+  SELECT p_org, p_user, btrim(p_staff_name), u.email, true, p_staff_color
+    FROM auth.users u WHERE u.id = p_user
+  RETURNING id INTO v_staff;
+  RETURN v_staff;
+END $$;
+REVOKE ALL ON FUNCTION public.apply_invite_staff(uuid, uuid, text, text) FROM PUBLIC;
+-- Not granted to authenticated: it is a helper for the two functions above, both of which
+-- do their own authorisation. Exposing it would let any caller attach a worker row.
+
+-- Claim whatever is waiting for the signed-in user. Called by the app on sign-in.
+-- Keys off auth.uid() and that user's OWN email from auth.users — an invitation can never
+-- be claimed by passing in someone else's address.
+CREATE OR REPLACE FUNCTION public.claim_org_invites()
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_uid uuid := auth.uid(); v_email text; v_inv RECORD; v_count int := 0;
+BEGIN
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('claimed', 0); END IF;
+  SELECT lower(email) INTO v_email FROM auth.users WHERE id = v_uid;
+  IF v_email IS NULL THEN RETURN jsonb_build_object('claimed', 0); END IF;
+
+  FOR v_inv IN
+    SELECT * FROM org_invites
+     WHERE email = v_email AND accepted_at IS NULL AND expires_at > now()
+     ORDER BY created_at
+  LOOP
+    INSERT INTO org_members (org_id, user_id, role) VALUES (v_inv.org_id, v_uid, v_inv.role)
+      ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+    PERFORM public.apply_invite_staff(v_inv.org_id, v_uid, v_inv.staff_name, v_inv.staff_color);
+    UPDATE org_invites SET accepted_at = now(), accepted_by = v_uid WHERE id = v_inv.id;
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN jsonb_build_object('claimed', v_count);
+END $$;
+REVOKE ALL ON FUNCTION public.claim_org_invites() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_org_invites() TO authenticated;
+
+-- Open invitations, for the Team tab. Admin-gated like list_org_members.
+CREATE OR REPLACE FUNCTION public.list_org_invites(p_org uuid)
+RETURNS TABLE(id uuid, email text, role text, staff_name text, created_at timestamptz,
+              expires_at timestamptz, expired boolean)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  RETURN QUERY
+    SELECT i.id, i.email, i.role, i.staff_name, i.created_at, i.expires_at,
+           (i.expires_at <= now()) AS expired
+      FROM org_invites i
+     WHERE i.org_id = p_org AND i.accepted_at IS NULL
+     ORDER BY i.created_at DESC;
+END $$;
+REVOKE ALL ON FUNCTION public.list_org_invites(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.list_org_invites(uuid) TO authenticated;
+
+
+-- ═══ 28. Calendars — one per worker, plus a shared organisation overview ═══
+-- The calendar was ONE Google account, held in three env vars
+-- (GOOGLE_OAUTH_REFRESH_TOKEN, GOOGLE_CALENDAR_ID, and CALENDAR_ORG_ID to stop it
+-- leaking across tenants). That is a single person's diary, so:
+--   * a second worker's jobs landed on the OWNER's calendar, not their own;
+--   * a second organisation got no calendar at all, silently.
+--
+-- TWO LEVELS, and the distinction between them is the whole design:
+--
+-- 1. THE WORKER'S OWN CALENDAR — their real diary. It is the only calendar ever read for
+--    AVAILABILITY, and it receives their own jobs.
+--
+-- 2. THE ORGANISATION'S SHARED CALENDAR — an overview of everyone, each worker's jobs in
+--    their own colour. It is WRITE-ONLY and is **never** read for availability.
+--
+-- ⚠ That read rule is not a detail, it is the correctness of the whole feature. A shared
+-- calendar holds every worker's jobs, so two workers shooting at the same time appear on
+-- it as an overlap — they are not one. Reading it for availability would report the whole
+-- company busy whenever any one person was busy, and would get worse with every hire.
+-- Overlaps on the shared calendar are EXPECTED and mean nothing. Double-booking is
+-- prevented where it is actually true: `booking_slots_no_overlap`, which is partitioned
+-- by staff_id, plus that one worker's own Google calendar.
+
+-- Which calendar on the org's connected Google account receives the overview.
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS calendar_id TEXT NOT NULL DEFAULT 'primary';
+-- Mirroring is OFF by default, and that default is load-bearing. The platform owner's
+-- org already has a connected Google account (for Gmail) whose primary calendar is the
+-- very calendar the legacy env vars write to — switching mirroring on for everyone would
+-- have written every existing booking to that calendar a second time.
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS calendar_mirror BOOLEAN NOT NULL DEFAULT false;
+
+-- The event on the SHARED calendar, kept apart from booking_slots.google_event_id (which
+-- is the worker's own, or the legacy one). Two ids because one slot can legitimately
+-- appear on two calendars, and deleting a booking has to clear both.
+ALTER TABLE public.booking_slots ADD COLUMN IF NOT EXISTS org_event_id TEXT;
+
+-- ── 28a. The worker's own Google credential ────────────────────────────────
+-- Same rules as org_google_accounts (§20c), for the same reasons: RLS on with NO
+-- policies and grants to service_role ONLY, so not even an org admin can read a worker's
+-- token. The refresh token itself lives in Vault; this table holds only its id.
+-- No deleted_at: a credential is disconnected, not soft-deleted — a hidden row that still
+-- works at Google would be a trap.
+CREATE TABLE IF NOT EXISTS public.staff_google_accounts (
+  staff_id          UUID PRIMARY KEY REFERENCES public.staff(id) ON DELETE CASCADE,
+  org_id            UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  google_email      TEXT NOT NULL,
+  google_sub        TEXT,
+  scopes            TEXT[] NOT NULL DEFAULT '{}',
+  refresh_secret_id UUID NOT NULL,
+  calendar_id       TEXT NOT NULL DEFAULT 'primary',
+  access_token      TEXT,
+  access_expires_at TIMESTAMPTZ,
+  connected_by      UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  connected_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at      TIMESTAMPTZ,
+  last_error        TEXT,
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS staff_google_org_idx ON public.staff_google_accounts(org_id);
+ALTER TABLE public.staff_google_accounts ENABLE ROW LEVEL SECURITY;   -- deliberately no policies
+GRANT ALL ON public.staff_google_accounts TO service_role;
+-- nothing to authenticated, nothing to anon.
+DROP TRIGGER IF EXISTS staff_google_accounts_updated ON public.staff_google_accounts;
+CREATE TRIGGER staff_google_accounts_updated BEFORE UPDATE ON public.staff_google_accounts
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- The OAuth state now says WHICH connection is being made. Nullable: an org-level connect
+-- leaves it null. The callback reads this row, never the query string (§20d).
+ALTER TABLE public.google_oauth_states
+  ADD COLUMN IF NOT EXISTS staff_id UUID REFERENCES public.staff(id) ON DELETE CASCADE;
+
+-- ── 28b. Credential accessors (mirrors of §20e) ────────────────────────────
+CREATE OR REPLACE FUNCTION public.staff_google_store_credentials(
+  p_staff uuid, p_email text, p_sub text, p_scopes text[],
+  p_refresh_token text, p_user uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_secret uuid; v_old uuid; v_org uuid;
+BEGIN
+  SELECT org_id INTO v_org FROM staff WHERE id = p_staff;
+  IF v_org IS NULL THEN RAISE EXCEPTION 'staff_not_found'; END IF;
+
+  SELECT refresh_secret_id INTO v_old FROM staff_google_accounts WHERE staff_id = p_staff;
+  v_secret := vault.create_secret(
+    p_refresh_token,
+    'staff_google_refresh_' || p_staff::text || '_' || extract(epoch from now())::bigint::text,
+    'Google refresh token for staff ' || p_staff::text);
+
+  INSERT INTO staff_google_accounts (staff_id, org_id, google_email, google_sub, scopes,
+                                     refresh_secret_id, connected_by, last_error)
+  VALUES (p_staff, v_org, p_email, p_sub, COALESCE(p_scopes,'{}'), v_secret, p_user, NULL)
+  ON CONFLICT (staff_id) DO UPDATE SET
+    org_id = EXCLUDED.org_id, google_email = EXCLUDED.google_email,
+    google_sub = EXCLUDED.google_sub, scopes = EXCLUDED.scopes,
+    refresh_secret_id = EXCLUDED.refresh_secret_id, connected_by = EXCLUDED.connected_by,
+    connected_at = now(), access_token = NULL, access_expires_at = NULL, last_error = NULL;
+
+  -- Reconnecting replaces the token; the previous secret is removed so Vault does not
+  -- accumulate live impersonation credentials nobody is using.
+  IF v_old IS NOT NULL AND v_old <> v_secret THEN
+    DELETE FROM vault.secrets WHERE id = v_old;
+  END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.staff_google_store_credentials(uuid,text,text,text[],text,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.staff_google_store_credentials(uuid,text,text,text[],text,uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.staff_calendar_credentials(p_staff uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE g RECORD; v_token text;
+BEGIN
+  SELECT * INTO g FROM staff_google_accounts WHERE staff_id = p_staff;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  SELECT decrypted_secret INTO v_token FROM vault.decrypted_secrets WHERE id = g.refresh_secret_id;
+  RETURN jsonb_build_object(
+    'refresh_token', v_token, 'google_email', g.google_email,
+    'calendar_id', g.calendar_id, 'scopes', g.scopes);
+END $$;
+REVOKE ALL ON FUNCTION public.staff_calendar_credentials(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.staff_calendar_credentials(uuid) TO service_role;
+
+-- The org's calendar credential, as a sibling of google_send_credentials so the calendar
+-- path never has to know about Gmail's.
+CREATE OR REPLACE FUNCTION public.org_calendar_credentials(p_org uuid)
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE g RECORD; o RECORD; v_token text;
+BEGIN
+  SELECT calendar_id, calendar_mirror INTO o FROM organizations WHERE id = p_org;
+  IF NOT FOUND OR NOT o.calendar_mirror THEN RETURN NULL; END IF;
+  SELECT * INTO g FROM org_google_accounts WHERE org_id = p_org;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  SELECT decrypted_secret INTO v_token FROM vault.decrypted_secrets WHERE id = g.refresh_secret_id;
+  RETURN jsonb_build_object(
+    'refresh_token', v_token, 'google_email', g.google_email,
+    'calendar_id', COALESCE(o.calendar_id,'primary'), 'scopes', g.scopes);
+END $$;
+REVOKE ALL ON FUNCTION public.org_calendar_credentials(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.org_calendar_credentials(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.staff_google_delete_credentials(p_staff uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_old uuid;
+BEGIN
+  SELECT refresh_secret_id INTO v_old FROM staff_google_accounts WHERE staff_id = p_staff;
+  DELETE FROM staff_google_accounts WHERE staff_id = p_staff;
+  IF v_old IS NOT NULL THEN DELETE FROM vault.secrets WHERE id = v_old; END IF;
+END $$;
+REVOKE ALL ON FUNCTION public.staff_google_delete_credentials(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.staff_google_delete_credentials(uuid) TO service_role;
+
+-- What the admin UI is allowed to know about a worker's calendar. No token, ever.
+-- Returns one row per bookable worker so the Staff page can show the whole roster's
+-- connection state at once instead of asking per row.
+CREATE OR REPLACE FUNCTION public.staff_calendar_status(p_org uuid)
+RETURNS TABLE(staff_id uuid, staff_name text, calendar_color_id text,
+              connected boolean, google_email text, can_calendar boolean,
+              calendar_id text, connected_at timestamptz, last_used_at timestamptz,
+              last_error text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  RETURN QUERY
+    SELECT s.id, s.name, s.calendar_color_id,
+           (g.staff_id IS NOT NULL),
+           g.google_email,
+           COALESCE('https://www.googleapis.com/auth/calendar' = ANY(g.scopes), false),
+           g.calendar_id, g.connected_at, g.last_used_at, g.last_error
+      FROM staff s
+      LEFT JOIN staff_google_accounts g ON g.staff_id = s.id
+     WHERE s.org_id = p_org AND s.deleted_at IS NULL
+     ORDER BY s.name;
+END $$;
+REVOKE ALL ON FUNCTION public.staff_calendar_status(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.staff_calendar_status(uuid) TO authenticated;
+
+-- Record a failure against the credential so a dead connection is visible in Settings
+-- instead of silently producing no events. Called by the Edge Functions.
+CREATE OR REPLACE FUNCTION public.staff_calendar_note_error(p_staff uuid, p_error text)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE staff_google_accounts
+     SET last_error = p_error, last_used_at = now()
+   WHERE staff_id = p_staff;
+$$;
+REVOKE ALL ON FUNCTION public.staff_calendar_note_error(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.staff_calendar_note_error(uuid, text) TO service_role;
+
+
+-- ═══ 29. Change history — who changed WHAT, not just who created it ═══════
+-- §26 records who CREATED a record. It cannot answer "who changed this price from €200 to
+-- €150", which is the question that actually gets asked once more than one person can edit.
+--
+-- A generic history table rather than an `updated_by` column per table, because a column
+-- only ever remembers the LAST person — it overwrites the very history it is being asked
+-- about. "Who last touched this" is then just the newest row here, so the column would be
+-- a less useful duplicate of data this table already holds.
+--
+-- Only CHANGED fields are stored, as a {field: {from, to}} diff. Storing whole row
+-- snapshots would multiply the database's size by its edit count for no extra answer.
+CREATE TABLE IF NOT EXISTS public.record_history (
+  id          BIGSERIAL PRIMARY KEY,
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  table_name  TEXT NOT NULL,
+  record_id   UUID NOT NULL,
+  action      TEXT NOT NULL CHECK (action IN ('insert','update','delete')),
+  -- NULL = the system did it (an Edge Function on the service key has no auth.uid()),
+  -- which is a meaningful answer, not missing data: a Stripe webhook is not a person.
+  changed_by  UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  changed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  changes     JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS record_history_record_idx ON public.record_history(table_name, record_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS record_history_org_idx    ON public.record_history(org_id, changed_at DESC);
+
+ALTER TABLE public.record_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS history_read ON public.record_history;
+-- READ ONLY, even for an admin. An audit trail that the people being audited can edit is
+-- not an audit trail; the trigger below is SECURITY DEFINER and is the only writer.
+CREATE POLICY history_read ON public.record_history FOR SELECT
+  USING (public.is_org_admin(org_id) OR public.is_platform_admin());
+GRANT SELECT ON public.record_history TO authenticated;
+GRANT ALL ON public.record_history TO service_role;
+
+-- Columns whose changes are noise. `updated_at` moves on every write by definition, and
+-- recording a cached access token's rotation would write the audit log more often than
+-- anything a person did.
+CREATE OR REPLACE FUNCTION public.history_ignored_column(p_col text)
+RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+  SELECT p_col IN ('updated_at','created_at','access_token','access_expires_at','last_used_at');
+$$;
+
+CREATE OR REPLACE FUNCTION public.record_history_trg()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_org    uuid;
+  v_id     uuid;
+  v_action text;
+  v_old    jsonb;
+  v_new    jsonb;
+  v_diff   jsonb := '{}'::jsonb;
+  k        text;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    v_action := 'delete'; v_old := to_jsonb(OLD); v_new := '{}'::jsonb;
+    v_org := (v_old->>'org_id')::uuid; v_id := (v_old->>'id')::uuid;
+  ELSIF TG_OP = 'INSERT' THEN
+    v_action := 'insert'; v_old := '{}'::jsonb; v_new := to_jsonb(NEW);
+    v_org := (v_new->>'org_id')::uuid; v_id := (v_new->>'id')::uuid;
+  ELSE
+    v_action := 'update'; v_old := to_jsonb(OLD); v_new := to_jsonb(NEW);
+    v_org := (v_new->>'org_id')::uuid; v_id := (v_new->>'id')::uuid;
+    FOR k IN SELECT jsonb_object_keys(v_new) LOOP
+      IF NOT public.history_ignored_column(k)
+         AND COALESCE(v_old->>k,'∅') <> COALESCE(v_new->>k,'∅') THEN
+        v_diff := v_diff || jsonb_build_object(k, jsonb_build_object(
+          'from', v_old->k, 'to', v_new->k));
+      END IF;
+    END LOOP;
+    -- Nothing a person would recognise as a change (a no-op save, or only ignored
+    -- columns moved). Writing it would bury the real entries.
+    IF v_diff = '{}'::jsonb THEN RETURN NULL; END IF;
+  END IF;
+
+  -- A soft delete is reported as a DELETE, because that is what it is to the person
+  -- reading the history. Without this it appears as "changed deleted_at", which nobody
+  -- would scan a list for.
+  IF v_action = 'update' AND v_diff ? 'deleted_at' THEN
+    IF (v_new->>'deleted_at') IS NOT NULL THEN v_action := 'delete';
+    ELSE v_action := 'update'; END IF;
+  END IF;
+
+  IF v_org IS NULL OR v_id IS NULL THEN RETURN NULL; END IF;
+
+  INSERT INTO public.record_history (org_id, table_name, record_id, action, changed_by, changes)
+  VALUES (v_org, TG_TABLE_NAME, v_id, v_action, auth.uid(),
+          CASE WHEN v_action = 'insert' THEN '{}'::jsonb ELSE v_diff END);
+  RETURN NULL;   -- AFTER trigger; the return value is ignored
+END $$;
+REVOKE ALL ON FUNCTION public.record_history_trg() FROM PUBLIC;
+
+-- The tables worth auditing: money, commitments and the client record. Deliberately NOT
+-- booking_slots (a time edit already shows as a change on its booking and would otherwise
+-- write three rows for one drag) and NOT the credential tables (nothing there is a
+-- business fact, and their tokens must never reach a readable table).
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['bookings','invoices','payments','expenses','work_items','clients','services','staff']
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I', 'history_' || t, t);
+    EXECUTE format(
+      'CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON public.%I
+         FOR EACH ROW EXECUTE FUNCTION public.record_history_trg()',
+      'history_' || t, t);
+  END LOOP;
+END $$;
+
+-- One record's history, newest first, with the person resolved to a name.
+CREATE OR REPLACE FUNCTION public.record_history_for(p_table text, p_record uuid, p_limit int DEFAULT 50)
+RETURNS TABLE(id bigint, action text, changed_at timestamptz, changed_by uuid,
+              changed_by_name text, changes jsonb)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_org uuid;
+BEGIN
+  SELECT h.org_id INTO v_org FROM record_history h
+   WHERE h.table_name = p_table AND h.record_id = p_record LIMIT 1;
+  IF v_org IS NULL THEN RETURN; END IF;   -- nothing recorded; not an error
+  IF NOT (public.is_org_admin(v_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  RETURN QUERY
+    SELECT h.id, h.action, h.changed_at, h.changed_by,
+           public.creator_label(h.org_id, h.changed_by), h.changes
+      FROM record_history h
+     WHERE h.table_name = p_table AND h.record_id = p_record
+     ORDER BY h.changed_at DESC, h.id DESC
+     LIMIT GREATEST(COALESCE(p_limit, 50), 1);
+END $$;
+REVOKE ALL ON FUNCTION public.record_history_for(text, uuid, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_history_for(text, uuid, int) TO authenticated;
