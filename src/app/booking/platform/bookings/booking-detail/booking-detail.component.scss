@@ -228,3 +228,12 @@
   @media (max-width: 560px) { &__money { margin-left: 0; } }
 }
 .tag--due { background: #fee2e2; color: #b91c1c; }
+
+/* Secondary link beside a fact's main action (e.g. "Work board →" next to the task). */
+.fact__aside {
+  margin-left: 8px;
+  font-size: 11.5px;
+  color: var(--color-text-muted, #6b7280);
+  text-decoration: none;
+  &:hover { color: var(--color-primary, #F4A922); }
+}

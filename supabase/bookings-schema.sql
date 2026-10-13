@@ -894,6 +894,20 @@ BEGIN
   VALUES (p_org, p_booking, COALESCE(NULLIF(btrim(p_title),''), v_btitle, 'Untitled'),
           CASE WHEN p_booking IS NULL THEN now() ELSE NULL END)
   RETURNING * INTO v_item;
+
+  -- ⚠ The join row is NOT optional. `work_items.booking_id` records the ORIGINATING
+  -- booking, but every reader of "which jobs does this task cover" uses the many-to-many
+  -- `work_item_bookings` (§23): the work editor's job picker, the calendar event's "For:"
+  -- list, and booking_summary.work_count. §23 backfilled the join table once from
+  -- booking_id and this function was never updated to keep writing it — so a card created
+  -- from a booking carried booking_id, showed NO linked job in its own editor, and left
+  -- the job off its calendar event. Live on BK-2026-113.
+  IF p_booking IS NOT NULL THEN
+    INSERT INTO work_item_bookings (org_id, work_item_id, booking_id)
+    VALUES (p_org, v_item.id, p_booking)
+    ON CONFLICT DO NOTHING;
+  END IF;
+
   IF v_svc IS NOT NULL THEN
     SELECT task_template INTO tmpl FROM services WHERE id = v_svc;
     FOR t IN SELECT jsonb_array_elements_text(COALESCE(tmpl,'[]'::jsonb)) LOOP

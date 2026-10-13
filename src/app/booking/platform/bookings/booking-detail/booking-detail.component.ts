@@ -11,6 +11,7 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PanelComponent } from '@booking/ui/panel/panel.component';
 import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
+import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
@@ -30,7 +31,7 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, ExpenseDialogComponent,
             PanelComponent, PaymentDialogComponent, DeliveryDialogComponent,
             CdkMenuTrigger, CdkMenu, CdkMenuItem,
-            InvoiceActionsComponent, InvoiceSendComponent],
+            InvoiceActionsComponent, InvoiceSendComponent, WorkEditorComponent],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -53,6 +54,14 @@ export class BookingDetailComponent implements OnInit {
   readonly addingInvoice = signal(false);
   readonly workItem = signal<WorkJob | null>(null);   // this job's Work-board card, if any
   readonly addingCard = signal(false);
+  readonly workEditorOpen = signal(false);
+  /** The editor needs the roster for its "Who" field. Loaded only once a card exists —
+   *  there is nothing to assign otherwise. */
+  readonly workStaff = signal<{ id: string; name: string }[]>([]);
+
+  async onWorkTaskSaved(): Promise<void> {
+    this.workItem.set(await this.admin.workItemForBooking(this.id));
+  }
 
   // Delivery (what the client receives once paid)
   readonly delivery = signal<Delivery | null>(null);
@@ -131,6 +140,9 @@ export class BookingDetailComponent implements OnInit {
       this.lineItems.set(items);
       this.invoices.set(invoices);
       this.workItem.set(card);
+      // Needed by the work-task editor hosted on this page.
+      this.workStaff.set((await this.admin.listStaff(this.auth.orgId() ?? ''))
+        .map(st => ({ id: st.id, name: st.name })));
       this.applyDelivery(delivery);
     }
   }
@@ -220,6 +232,10 @@ export class BookingDetailComponent implements OnInit {
       await this.admin.addWorkItem(org, this.id, '');
       this.workItem.set(await this.admin.workItemForBooking(this.id));
       this.toast.success('Added to the Work board');
+      // Straight into the editor: the card exists but has no type, no brief and no
+      // reserved time, and sending someone to another page to supply them is how it ends
+      // up with none of them.
+      this.workEditorOpen.set(true);
     } catch {
       this.toast.error('Could not add this job to the Work board.');
     } finally { this.addingCard.set(false); }

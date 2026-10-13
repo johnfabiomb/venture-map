@@ -4,10 +4,14 @@ import {
 } from "./chunk-QFT7XUFZ.js";
 import "./chunk-3WWECWQ4.js";
 import {
+  WorkEditorComponent
+} from "./chunk-7LOMJKBB.js";
+import {
   CdkMenu,
   CdkMenuItem,
   CdkMenuTrigger
 } from "./chunk-YYZD4ABX.js";
+import "./chunk-Y4ZDVRTH.js";
 import {
   ExpenseDialogComponent
 } from "./chunk-TXOYU3JK.js";
@@ -33,6 +37,7 @@ import {
 import {
   BookingsAuthService
 } from "./chunk-RKKFBZE5.js";
+import "./chunk-276JK7PL.js";
 import {
   DefaultValueAccessor,
   FormsModule,
@@ -914,23 +919,47 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_73_Templ
     \u0275\u0275textInterpolate(b_r5.created_by_name);
   }
 }
+function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Conditional_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0);
+  }
+  if (rf & 2) {
+    const w_r7 = \u0275\u0275nextContext();
+    \u0275\u0275textInterpolate1(" \xB7 ", w_r7.workTypeLabel, " ");
+  }
+}
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "a", 33);
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 54);
+    \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r6);
+      const ctx_r1 = \u0275\u0275nextContext(3);
+      return \u0275\u0275resetView(ctx_r1.workEditorOpen.set(true));
+    });
     \u0275\u0275text(1);
+    \u0275\u0275template(2, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Conditional_2_Template, 1, 1);
+    \u0275\u0275text(3, " \xB7 edit task ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "a", 55);
+    \u0275\u0275text(5, "Work board \u2192");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
+    let tmp_6_0;
+    const w_r7 = ctx;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("On the Work board \xB7 ", ctx.production_status, "");
+    \u0275\u0275textInterpolate1(" ", (tmp_6_0 = w_r7.stageLabel) !== null && tmp_6_0 !== void 0 ? tmp_6_0 : w_r7.production_status, "");
+    \u0275\u0275advance();
+    \u0275\u0275conditional(w_r7.workTypeLabel ? 2 : -1);
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_79_Template(rf, ctx) {
   if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 54);
+    const _r8 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 56);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_79_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r6);
+      \u0275\u0275restoreView(_r8);
       const ctx_r1 = \u0275\u0275nextContext(3);
       return \u0275\u0275resetView(ctx_r1.addToWorkBoard());
     });
@@ -961,31 +990,31 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_80_Templ
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_For_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 57)(1, "span", 59);
+    \u0275\u0275elementStart(0, "li", 59)(1, "span", 61);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 60);
+    \u0275\u0275elementStart(3, "span", 62);
     \u0275\u0275text(4);
     \u0275\u0275pipe(5, "currency");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const it_r7 = ctx.$implicit;
+    const it_r9 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(it_r7.description);
+    \u0275\u0275textInterpolate(it_r9.description);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(5, 2, it_r7.amount, "EUR", "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(5, 2, it_r9.amount, "EUR", "symbol", "1.2-2"));
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "app-panel", 35)(1, "a", 55);
+    \u0275\u0275elementStart(0, "app-panel", 34)(1, "a", 57);
     \u0275\u0275text(2, "Edit invoice");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "ul", 56);
-    \u0275\u0275repeaterCreate(4, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_For_5_Template, 6, 7, "li", 57, \u0275\u0275repeaterTrackByIndex);
+    \u0275\u0275elementStart(3, "ul", 58);
+    \u0275\u0275repeaterCreate(4, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_For_5_Template, 6, 7, "li", 59, \u0275\u0275repeaterTrackByIndex);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 58)(7, "span");
+    \u0275\u0275elementStart(6, "div", 60)(7, "span");
     \u0275\u0275text(8, "Total");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(9, "span");
@@ -1006,74 +1035,74 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_Templ
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_85_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 38);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1, "No invoice raised yet.");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 65);
+    \u0275\u0275elementStart(0, "span", 67);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const inv_r9 = \u0275\u0275nextContext().$implicit;
+    const inv_r11 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(inv_r9.status);
+    \u0275\u0275textInterpolate(inv_r11.status);
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 66);
+    \u0275\u0275elementStart(0, "span", 68);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const inv_r9 = \u0275\u0275nextContext().$implicit;
+    const inv_r11 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", inv_r9.days_overdue, "d overdue");
+    \u0275\u0275textInterpolate1("", inv_r11.days_overdue, "d overdue");
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_6_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 67);
+    \u0275\u0275elementStart(0, "span", 69);
     \u0275\u0275text(1, "paid");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 69);
+    \u0275\u0275elementStart(0, "span", 71);
     \u0275\u0275text(1);
     \u0275\u0275pipe(2, "currency");
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const inv_r9 = \u0275\u0275nextContext().$implicit;
+    const inv_r11 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("\xB7 ", \u0275\u0275pipeBind4(2, 1, inv_r9.balance_due, "EUR", "symbol", "1.0-2"), " due");
+    \u0275\u0275textInterpolate1("\xB7 ", \u0275\u0275pipeBind4(2, 1, inv_r11.balance_due, "EUR", "symbol", "1.0-2"), " due");
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "li", 62)(1, "div", 63)(2, "span", 64);
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "li", 64)(1, "div", 65)(2, "span", 66);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(4, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_4_Template, 2, 1, "span", 65)(5, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_5_Template, 2, 1, "span", 66)(6, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_6_Template, 2, 0, "span", 67);
-    \u0275\u0275elementStart(7, "span", 68);
+    \u0275\u0275template(4, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_4_Template, 2, 1, "span", 67)(5, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_5_Template, 2, 1, "span", 68)(6, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_6_Template, 2, 0, "span", 69);
+    \u0275\u0275elementStart(7, "span", 70);
     \u0275\u0275text(8);
     \u0275\u0275pipe(9, "currency");
-    \u0275\u0275template(10, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_10_Template, 3, 6, "span", 69);
+    \u0275\u0275template(10, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Conditional_10_Template, 3, 6, "span", 71);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "app-invoice-actions", 70);
+    \u0275\u0275elementStart(11, "app-invoice-actions", 72);
     \u0275\u0275listener("send", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Template_app_invoice_actions_send_11_listener($event) {
-      const inv_r9 = \u0275\u0275restoreView(_r8).$implicit;
+      const inv_r11 = \u0275\u0275restoreView(_r10).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.onInvoiceSend(inv_r9, $event));
+      return \u0275\u0275resetView(ctx_r1.onInvoiceSend(inv_r11, $event));
     })("addCost", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Template_app_invoice_actions_addCost_11_listener() {
-      \u0275\u0275restoreView(_r8);
+      \u0275\u0275restoreView(_r10);
       const ctx_r1 = \u0275\u0275nextContext(4);
       return \u0275\u0275resetView(ctx_r1.openCostDialog());
     });
@@ -1081,34 +1110,34 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2
   }
   if (rf & 2) {
     let tmp_15_0;
-    const inv_r9 = ctx.$implicit;
+    const inv_r11 = ctx.$implicit;
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate((tmp_15_0 = inv_r9.invoice_number) !== null && tmp_15_0 !== void 0 ? tmp_15_0 : "Draft");
+    \u0275\u0275textInterpolate((tmp_15_0 = inv_r11.invoice_number) !== null && tmp_15_0 !== void 0 ? tmp_15_0 : "Draft");
     \u0275\u0275advance();
-    \u0275\u0275conditional(inv_r9.status !== "issued" ? 4 : -1);
+    \u0275\u0275conditional(inv_r11.status !== "issued" ? 4 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(inv_r9.is_overdue ? 5 : inv_r9.payment_status === "paid" ? 6 : -1);
+    \u0275\u0275conditional(inv_r11.is_overdue ? 5 : inv_r11.payment_status === "paid" ? 6 : -1);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind4(9, 6, inv_r9.amount_gross, "EUR", "symbol", "1.2-2"), " ");
+    \u0275\u0275textInterpolate1(" ", \u0275\u0275pipeBind4(9, 6, inv_r11.amount_gross, "EUR", "symbol", "1.2-2"), " ");
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(inv_r9.balance_due > 0 ? 10 : -1);
+    \u0275\u0275conditional(inv_r11.balance_due > 0 ? 10 : -1);
     \u0275\u0275advance();
-    \u0275\u0275property("invoice", inv_r9);
+    \u0275\u0275property("invoice", inv_r11);
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 38);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1, " An issued invoice is a document your client already holds \u2014 when the price changes, raise another rather than editing the original. ");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "ul", 61);
-    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Template, 12, 11, "li", 62, _forTrack1);
+    \u0275\u0275elementStart(0, "ul", 63);
+    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_For_2_Template, 12, 11, "li", 64, _forTrack1);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(3, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Conditional_3_Template, 2, 0, "p", 38);
+    \u0275\u0275template(3, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Conditional_3_Template, 2, 0, "p", 37);
   }
   if (rf & 2) {
     const ctx_r1 = \u0275\u0275nextContext(3);
@@ -1120,46 +1149,46 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Templ
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_91_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 38);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1, "No payments recorded yet.");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 76);
+    \u0275\u0275elementStart(0, "span", 78);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const p_r10 = \u0275\u0275nextContext().$implicit;
+    const p_r12 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("\xB7 ", p_r10.note, "");
+    \u0275\u0275textInterpolate1("\xB7 ", p_r12.note, "");
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 77);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1, "refunded");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 78);
+    \u0275\u0275elementStart(0, "span", 80);
     \u0275\u0275text(1, "pending");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_13_Template(rf, ctx) {
   if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 81);
+    const _r13 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 83);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_13_Template_button_click_0_listener() {
-      \u0275\u0275restoreView(_r11);
-      const p_r10 = \u0275\u0275nextContext().$implicit;
+      \u0275\u0275restoreView(_r13);
+      const p_r12 = \u0275\u0275nextContext().$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.deletePayment(p_r10));
+      return \u0275\u0275resetView(ctx_r1.deletePayment(p_r12));
     });
     \u0275\u0275text(1, "\u2715");
     \u0275\u0275elementEnd();
@@ -1167,47 +1196,47 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li", 72)(1, "div", 73);
+    \u0275\u0275elementStart(0, "li", 74)(1, "div", 75);
     \u0275\u0275text(2);
     \u0275\u0275pipe(3, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div", 74)(5, "span", 75);
+    \u0275\u0275elementStart(4, "div", 76)(5, "span", 77);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(7, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_7_Template, 2, 1, "span", 76)(8, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_8_Template, 2, 0, "span", 77)(9, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_9_Template, 2, 0, "span", 78);
+    \u0275\u0275template(7, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_7_Template, 2, 1, "span", 78)(8, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_8_Template, 2, 0, "span", 79)(9, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_9_Template, 2, 0, "span", 80);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "div", 79);
+    \u0275\u0275elementStart(10, "div", 81);
     \u0275\u0275text(11);
     \u0275\u0275pipe(12, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(13, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_13_Template, 2, 0, "button", 80);
+    \u0275\u0275template(13, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Conditional_13_Template, 2, 0, "button", 82);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_21_0;
-    const p_r10 = ctx.$implicit;
+    const p_r12 = ctx.$implicit;
     const ctx_r1 = \u0275\u0275nextContext(4);
-    \u0275\u0275classProp("pay--refunded", p_r10.status === "refunded");
+    \u0275\u0275classProp("pay--refunded", p_r12.status === "refunded");
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(3, 9, p_r10.amount, "EUR", "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(3, 9, p_r12.amount, "EUR", "symbol", "1.2-2"));
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(ctx_r1.methodLabel(p_r10.method));
+    \u0275\u0275textInterpolate(ctx_r1.methodLabel(p_r12.method));
     \u0275\u0275advance();
-    \u0275\u0275conditional(p_r10.note ? 7 : -1);
+    \u0275\u0275conditional(p_r12.note ? 7 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(p_r10.status === "refunded" ? 8 : -1);
+    \u0275\u0275conditional(p_r12.status === "refunded" ? 8 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(p_r10.status === "pending" ? 9 : -1);
+    \u0275\u0275conditional(p_r12.status === "pending" ? 9 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(12, 14, (tmp_21_0 = p_r10.paid_at) !== null && tmp_21_0 !== void 0 ? tmp_21_0 : p_r10.created_at, "d MMM y"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(12, 14, (tmp_21_0 = p_r12.paid_at) !== null && tmp_21_0 !== void 0 ? tmp_21_0 : p_r12.created_at, "d MMM y"));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(!p_r10.stripe_payment_intent_id ? 13 : -1);
+    \u0275\u0275conditional(!p_r12.stripe_payment_intent_id ? 13 : -1);
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "ul", 41);
-    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Template, 14, 17, "li", 71, _forTrack1);
+    \u0275\u0275elementStart(0, "ul", 40);
+    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_For_2_Template, 14, 17, "li", 73, _forTrack1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -1218,102 +1247,102 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_Templ
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_96_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 38);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1, "No costs recorded. Add what this job cost you to see its real profit.");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 76);
+    \u0275\u0275elementStart(0, "span", 78);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const e_r13 = \u0275\u0275nextContext().$implicit;
+    const e_r15 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("\xB7 ", e_r13.vendor, "");
+    \u0275\u0275textInterpolate1("\xB7 ", e_r15.vendor, "");
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 77);
+    \u0275\u0275elementStart(0, "span", 79);
     \u0275\u0275text(1, "rebilled");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "li", 72)(1, "div", 86);
+    const _r14 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "li", 74)(1, "div", 88);
     \u0275\u0275text(2);
     \u0275\u0275pipe(3, "currency");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div", 74)(5, "span", 75);
+    \u0275\u0275elementStart(4, "div", 76)(5, "span", 77);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "span", 76);
+    \u0275\u0275elementStart(7, "span", 78);
     \u0275\u0275text(8);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(9, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_9_Template, 2, 1, "span", 76)(10, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_10_Template, 2, 0, "span", 77);
+    \u0275\u0275template(9, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_9_Template, 2, 1, "span", 78)(10, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Conditional_10_Template, 2, 0, "span", 79);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(11, "div", 79);
+    \u0275\u0275elementStart(11, "div", 81);
     \u0275\u0275text(12);
     \u0275\u0275pipe(13, "date");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "button", 87);
+    \u0275\u0275elementStart(14, "button", 89);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Template_button_click_14_listener() {
-      const e_r13 = \u0275\u0275restoreView(_r12).$implicit;
+      const e_r15 = \u0275\u0275restoreView(_r14).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.openCostDialog(e_r13));
+      return \u0275\u0275resetView(ctx_r1.openCostDialog(e_r15));
     });
     \u0275\u0275text(15, "Edit");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "button", 88);
+    \u0275\u0275elementStart(16, "button", 90);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Template_button_click_16_listener() {
-      const e_r13 = \u0275\u0275restoreView(_r12).$implicit;
+      const e_r15 = \u0275\u0275restoreView(_r14).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.deleteExpense(e_r13));
+      return \u0275\u0275resetView(ctx_r1.deleteExpense(e_r15));
     });
     \u0275\u0275text(17, "\u2715");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const e_r13 = ctx.$implicit;
+    const e_r15 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("\u2212", \u0275\u0275pipeBind4(3, 6, e_r13.amount, "EUR", "symbol", "1.2-2"), "");
+    \u0275\u0275textInterpolate1("\u2212", \u0275\u0275pipeBind4(3, 6, e_r15.amount, "EUR", "symbol", "1.2-2"), "");
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate(e_r13.category);
+    \u0275\u0275textInterpolate(e_r15.category);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate1("\xB7 ", e_r13.description, "");
+    \u0275\u0275textInterpolate1("\xB7 ", e_r15.description, "");
     \u0275\u0275advance();
-    \u0275\u0275conditional(e_r13.vendor ? 9 : -1);
+    \u0275\u0275conditional(e_r15.vendor ? 9 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(e_r13.billable ? 10 : -1);
+    \u0275\u0275conditional(e_r15.billable ? 10 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(13, 11, e_r13.spent_on, "d MMM y"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind2(13, 11, e_r15.spent_on, "d MMM y"));
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "ul", 41);
-    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Template, 18, 14, "li", 72, _forTrack1);
+    \u0275\u0275elementStart(0, "ul", 40);
+    \u0275\u0275repeaterCreate(1, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_For_2_Template, 18, 14, "li", 74, _forTrack1);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div", 82)(4, "div", 83)(5, "span");
+    \u0275\u0275elementStart(3, "div", 84)(4, "div", 85)(5, "span");
     \u0275\u0275text(6, "Charged");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(7, "span");
     \u0275\u0275text(8);
     \u0275\u0275pipe(9, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "div", 84)(11, "span");
+    \u0275\u0275elementStart(10, "div", 86)(11, "span");
     \u0275\u0275text(12, "Costs");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(13, "span");
     \u0275\u0275text(14);
     \u0275\u0275pipe(15, "currency");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(16, "div", 85)(17, "span");
+    \u0275\u0275elementStart(16, "div", 87)(17, "span");
     \u0275\u0275text(18, "Profit");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(19, "span");
@@ -1337,14 +1366,14 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_Templ
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_101_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 38);
+    \u0275\u0275elementStart(0, "p", 37);
     \u0275\u0275text(1, "Nothing attached \u2014 the client sees no delivery section.");
     \u0275\u0275elementEnd();
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 89);
+    \u0275\u0275elementStart(0, "p", 91);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -1355,16 +1384,16 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Cond
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_For_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "li")(1, "a", 91);
+    \u0275\u0275elementStart(0, "li")(1, "a", 93);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const l_r14 = ctx.$implicit;
+    const l_r16 = ctx.$implicit;
     \u0275\u0275advance();
-    \u0275\u0275property("href", l_r14.url, \u0275\u0275sanitizeUrl);
+    \u0275\u0275property("href", l_r16.url, \u0275\u0275sanitizeUrl);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(l_r14.label || l_r14.url);
+    \u0275\u0275textInterpolate(l_r16.label || l_r16.url);
   }
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_5_Template(rf, ctx) {
@@ -1379,11 +1408,11 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Cond
 }
 function BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_0_Template, 2, 1, "p", 89);
-    \u0275\u0275elementStart(1, "ul", 90);
+    \u0275\u0275template(0, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_0_Template, 2, 1, "p", 91);
+    \u0275\u0275elementStart(1, "ul", 92);
     \u0275\u0275repeaterCreate(2, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_For_3_Template, 3, 2, "li", null, _forTrack2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "p", 38);
+    \u0275\u0275elementStart(4, "p", 37);
     \u0275\u0275template(5, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_5_Template, 1, 0)(6, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Conditional_6_Template, 1, 0);
     \u0275\u0275elementEnd();
   }
@@ -1498,12 +1527,12 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     \u0275\u0275text(76, "Production");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(77, "span", 32);
-    \u0275\u0275template(78, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Template, 2, 1, "a", 33)(79, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_79_Template, 2, 2, "button", 34);
+    \u0275\u0275template(78, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_78_Template, 6, 2)(79, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_79_Template, 2, 2, "button", 33);
     \u0275\u0275elementEnd()();
     \u0275\u0275template(80, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_80_Template, 5, 1, "div", 30);
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(81, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_Template, 12, 11, "app-panel", 35);
-    \u0275\u0275elementStart(82, "app-panel", 36)(83, "button", 37);
+    \u0275\u0275template(81, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_81_Template, 12, 11, "app-panel", 34);
+    \u0275\u0275elementStart(82, "app-panel", 35)(83, "button", 36);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Template_button_click_83_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1511,9 +1540,9 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     });
     \u0275\u0275text(84);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(85, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_85_Template, 2, 0, "p", 38)(86, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Template, 4, 1);
+    \u0275\u0275template(85, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_85_Template, 2, 0, "p", 37)(86, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_86_Template, 4, 1);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(87, "div", 26)(88, "app-panel", 39)(89, "button", 40);
+    \u0275\u0275elementStart(87, "div", 26)(88, "app-panel", 38)(89, "button", 39);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Template_button_click_89_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1521,9 +1550,9 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     });
     \u0275\u0275text(90, "+ Record");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(91, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_91_Template, 2, 0, "p", 38)(92, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_Template, 3, 0, "ul", 41);
+    \u0275\u0275template(91, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_91_Template, 2, 0, "p", 37)(92, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_92_Template, 3, 0, "ul", 40);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(93, "app-panel", 42)(94, "button", 40);
+    \u0275\u0275elementStart(93, "app-panel", 41)(94, "button", 39);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Template_button_click_94_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1531,9 +1560,9 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     });
     \u0275\u0275text(95, "+ Add");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(96, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_96_Template, 2, 0, "p", 38)(97, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_Template, 22, 20);
+    \u0275\u0275template(96, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_96_Template, 2, 0, "p", 37)(97, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_97_Template, 22, 20);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(98, "app-panel", 43)(99, "button", 40);
+    \u0275\u0275elementStart(98, "app-panel", 42)(99, "button", 39);
     \u0275\u0275listener("click", function BookingDetailComponent_Conditional_3_Conditional_0_Template_button_click_99_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1541,9 +1570,9 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     });
     \u0275\u0275text(100);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(101, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_101_Template, 2, 0, "p", 38)(102, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Template, 7, 3);
+    \u0275\u0275template(101, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_101_Template, 2, 0, "p", 37)(102, BookingDetailComponent_Conditional_3_Conditional_0_Conditional_102_Template, 7, 3);
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(103, "app-expense-dialog", 44);
+    \u0275\u0275elementStart(103, "app-expense-dialog", 43);
     \u0275\u0275twoWayListener("openChange", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_expense_dialog_openChange_103_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1556,7 +1585,7 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.onCostSaved());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(104, "app-payment-dialog", 45);
+    \u0275\u0275elementStart(104, "app-payment-dialog", 44);
     \u0275\u0275twoWayListener("openChange", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_payment_dialog_openChange_104_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1569,7 +1598,7 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.onPaymentSaved());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(105, "app-invoice-send", 46);
+    \u0275\u0275elementStart(105, "app-invoice-send", 45);
     \u0275\u0275twoWayListener("openChange", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_invoice_send_openChange_105_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1582,7 +1611,7 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.onInvoiceSent());
     });
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(106, "app-delivery-dialog", 47);
+    \u0275\u0275elementStart(106, "app-delivery-dialog", 46);
     \u0275\u0275twoWayListener("openChange", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_delivery_dialog_openChange_106_listener($event) {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext(2);
@@ -1595,6 +1624,19 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
       return \u0275\u0275resetView(ctx_r1.onDeliverySaved());
     });
     \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(107, "app-work-editor", 47);
+    \u0275\u0275twoWayListener("openChange", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_work_editor_openChange_107_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      \u0275\u0275twoWayBindingSet(ctx_r1.workEditorOpen, $event) || (ctx_r1.workEditorOpen = $event);
+      return \u0275\u0275resetView($event);
+    });
+    \u0275\u0275listener("saved", function BookingDetailComponent_Conditional_3_Conditional_0_Template_app_work_editor_saved_107_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext(2);
+      return \u0275\u0275resetView(ctx_r1.onWorkTaskSaved());
+    });
+    \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_5_0;
@@ -1603,7 +1645,7 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     let tmp_23_0;
     let tmp_43_0;
     const b_r5 = ctx;
-    const moreMenu_r15 = \u0275\u0275reference(19);
+    const moreMenu_r17 = \u0275\u0275reference(19);
     const ctx_r1 = \u0275\u0275nextContext(2);
     \u0275\u0275advance(5);
     \u0275\u0275textInterpolate(b_r5.title);
@@ -1612,19 +1654,19 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     \u0275\u0275advance(3);
     \u0275\u0275textInterpolate(ctx_r1.copied() ? "\u2713 Copied" : "Copy link");
     \u0275\u0275advance(3);
-    \u0275\u0275property("cdkMenuTriggerFor", moreMenu_r15);
+    \u0275\u0275property("cdkMenuTriggerFor", moreMenu_r17);
     \u0275\u0275advance(10);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(24, 53, b_r5.price_total, "EUR", "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(24, 56, b_r5.price_total, "EUR", "symbol", "1.2-2"));
     \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(30, 58, b_r5.total_paid, "EUR", "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(30, 61, b_r5.total_paid, "EUR", "symbol", "1.2-2"));
     \u0275\u0275advance(5);
     \u0275\u0275classProp("money__value--due", ctx_r1.balance() > 0);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(36, 63, ctx_r1.balance(), "EUR", "symbol", "1.2-2"));
+    \u0275\u0275textInterpolate(\u0275\u0275pipeBind4(36, 66, ctx_r1.balance(), "EUR", "symbol", "1.2-2"));
     \u0275\u0275advance(5);
     \u0275\u0275classProp("money__value--cost", ctx_r1.expensesTotal() > 0);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate2(" ", ctx_r1.expensesTotal() ? "\u2212" : "", "", \u0275\u0275pipeBind4(42, 68, ctx_r1.expensesTotal(), "EUR", "symbol", "1.2-2"), " ");
+    \u0275\u0275textInterpolate2(" ", ctx_r1.expensesTotal() ? "\u2212" : "", "", \u0275\u0275pipeBind4(42, 71, ctx_r1.expensesTotal(), "EUR", "symbol", "1.2-2"), " ");
     \u0275\u0275advance(6);
     \u0275\u0275conditional(ctx_r1.expensesTotal() > 0 ? 47 : -1);
     \u0275\u0275advance(2);
@@ -1683,11 +1725,14 @@ function BookingDetailComponent_Conditional_3_Conditional_0_Template(rf, ctx) {
     \u0275\u0275advance();
     \u0275\u0275twoWayProperty("open", ctx_r1.deliveryDialogOpen);
     \u0275\u0275property("bookingId", ctx_r1.id)("delivery", ctx_r1.delivery())("paidInFull", ctx_r1.paidInFull());
+    \u0275\u0275advance();
+    \u0275\u0275twoWayProperty("open", ctx_r1.workEditorOpen);
+    \u0275\u0275property("job", ctx_r1.workItem())("staff", ctx_r1.workStaff());
   }
 }
 function BookingDetailComponent_Conditional_3_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, BookingDetailComponent_Conditional_3_Conditional_0_Template, 107, 73);
+    \u0275\u0275template(0, BookingDetailComponent_Conditional_3_Conditional_0_Template, 108, 76);
   }
   if (rf & 2) {
     let tmp_1_0;
@@ -1721,6 +1766,8 @@ var BookingDetailComponent = class _BookingDetailComponent {
     this.addingInvoice = signal(false);
     this.workItem = signal(null);
     this.addingCard = signal(false);
+    this.workEditorOpen = signal(false);
+    this.workStaff = signal([]);
     this.delivery = signal(null);
     this.sendOpen = signal(false);
     this.sendId = signal("");
@@ -1749,6 +1796,11 @@ var BookingDetailComponent = class _BookingDetailComponent {
       if (!this.hasDelivery())
         return "nothing attached";
       return this.clientCanSee() ? "visible to client" : "locked until paid";
+    });
+  }
+  onWorkTaskSaved() {
+    return __async(this, null, function* () {
+      this.workItem.set(yield this.admin.workItemForBooking(this.id));
     });
   }
   onInvoiceSend(inv, kind) {
@@ -1782,6 +1834,7 @@ var BookingDetailComponent = class _BookingDetailComponent {
         this.lineItems.set(items);
         this.invoices.set(invoices);
         this.workItem.set(card);
+        this.workStaff.set((yield this.admin.listStaff(this.auth.orgId() ?? "")).map((st) => ({ id: st.id, name: st.name })));
         this.applyDelivery(delivery);
       }
     });
@@ -1890,6 +1943,7 @@ var BookingDetailComponent = class _BookingDetailComponent {
         yield this.admin.addWorkItem(org, this.id, "");
         this.workItem.set(yield this.admin.workItemForBooking(this.id));
         this.toast.success("Added to the Work board");
+        this.workEditorOpen.set(true);
       } catch {
         this.toast.error("Could not add this job to the Work board.");
       } finally {
@@ -1933,7 +1987,7 @@ var BookingDetailComponent = class _BookingDetailComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingDetailComponent, selectors: [["app-booking-detail"]], decls: 4, vars: 1, consts: [["moreMenu", ""], [1, "page"], [1, "loading"], [1, "empty"], [1, "spinner"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "page__head"], ["routerLink", "/bookings/list", 1, "back"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "click"], ["aria-label", "More actions", 1, "kebab", 3, "cdkMenuTriggerFor"], ["viewBox", "0 0 20 20", "width", "18", "height", "18", "fill", "currentColor"], ["cx", "10", "cy", "4", "r", "1.7"], ["cx", "10", "cy", "10", "r", "1.7"], ["cx", "10", "cy", "16", "r", "1.7"], [1, "money"], [1, "money__stat"], [1, "money__value"], [1, "money__label"], [1, "money__value", "money__value--paid"], ["type", "button", 1, "money__add", 3, "click"], [1, "money__badge"], [1, "detail-grid"], [1, "detail-col"], ["title", "Job details"], [1, "facts"], [1, "fact", "fact--blocks"], [1, "fact"], [1, "fact__k"], [1, "fact__v"], ["routerLink", "/bookings/work"], ["type", "button", 1, "link-btn", 3, "disabled"], ["title", "What's billed"], ["title", "Invoices", 3, "meta"], ["panel-actions", "", "type", "button", 1, "link-btn", 3, "click", "disabled"], [1, "empty-line"], ["title", "Payments", 3, "meta"], ["panel-actions", "", "type", "button", 1, "link-btn", 3, "click"], [1, "pays"], ["title", "Costs", 3, "meta"], ["title", "Delivery", 3, "meta"], [3, "openChange", "saved", "open", "forBookingId", "expense"], [3, "openChange", "saved", "open", "bookingId", "balance", "bookingRef"], [3, "openChange", "sent", "open", "invoiceId", "kind"], [3, "openChange", "saved", "open", "bookingId", "delivery", "paidInFull"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", "target", "_blank", "rel", "noopener", 1, "menu__item", 3, "href"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"], ["cdkMenuItem", "", 1, "menu__item", 3, "routerLink", "queryParams"], ["cdkMenuItem", "", "routerLink", "/bookings/new", 1, "menu__item", 3, "queryParams"], [1, "block-line"], ["type", "button", 1, "link-btn", 3, "click", "disabled"], ["panel-actions", "", 1, "link-btn", 3, "routerLink", "queryParams"], [1, "items"], [1, "items__row"], [1, "items__total"], [1, "items__desc", "text-multiline"], [1, "items__amt"], [1, "invs"], [1, "inv"], [1, "inv__main"], [1, "inv__num"], [1, "tag"], [1, "tag", "tag--due"], [1, "tag", "tag--live"], [1, "inv__money"], [1, "inv__due"], [3, "send", "addCost", "invoice"], [1, "pay", 3, "pay--refunded"], [1, "pay"], [1, "pay__amount"], [1, "pay__main"], [1, "pay__method"], [1, "pay__note"], [1, "pay__tag"], [1, "pay__tag", "pay__tag--pending"], [1, "pay__date"], ["title", "Remove payment", 1, "pay__del"], ["title", "Remove payment", 1, "pay__del", 3, "click"], [1, "profit"], [1, "profit__row"], [1, "profit__row", "profit__row--cost"], [1, "profit__row", "profit__row--total"], [1, "pay__amount", "pay__amount--cost"], ["title", "Edit cost", 1, "pay__edit", 3, "click"], ["title", "Remove cost", 1, "pay__del", 3, "click"], [1, "deliv-msg"], [1, "deliv-links"], ["target", "_blank", "rel", "noopener", 3, "href"]], template: function BookingDetailComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingDetailComponent, selectors: [["app-booking-detail"]], decls: 4, vars: 1, consts: [["moreMenu", ""], [1, "page"], [1, "loading"], [1, "empty"], [1, "spinner"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "page__head"], ["routerLink", "/bookings/list", 1, "back"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "click"], ["aria-label", "More actions", 1, "kebab", 3, "cdkMenuTriggerFor"], ["viewBox", "0 0 20 20", "width", "18", "height", "18", "fill", "currentColor"], ["cx", "10", "cy", "4", "r", "1.7"], ["cx", "10", "cy", "10", "r", "1.7"], ["cx", "10", "cy", "16", "r", "1.7"], [1, "money"], [1, "money__stat"], [1, "money__value"], [1, "money__label"], [1, "money__value", "money__value--paid"], ["type", "button", 1, "money__add", 3, "click"], [1, "money__badge"], [1, "detail-grid"], [1, "detail-col"], ["title", "Job details"], [1, "facts"], [1, "fact", "fact--blocks"], [1, "fact"], [1, "fact__k"], [1, "fact__v"], ["type", "button", 1, "link-btn", 3, "disabled"], ["title", "What's billed"], ["title", "Invoices", 3, "meta"], ["panel-actions", "", "type", "button", 1, "link-btn", 3, "click", "disabled"], [1, "empty-line"], ["title", "Payments", 3, "meta"], ["panel-actions", "", "type", "button", 1, "link-btn", 3, "click"], [1, "pays"], ["title", "Costs", 3, "meta"], ["title", "Delivery", 3, "meta"], [3, "openChange", "saved", "open", "forBookingId", "expense"], [3, "openChange", "saved", "open", "bookingId", "balance", "bookingRef"], [3, "openChange", "sent", "open", "invoiceId", "kind"], [3, "openChange", "saved", "open", "bookingId", "delivery", "paidInFull"], [3, "openChange", "saved", "open", "job", "staff"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", "target", "_blank", "rel", "noopener", 1, "menu__item", 3, "href"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"], ["cdkMenuItem", "", 1, "menu__item", 3, "routerLink", "queryParams"], ["cdkMenuItem", "", "routerLink", "/bookings/new", 1, "menu__item", 3, "queryParams"], [1, "block-line"], ["type", "button", 1, "link-btn", 3, "click"], ["routerLink", "/bookings/work", 1, "fact__aside"], ["type", "button", 1, "link-btn", 3, "click", "disabled"], ["panel-actions", "", 1, "link-btn", 3, "routerLink", "queryParams"], [1, "items"], [1, "items__row"], [1, "items__total"], [1, "items__desc", "text-multiline"], [1, "items__amt"], [1, "invs"], [1, "inv"], [1, "inv__main"], [1, "inv__num"], [1, "tag"], [1, "tag", "tag--due"], [1, "tag", "tag--live"], [1, "inv__money"], [1, "inv__due"], [3, "send", "addCost", "invoice"], [1, "pay", 3, "pay--refunded"], [1, "pay"], [1, "pay__amount"], [1, "pay__main"], [1, "pay__method"], [1, "pay__note"], [1, "pay__tag"], [1, "pay__tag", "pay__tag--pending"], [1, "pay__date"], ["title", "Remove payment", 1, "pay__del"], ["title", "Remove payment", 1, "pay__del", 3, "click"], [1, "profit"], [1, "profit__row"], [1, "profit__row", "profit__row--cost"], [1, "profit__row", "profit__row--total"], [1, "pay__amount", "pay__amount--cost"], ["title", "Edit cost", 1, "pay__edit", 3, "click"], ["title", "Remove cost", 1, "pay__del", 3, "click"], [1, "deliv-msg"], [1, "deliv-links"], ["target", "_blank", "rel", "noopener", 3, "href"]], template: function BookingDetailComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 1);
         \u0275\u0275template(1, BookingDetailComponent_Conditional_1_Template, 2, 0, "div", 2)(2, BookingDetailComponent_Conditional_2_Template, 5, 0, "div", 3)(3, BookingDetailComponent_Conditional_3_Template, 1, 1);
@@ -1956,8 +2010,11 @@ var BookingDetailComponent = class _BookingDetailComponent {
       CdkMenu,
       CdkMenuItem,
       InvoiceActionsComponent,
-      InvoiceSendComponent
-    ], styles: [`
+      InvoiceSendComponent,
+      WorkEditorComponent
+    ], styles: [`@charset "UTF-8";
+
+
 
 .page[_ngcontent-%COMP%] {
   padding: 32px 40px;
@@ -2780,13 +2837,22 @@ var BookingDetailComponent = class _BookingDetailComponent {
   background: #fee2e2;
   color: #b91c1c;
 }
+.fact__aside[_ngcontent-%COMP%] {
+  margin-left: 8px;
+  font-size: 11.5px;
+  color: var(--color-text-muted, #6b7280);
+  text-decoration: none;
+}
+.fact__aside[_ngcontent-%COMP%]:hover {
+  color: var(--color-primary, #F4A922);
+}
 /*# sourceMappingURL=booking-detail.component.css.map */`] });
   }
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(BookingDetailComponent, { className: "BookingDetailComponent", filePath: "src/app/booking/platform/bookings/booking-detail/booking-detail.component.ts", lineNumber: 37 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(BookingDetailComponent, { className: "BookingDetailComponent", filePath: "src/app/booking/platform/bookings/booking-detail/booking-detail.component.ts", lineNumber: 38 });
 })();
 export {
   BookingDetailComponent
 };
-//# sourceMappingURL=chunk-64VEULTW.js.map
+//# sourceMappingURL=chunk-P252PQK3.js.map

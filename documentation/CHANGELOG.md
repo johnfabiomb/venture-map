@@ -6,6 +6,15 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Fixed
+- **A work card created from a booking was not linked to that booking.** `create_work_item` set `work_items.booking_id` but never wrote the many-to-many `work_item_bookings` row — and that join table is what every reader of *"which jobs does this task cover"* actually uses: the task editor's job picker, the calendar event's **For:** list, and the bookings list's work badge. §23 backfilled the table once and this function was never updated to keep writing it, so the card knew its booking and nothing else did. Live on BK-2026-113; fixed at the source and the missing rows backfilled (idempotent, so it cannot invent a link).
+- **A new card can be created with everything, not a title and a dropdown.** "+ New card" opened a two-field strip (title + job) while every other field — the brief, the type of work, the status, the owner, the deadline, the checklist, the reserved time — lived in a separate editor you had to find afterwards. It now opens the **full task editor**, and the two-field composer is gone rather than left as a second, worse way to do the same thing.
+- A card created in the editor with jobs attached now records the first as its **originating booking**. That is not cosmetic: `work_items.booking_id` decides whether removing a card takes it off the board or deletes it, and it is what a stage change mirrors back to the shoot — so such a card would otherwise have behaved as a personal to-do and silently stopped mirroring its progress.
+- A booking-linked card is created in the Backlog, so picking a status for a brand-new card could leave it in the Backlog anyway. The activation is now applied.
+
+### Added
+- **The work task is editable from the booking.** The Production line on a booking shows the task's stage and type and opens the full editor in place; adding a job to the Work board opens it straight away, because a card with no type, no brief and no reserved time is what you get when supplying them means navigating to another page first.
+
 ### Added
 - **A calendar per worker, plus a shared team overview.** The calendar was one Google account held in three env vars — one person's diary. A second worker's jobs landed on the owner's calendar and a second organisation got none at all. There are now two levels, and the difference between them is the whole point:
   - **The worker's own calendar** (Settings → Staff → *Connect Google*) is their real diary. It is the **only** calendar ever read to decide whether they are free, and it receives their own jobs.

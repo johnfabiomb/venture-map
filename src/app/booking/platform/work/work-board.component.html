@@ -17,20 +17,13 @@
            work setting would be the point the header stopped being readable. -->
       <button class="btn btn--ghost btn--sm work__cog" [cdkMenuTriggerFor]="workMenu"
               title="Work settings" aria-label="Work settings">⚙</button>
-      <button class="btn btn--primary btn--sm" (click)="toggleComposer()">+ New card</button>
+      <!-- Opens the FULL task editor, not a two-field strip. A card has a brief, a type,
+           a status, an owner, a deadline, the jobs it covers, a checklist and reserved
+           time — asking for a title and nothing else just moves the real work to a second
+           step everyone forgets. -->
+      <button class="btn btn--primary btn--sm" (click)="openEditor()">+ New card</button>
     </div>
   </div>
-
-  @if (composerOpen()) {
-    <div class="composer">
-      <input class="composer__title" type="text" placeholder="Card title (e.g. Edit reel for IG)"
-             [(ngModel)]="newCardTitle" (keyup.enter)="addCard()" />
-      <app-select class="composer__job" [value]="newCardBookingId" (changed)="newCardBookingId = $event"
-                  [options]="composerJobOptions()" placeholder="No job — personal card" />
-      <button class="btn btn--primary btn--sm" [disabled]="adding() || (!newCardBookingId && !newCardTitle.trim())" (click)="addCard()">Add</button>
-      <button class="btn btn--ghost btn--sm" (click)="toggleComposer()">Cancel</button>
-    </div>
-  }
 
   @if (loading()) {
     <p class="muted">Loading…</p>

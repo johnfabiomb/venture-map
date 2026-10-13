@@ -118,7 +118,13 @@
         <span class="fact__k">Production</span>
         <span class="fact__v">
           @if (workItem(); as w) {
-            <a routerLink="/bookings/work">On the Work board · {{ w.production_status }}</a>
+            <!-- Editable from here. Reaching the Work board, finding the card and opening
+                 it was three steps to set the type and reserve the time for a job you are
+                 already looking at. -->
+            <button type="button" class="link-btn" (click)="workEditorOpen.set(true)">
+              {{ w.stageLabel ?? w.production_status }}@if (w.workTypeLabel) { · {{ w.workTypeLabel }} } · edit task
+            </button>
+            <a class="fact__aside" routerLink="/bookings/work">Work board →</a>
           } @else {
             <button type="button" class="link-btn" [disabled]="addingCard()" (click)="addToWorkBoard()">
               {{ addingCard() ? 'Adding…' : '+ Add to Work board' }}
@@ -299,6 +305,9 @@
                       (sent)="onInvoiceSent()" />
     <app-delivery-dialog [(open)]="deliveryDialogOpen" [bookingId]="id" [delivery]="delivery()"
                          [paidInFull]="paidInFull()" (saved)="onDeliverySaved()" />
+    <!-- The job's work task, editable without leaving the booking. -->
+    <app-work-editor [(open)]="workEditorOpen" [job]="workItem()" [staff]="workStaff()"
+                     (saved)="onWorkTaskSaved()" />
     }
   }
 </div>

@@ -10,18 +10,6 @@
 .overdue-tag { background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 14px; }
 .work__head-actions { display: flex; align-items: center; gap: 10px; }
 
-// New-card composer
-.composer {
-  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-  background: $card; border: 1px solid $border; border-radius: $radius-lg; padding: 12px 14px; margin-bottom: 18px;
-  &__title { flex: 1 1 240px; }
-  &__job { flex: 1 1 220px; }
-  input, select {
-    padding: 9px 12px; border: 1.5px solid $border; border-radius: $radius-md; font-size: 13.5px;
-    font-family: inherit; color: $text; background: $card; box-sizing: border-box;
-    &:focus { outline: none; border-color: $accent; }
-  }
-}
 
 // Backlog + 4 stages — horizontal scroll keeps the columns readable as the board grows.
 .board {

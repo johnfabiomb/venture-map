@@ -1,11 +1,12 @@
 import {
+  WorkEditorComponent
+} from "./chunk-7LOMJKBB.js";
+import {
   CdkMenu,
   CdkMenuItem,
   CdkMenuTrigger
 } from "./chunk-YYZD4ABX.js";
-import {
-  AvailabilityPickerComponent
-} from "./chunk-Y4ZDVRTH.js";
+import "./chunk-Y4ZDVRTH.js";
 import {
   ModalComponent
 } from "./chunk-5MZRX563.js";
@@ -37,7 +38,6 @@ import {
   isFakeTouchstartFromScreenReader
 } from "./chunk-GVBB2R7I.js";
 import {
-  BookingDataService,
   onScopeChange,
   subscribeToChanges
 } from "./chunk-NUDELOJP.js";
@@ -129,7 +129,6 @@ import {
   ɵɵreference,
   ɵɵrepeater,
   ɵɵrepeaterCreate,
-  ɵɵrepeaterTrackByIndex,
   ɵɵresetView,
   ɵɵrestoreView,
   ɵɵstyleProp,
@@ -4191,468 +4190,6 @@ var DragDropModule = class _DragDropModule {
   }], null, null);
 })();
 
-// src/app/booking/ui/work-editor/work-editor.component.ts
-function WorkEditorComponent_Conditional_28_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "small", 5);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("Pre-filled from the worker you're viewing (", ctx, ").");
-  }
-}
-function WorkEditorComponent_Conditional_40_Conditional_0_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 17);
-    \u0275\u0275text(1, "No jobs to link yet.");
-    \u0275\u0275elementEnd();
-  }
-}
-function WorkEditorComponent_Conditional_40_Conditional_1_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "app-select", 21);
-    \u0275\u0275twoWayListener("valuesChange", function WorkEditorComponent_Conditional_40_Conditional_1_Template_app_select_valuesChange_0_listener($event) {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      \u0275\u0275twoWayBindingSet(ctx_r1.linked, $event) || (ctx_r1.linked = $event);
-      return \u0275\u0275resetView($event);
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(1, "small", 5);
-    \u0275\u0275text(2, "Their references show on the calendar event, so you can match the block back to the shoot.");
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("multiple", true);
-    \u0275\u0275twoWayProperty("values", ctx_r1.linked);
-    \u0275\u0275property("options", ctx_r1.jobOptions())("searchable", true);
-  }
-}
-function WorkEditorComponent_Conditional_40_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275template(0, WorkEditorComponent_Conditional_40_Conditional_0_Template, 2, 0, "p", 17)(1, WorkEditorComponent_Conditional_40_Conditional_1_Template, 3, 4);
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275conditional(ctx_r1.jobOptions().length === 0 ? 0 : 1);
-  }
-}
-function WorkEditorComponent_Conditional_44_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "em");
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate2("", ctx_r1.doneCount(), "/", ctx_r1.checklist().length, "");
-  }
-}
-function WorkEditorComponent_Conditional_45_For_2_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 23)(1, "label", 24)(2, "input", 12);
-    \u0275\u0275listener("change", function WorkEditorComponent_Conditional_45_For_2_Template_input_change_2_listener() {
-      const $index_r4 = \u0275\u0275restoreView(_r3).$index;
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.toggleTask($index_r4));
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span");
-    \u0275\u0275text(4);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(5, "button", 25);
-    \u0275\u0275listener("click", function WorkEditorComponent_Conditional_45_For_2_Template_button_click_5_listener() {
-      const $index_r4 = \u0275\u0275restoreView(_r3).$index;
-      const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.removeTask($index_r4));
-    });
-    \u0275\u0275text(6, "\xD7");
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const t_r5 = ctx.$implicit;
-    \u0275\u0275classProp("we__task--done", t_r5.done);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("checked", t_r5.done);
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(t_r5.title);
-  }
-}
-function WorkEditorComponent_Conditional_45_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13);
-    \u0275\u0275repeaterCreate(1, WorkEditorComponent_Conditional_45_For_2_Template, 7, 4, "div", 22, \u0275\u0275repeaterTrackByIndex);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance();
-    \u0275\u0275repeater(ctx_r1.checklist());
-  }
-}
-function WorkEditorComponent_Conditional_53_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 17);
-    \u0275\u0275text(1, "Pick who is doing it first \u2014 the time is reserved against their calendar.");
-    \u0275\u0275elementEnd();
-  }
-}
-function WorkEditorComponent_Conditional_54_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r6 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "p", 17);
-    \u0275\u0275text(1, "This time becomes unavailable to clients and warns you, exactly like a shoot.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "app-availability-picker", 26);
-    \u0275\u0275listener("slotsChange", function WorkEditorComponent_Conditional_54_Template_app_availability_picker_slotsChange_2_listener($event) {
-      \u0275\u0275restoreView(_r6);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.onSlots($event));
-    });
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(2);
-    \u0275\u0275property("staffId", ctx_r1.assigneeId())("timezone", ctx_r1.timezone())("initialSlots", ctx_r1.initialSlots());
-  }
-}
-var BACKLOG = "backlog";
-var WorkEditorComponent = class _WorkEditorComponent {
-  /** Unticking clears the links rather than hiding them — a hidden link that still saved
-   *  would mean the calendar event names a job the card says it does not cover. */
-  toggleCovers() {
-    const next = !this.coversJob();
-    this.coversJob.set(next);
-    if (!next)
-      this.linked.set([]);
-  }
-  addTask() {
-    const t = this.newTask().trim();
-    if (!t)
-      return;
-    this.checklist.update((l) => [...l, { id: null, title: t, done: false }]);
-    this.newTask.set("");
-  }
-  toggleTask(i) {
-    this.checklist.update((l) => l.map((t, n) => n === i ? __spreadProps(__spreadValues({}, t), { done: !t.done }) : t));
-  }
-  removeTask(i) {
-    const t = this.checklist()[i];
-    if (t?.id)
-      this.removedTaskIds.push(t.id);
-    this.checklist.update((l) => l.filter((_, n) => n !== i));
-  }
-  onSlots(slots) {
-    this.picked = slots;
-  }
-  constructor() {
-    this.admin = inject(BookingAdminService);
-    this.data = inject(BookingDataService);
-    this.auth = inject(BookingsAuthService);
-    this.toast = inject(ToastService);
-    this.open = model(false);
-    this.job = input(null);
-    this.staff = input([]);
-    this.saved = output();
-    this.saving = signal(false);
-    this.title = signal("");
-    this.description = signal("");
-    this.stageKey = signal(BACKLOG);
-    this.workType = signal("");
-    this.assigneeId = signal("");
-    this.dueOn = signal("");
-    this.coversJob = signal(false);
-    this.linked = signal([]);
-    this.initialSlots = signal([]);
-    this.picked = [];
-    this.checklist = signal([]);
-    this.newTask = signal("");
-    this.removedTaskIds = [];
-    this.originalDone = /* @__PURE__ */ new Map();
-    this.doneCount = computed(() => this.checklist().filter((t) => t.done).length);
-    this.stages = signal([]);
-    this.types = signal([]);
-    this.timezone = computed(() => "Europe/Malta");
-    this.scopedWorkerName = computed(() => this.auth.activeStaff()?.name ?? "");
-    this.staffOptions = computed(() => this.staff().map((s) => ({ value: s.id, label: s.name })));
-    this.typeOptions = computed(() => this.types().map((t) => ({ value: t.key, label: t.label })));
-    this.stageOptions = computed(() => [
-      { value: BACKLOG, label: "Backlog", hint: "not started" },
-      ...this.stages().map((st) => ({ value: st.key, label: st.label, color: colorHex(st.color_id) }))
-    ]);
-    this.jobOptions = computed(() => [...this.data.bookings()].sort((a, b) => (b.next_start_at ?? "").localeCompare(a.next_start_at ?? "")).slice(0, 200).map((b) => ({
-      value: b.id,
-      label: b.title,
-      hint: [
-        b.booking_ref,
-        b.client_name,
-        b.next_start_at ? new Date(b.next_start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : null
-      ].filter(Boolean).join(" \xB7 ")
-    })));
-    effect(() => {
-      if (!this.open())
-        return;
-      const j = this.job();
-      queueMicrotask(() => __async(this, null, function* () {
-        const org = this.auth.orgId();
-        this.title.set(j?.title ?? "");
-        this.description.set(j?.description ?? "");
-        this.workType.set(j?.workType ?? "");
-        this.assigneeId.set(j?.assigneeId ?? this.auth.staffId() ?? "");
-        this.dueOn.set(j?.dueAt ? j.dueAt.slice(0, 10) : "");
-        this.picked = [];
-        this.newTask.set("");
-        this.removedTaskIds = [];
-        this.originalDone.clear();
-        const stages = org ? yield this.admin.listWorkStages(org) : [];
-        this.stages.set(stages);
-        if (org)
-          this.types.set(yield this.admin.listWorkTypes(org));
-        this.stageKey.set(j ? j.isActive ? j.production_status : BACKLOG : stages[0]?.key ?? BACKLOG);
-        if (j) {
-          const [slots, links, tasks] = yield Promise.all([
-            this.admin.getWorkSlots(j.id),
-            this.admin.getWorkBookings(j.id),
-            org ? this.admin.loadTasks(org) : Promise.resolve([])
-          ]);
-          this.initialSlots.set(slots);
-          this.linked.set(links);
-          this.coversJob.set(links.length > 0);
-          const mine = tasks.filter((t) => t.work_item_id === j.id);
-          for (const t of mine)
-            this.originalDone.set(t.id, t.is_done);
-          this.checklist.set(mine.map((t) => ({ id: t.id, title: t.title, done: t.is_done })));
-        } else {
-          this.initialSlots.set([]);
-          this.linked.set([]);
-          this.coversJob.set(false);
-          this.checklist.set([]);
-        }
-      }));
-    });
-  }
-  save() {
-    return __async(this, null, function* () {
-      const org = this.auth.orgId();
-      if (!org || !this.title().trim() || this.saving())
-        return;
-      this.saving.set(true);
-      try {
-        const j = this.job();
-        const id = j ? j.id : yield this.admin.addWorkItem(org, null, this.title().trim());
-        if (!id) {
-          this.toast.error("Could not save the work task.");
-          return;
-        }
-        yield this.admin.updateWorkItem(id, {
-          title: this.title().trim(),
-          description: this.description().trim() || null,
-          work_type: this.workType() || null
-        });
-        yield this.admin.assignCard(id, this.assigneeId() || null);
-        yield this.admin.setDue(id, this.dueOn() ? (/* @__PURE__ */ new Date(`${this.dueOn()}T12:00:00`)).toISOString() : null);
-        yield this.admin.setWorkBookings(org, id, this.coversJob() ? this.linked() : []);
-        const current = j ? j.isActive ? j.production_status : BACKLOG : null;
-        if (this.stageKey() !== current) {
-          yield this.admin.moveWorkCard(id, this.stageKey(), j?.bookingId ?? null, j?.isActive ?? !j);
-        }
-        for (const tid of this.removedTaskIds)
-          yield this.admin.removeTask(tid);
-        for (const t of this.checklist()) {
-          if (t.id === null)
-            yield this.admin.addTask(org, id, t.title);
-          else if (this.originalDone.get(t.id) !== t.done)
-            yield this.admin.toggleTask(t.id, t.done);
-        }
-        let clashNote = "";
-        if (this.assigneeId()) {
-          const slots = this.picked.map((p) => ({
-            start: p.iso,
-            end: p.endIso,
-            label: p.label?.trim() || null
-          }));
-          const { clashes, orphanEventIds } = yield this.admin.setWorkSlots(org, id, this.assigneeId(), slots);
-          if (clashes.length) {
-            clashNote = ` ${clashes.length} block${clashes.length > 1 ? "s" : ""} could not be reserved \u2014 that time is already taken.`;
-          }
-          this.admin.syncWorkEvent(id, orphanEventIds);
-        }
-        if (clashNote)
-          this.toast.error(`Work task saved.${clashNote}`, 9e3);
-        else
-          this.toast.success("Work task saved");
-        this.open.set(false);
-        this.saved.emit();
-      } finally {
-        this.saving.set(false);
-      }
-    });
-  }
-  static {
-    this.\u0275fac = function WorkEditorComponent_Factory(__ngFactoryType__) {
-      return new (__ngFactoryType__ || _WorkEditorComponent)();
-    };
-  }
-  static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WorkEditorComponent, selectors: [["app-work-editor"]], inputs: { open: [1, "open"], job: [1, "job"], staff: [1, "staff"] }, outputs: { open: "openChange", saved: "saved" }, decls: 60, vars: 25, consts: [[3, "openChange", "open", "title", "dismissable"], [1, "we"], [1, "we__field"], ["name", "weTitle", "placeholder", "e.g. Edit the Prohealth interviews", 3, "ngModelChange", "ngModel"], ["name", "weDesc", "rows", "3", "placeholder", "The brief, what the client asked for, anything you'd forget", 3, "ngModelChange", "ngModel"], [1, "we__sub"], [1, "we__row"], [3, "changed", "value", "options", "searchable"], ["placeholder", "Not set", 3, "changed", "value", "options", "clearable"], ["placeholder", "Unassigned", 3, "changed", "value", "options", "clearable"], ["type", "date", "name", "weDue", 3, "ngModelChange", "ngModel"], [1, "we__check"], ["type", "checkbox", 3, "change", "checked"], [1, "we__tasks"], [1, "we__task-add"], ["name", "weNewTask", "placeholder", "Add a step\u2026", 3, "ngModelChange", "keyup.enter", "ngModel"], ["type", "button", 1, "btn", "btn--ghost", "btn--sm", 3, "click", "disabled"], [1, "we__hint"], [1, "we__actions"], ["type", "button", 1, "btn", "btn--ghost", 3, "click"], ["type", "button", 1, "btn", "btn--primary", 3, "click", "disabled"], ["placeholder", "Search by client, title or reference\u2026", 3, "valuesChange", "multiple", "values", "options", "searchable"], [1, "we__task", 3, "we__task--done"], [1, "we__task"], [1, "we__task-check"], ["type", "button", "title", "Remove", 1, "we__task-del", 3, "click"], [3, "slotsChange", "staffId", "timezone", "initialSlots"]], template: function WorkEditorComponent_Template(rf, ctx) {
-      if (rf & 1) {
-        \u0275\u0275elementStart(0, "app-modal", 0);
-        \u0275\u0275listener("openChange", function WorkEditorComponent_Template_app_modal_openChange_0_listener($event) {
-          return ctx.open.set($event);
-        });
-        \u0275\u0275elementStart(1, "div", 1)(2, "label", 2)(3, "span");
-        \u0275\u0275text(4, "What needs doing?");
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(5, "input", 3);
-        \u0275\u0275listener("ngModelChange", function WorkEditorComponent_Template_input_ngModelChange_5_listener($event) {
-          return ctx.title.set($event);
-        });
-        \u0275\u0275elementEnd()();
-        \u0275\u0275elementStart(6, "label", 2)(7, "span");
-        \u0275\u0275text(8, "Details ");
-        \u0275\u0275elementStart(9, "em");
-        \u0275\u0275text(10, "optional");
-        \u0275\u0275elementEnd()();
-        \u0275\u0275elementStart(11, "textarea", 4);
-        \u0275\u0275listener("ngModelChange", function WorkEditorComponent_Template_textarea_ngModelChange_11_listener($event) {
-          return ctx.description.set($event);
-        });
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(12, "small", 5);
-        \u0275\u0275text(13, "Goes into the calendar event, so it's there on your phone.");
-        \u0275\u0275elementEnd()();
-        \u0275\u0275elementStart(14, "div", 6)(15, "label", 2)(16, "span");
-        \u0275\u0275text(17, "Status");
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(18, "app-select", 7);
-        \u0275\u0275listener("changed", function WorkEditorComponent_Template_app_select_changed_18_listener($event) {
-          return ctx.stageKey.set($event);
-        });
-        \u0275\u0275elementEnd()();
-        \u0275\u0275elementStart(19, "label", 2)(20, "span");
-        \u0275\u0275text(21, "Type of work");
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(22, "app-select", 8);
-        \u0275\u0275listener("changed", function WorkEditorComponent_Template_app_select_changed_22_listener($event) {
-          return ctx.workType.set($event);
-        });
-        \u0275\u0275elementEnd()()();
-        \u0275\u0275elementStart(23, "div", 6)(24, "label", 2)(25, "span");
-        \u0275\u0275text(26, "Who");
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(27, "app-select", 9);
-        \u0275\u0275listener("changed", function WorkEditorComponent_Template_app_select_changed_27_listener($event) {
-          return ctx.assigneeId.set($event);
-        });
-        \u0275\u0275elementEnd();
-        \u0275\u0275template(28, WorkEditorComponent_Conditional_28_Template, 2, 1, "small", 5);
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(29, "label", 2)(30, "span");
-        \u0275\u0275text(31, "Deliver by ");
-        \u0275\u0275elementStart(32, "em");
-        \u0275\u0275text(33, "optional");
-        \u0275\u0275elementEnd()();
-        \u0275\u0275elementStart(34, "input", 10);
-        \u0275\u0275listener("ngModelChange", function WorkEditorComponent_Template_input_ngModelChange_34_listener($event) {
-          return ctx.dueOn.set($event);
-        });
-        \u0275\u0275elementEnd()()();
-        \u0275\u0275elementStart(35, "div", 2)(36, "label", 11)(37, "input", 12);
-        \u0275\u0275listener("change", function WorkEditorComponent_Template_input_change_37_listener() {
-          return ctx.toggleCovers();
-        });
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(38, "span");
-        \u0275\u0275text(39, "This task covers a job");
-        \u0275\u0275elementEnd()();
-        \u0275\u0275template(40, WorkEditorComponent_Conditional_40_Template, 2, 1);
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(41, "div", 2)(42, "span");
-        \u0275\u0275text(43, "Checklist ");
-        \u0275\u0275template(44, WorkEditorComponent_Conditional_44_Template, 2, 2, "em");
-        \u0275\u0275elementEnd();
-        \u0275\u0275template(45, WorkEditorComponent_Conditional_45_Template, 3, 0, "div", 13);
-        \u0275\u0275elementStart(46, "div", 14)(47, "input", 15);
-        \u0275\u0275listener("ngModelChange", function WorkEditorComponent_Template_input_ngModelChange_47_listener($event) {
-          return ctx.newTask.set($event);
-        })("keyup.enter", function WorkEditorComponent_Template_input_keyup_enter_47_listener() {
-          return ctx.addTask();
-        });
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(48, "button", 16);
-        \u0275\u0275listener("click", function WorkEditorComponent_Template_button_click_48_listener() {
-          return ctx.addTask();
-        });
-        \u0275\u0275text(49, "Add");
-        \u0275\u0275elementEnd()()();
-        \u0275\u0275elementStart(50, "div", 2)(51, "span");
-        \u0275\u0275text(52, "Reserved time");
-        \u0275\u0275elementEnd();
-        \u0275\u0275template(53, WorkEditorComponent_Conditional_53_Template, 2, 0, "p", 17)(54, WorkEditorComponent_Conditional_54_Template, 3, 3);
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(55, "div", 18)(56, "button", 19);
-        \u0275\u0275listener("click", function WorkEditorComponent_Template_button_click_56_listener() {
-          return ctx.open.set(false);
-        });
-        \u0275\u0275text(57, "Cancel");
-        \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(58, "button", 20);
-        \u0275\u0275listener("click", function WorkEditorComponent_Template_button_click_58_listener() {
-          return ctx.save();
-        });
-        \u0275\u0275text(59);
-        \u0275\u0275elementEnd()()()();
-      }
-      if (rf & 2) {
-        let tmp_14_0;
-        \u0275\u0275property("open", ctx.open())("title", ctx.job() ? "Work task" : "New work task")("dismissable", true);
-        \u0275\u0275advance(5);
-        \u0275\u0275property("ngModel", ctx.title());
-        \u0275\u0275advance(6);
-        \u0275\u0275property("ngModel", ctx.description());
-        \u0275\u0275advance(7);
-        \u0275\u0275property("value", ctx.stageKey())("options", ctx.stageOptions())("searchable", false);
-        \u0275\u0275advance(4);
-        \u0275\u0275property("value", ctx.workType())("options", ctx.typeOptions())("clearable", true);
-        \u0275\u0275advance(5);
-        \u0275\u0275property("value", ctx.assigneeId())("options", ctx.staffOptions())("clearable", true);
-        \u0275\u0275advance();
-        \u0275\u0275conditional((tmp_14_0 = ctx.scopedWorkerName()) ? 28 : -1, tmp_14_0);
-        \u0275\u0275advance(6);
-        \u0275\u0275property("ngModel", ctx.dueOn());
-        \u0275\u0275advance(3);
-        \u0275\u0275property("checked", ctx.coversJob());
-        \u0275\u0275advance(3);
-        \u0275\u0275conditional(ctx.coversJob() ? 40 : -1);
-        \u0275\u0275advance(4);
-        \u0275\u0275conditional(ctx.checklist().length ? 44 : -1);
-        \u0275\u0275advance();
-        \u0275\u0275conditional(ctx.checklist().length ? 45 : -1);
-        \u0275\u0275advance(2);
-        \u0275\u0275property("ngModel", ctx.newTask());
-        \u0275\u0275advance();
-        \u0275\u0275property("disabled", !ctx.newTask().trim());
-        \u0275\u0275advance(5);
-        \u0275\u0275conditional(!ctx.assigneeId() ? 53 : 54);
-        \u0275\u0275advance(5);
-        \u0275\u0275property("disabled", ctx.saving() || !ctx.title().trim());
-        \u0275\u0275advance();
-        \u0275\u0275textInterpolate1(" ", ctx.saving() ? "Saving\u2026" : "Save", " ");
-      }
-    }, dependencies: [FormsModule, DefaultValueAccessor, NgControlStatus, NgModel, ModalComponent, AvailabilityPickerComponent, SelectComponent], styles: ["\n\n.we__field[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  margin-bottom: 14px;\n}\n.we__field[_ngcontent-%COMP%]    > span[_ngcontent-%COMP%] {\n  font-size: 12px;\n  font-weight: 600;\n  color: #475569;\n}\n.we__field[_ngcontent-%COMP%]   em[_ngcontent-%COMP%] {\n  color: #94a3b8;\n  font-style: normal;\n  font-weight: 400;\n}\n.we__field[_ngcontent-%COMP%]   input[_ngcontent-%COMP%], \n.we__field[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  padding: 10px 12px;\n  border: 1.5px solid #e2e8f0;\n  border-radius: 8px;\n  font-size: 14px;\n  font-family: inherit;\n  color: #0f172a;\n  background: #fff;\n  width: 100%;\n  box-sizing: border-box;\n}\n.we__field[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  resize: vertical;\n  min-height: 68px;\n  line-height: 1.5;\n}\n@media (max-width: 560px) {\n  .we__field[_ngcontent-%COMP%]   input[_ngcontent-%COMP%], \n   .we__field[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    font-size: 16px;\n  }\n}\n.we__field[_ngcontent-%COMP%]   input[_ngcontent-%COMP%]:focus, \n.we__field[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #F4A922;\n}\n.we__sub[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: #94a3b8;\n  line-height: 1.4;\n}\n.we__row[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 14px;\n}\n@media (max-width: 520px) {\n  .we__row[_ngcontent-%COMP%] {\n    grid-template-columns: 1fr;\n  }\n}\n.we__hint[_ngcontent-%COMP%] {\n  margin: 0 0 8px;\n  font-size: 11.5px;\n  color: #64748b;\n  line-height: 1.45;\n}\n.we__check[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 9px;\n  padding: 10px 12px;\n  margin-bottom: 2px;\n  border: 1.5px solid #e2e8f0;\n  border-radius: 8px;\n  cursor: pointer;\n  font-size: 13px;\n  font-weight: 600;\n  color: #334155;\n}\n.we__check[_ngcontent-%COMP%]:hover {\n  border-color: #cbd5e1;\n}\n.we__check[_ngcontent-%COMP%]   input[_ngcontent-%COMP%] {\n  width: 16px;\n  height: 16px;\n  accent-color: #F4A922;\n  flex-shrink: 0;\n  margin: 0;\n}\n.we__tasks[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n.we__task[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 6px 8px;\n  border-radius: 7px;\n  background: #f8fafc;\n  font-size: 12.5px;\n}\n.we__task--done[_ngcontent-%COMP%]   .we__task-check[_ngcontent-%COMP%]   span[_ngcontent-%COMP%] {\n  text-decoration: line-through;\n  color: #94a3b8;\n}\n.we__task-check[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: 1 1 auto;\n  min-width: 0;\n  cursor: pointer;\n}\n.we__task-check[_ngcontent-%COMP%]   input[_ngcontent-%COMP%] {\n  width: 15px;\n  height: 15px;\n  accent-color: #F4A922;\n  flex-shrink: 0;\n  margin: 0;\n}\n.we__task-check[_ngcontent-%COMP%]   span[_ngcontent-%COMP%] {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  color: #334155;\n}\n.we__task-del[_ngcontent-%COMP%] {\n  border: 0;\n  background: none;\n  color: #cbd5e1;\n  font-size: 16px;\n  line-height: 1;\n  cursor: pointer;\n  padding: 0 2px;\n  flex-shrink: 0;\n}\n.we__task-del[_ngcontent-%COMP%]:hover {\n  color: #dc2626;\n}\n.we__task-add[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n  align-items: stretch;\n  margin-top: 6px;\n}\n.we__task-add[_ngcontent-%COMP%]   input[_ngcontent-%COMP%] {\n  flex: 1 1 auto;\n  min-width: 0;\n}\n.we__task-add[_ngcontent-%COMP%]   .btn[_ngcontent-%COMP%] {\n  flex-shrink: 0;\n}\n.we__actions[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  gap: 10px;\n  margin-top: 18px;\n}\n@media (max-width: 560px) {\n  .we__actions[_ngcontent-%COMP%]   .btn[_ngcontent-%COMP%] {\n    flex: 1 1 0;\n    justify-content: center;\n  }\n}\n/*# sourceMappingURL=work-editor.component.css.map */"], changeDetection: 0 });
-  }
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(WorkEditorComponent, { className: "WorkEditorComponent", filePath: "src/app/booking/ui/work-editor/work-editor.component.ts", lineNumber: 202 });
-})();
-
 // src/app/booking/ui/stage-manager/stage-manager.component.ts
 var _forTrack0 = ($index, $item) => $item.id;
 function StageManagerComponent_For_6_Template(rf, ctx) {
@@ -5226,7 +4763,7 @@ function WorkBoardComponent_Conditional_8_Template(rf, ctx) {
 function WorkBoardComponent_Conditional_9_Template(rf, ctx) {
   if (rf & 1) {
     const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 16);
+    \u0275\u0275elementStart(0, "button", 15);
     \u0275\u0275listener("click", function WorkBoardComponent_Conditional_9_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r3);
       const ctx_r1 = \u0275\u0275nextContext();
@@ -5243,388 +4780,338 @@ function WorkBoardComponent_Conditional_9_Template(rf, ctx) {
 }
 function WorkBoardComponent_Conditional_14_Template(rf, ctx) {
   if (rf & 1) {
-    const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 10)(1, "input", 17);
-    \u0275\u0275twoWayListener("ngModelChange", function WorkBoardComponent_Conditional_14_Template_input_ngModelChange_1_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      \u0275\u0275twoWayBindingSet(ctx_r1.newCardTitle, $event) || (ctx_r1.newCardTitle = $event);
-      return \u0275\u0275resetView($event);
-    });
-    \u0275\u0275listener("keyup.enter", function WorkBoardComponent_Conditional_14_Template_input_keyup_enter_1_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.addCard());
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(2, "app-select", 18);
-    \u0275\u0275listener("changed", function WorkBoardComponent_Conditional_14_Template_app_select_changed_2_listener($event) {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.newCardBookingId = $event);
-    });
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "button", 19);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_14_Template_button_click_3_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.addCard());
-    });
-    \u0275\u0275text(4, "Add");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "button", 16);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_14_Template_button_click_5_listener() {
-      \u0275\u0275restoreView(_r4);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.toggleComposer());
-    });
-    \u0275\u0275text(6, "Cancel");
-    \u0275\u0275elementEnd()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance();
-    \u0275\u0275twoWayProperty("ngModel", ctx_r1.newCardTitle);
-    \u0275\u0275advance();
-    \u0275\u0275property("value", ctx_r1.newCardBookingId)("options", ctx_r1.composerJobOptions());
-    \u0275\u0275advance();
-    \u0275\u0275property("disabled", ctx_r1.adding() || !ctx_r1.newCardBookingId && !ctx_r1.newCardTitle.trim());
-  }
-}
-function WorkBoardComponent_Conditional_15_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 11);
+    \u0275\u0275elementStart(0, "p", 10);
     \u0275\u0275text(1, "Loading\u2026");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_Conditional_4_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_Conditional_4_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "span", 29);
+    \u0275\u0275element(0, "span", 25);
   }
   if (rf & 2) {
-    const col_r6 = \u0275\u0275nextContext().$implicit;
+    const col_r5 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275styleProp("background", ctx_r1.stageHex(col_r6.colorId));
+    \u0275\u0275styleProp("background", ctx_r1.stageHex(col_r5.colorId));
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_div_1_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_div_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "div", 55);
+    \u0275\u0275element(0, "div", 51);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_15_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275text(0);
     \u0275\u0275pipe(1, "date");
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
-    \u0275\u0275textInterpolate2(" ", j_r8.serviceName ? j_r8.serviceName + " \xB7 " : "", "", \u0275\u0275pipeBind2(1, 2, j_r8.start_at, "d MMM, HH:mm"), " ");
+    const j_r7 = \u0275\u0275nextContext().$implicit;
+    \u0275\u0275textInterpolate2(" ", j_r7.serviceName ? j_r7.serviceName + " \xB7 " : "", "", \u0275\u0275pipeBind2(1, 2, j_r7.start_at, "d MMM, HH:mm"), " ");
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_16_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 40);
+    \u0275\u0275elementStart(0, "span", 36);
     \u0275\u0275text(1, "Personal");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_17_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_17_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 41);
+    \u0275\u0275elementStart(0, "span", 37);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
+    const j_r7 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(j_r8.workTypeLabel);
+    \u0275\u0275textInterpolate(j_r7.workTypeLabel);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_18_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 42);
+    \u0275\u0275elementStart(0, "span", 38);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
+    const j_r7 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("by ", j_r8.createdByName, "");
+    \u0275\u0275textInterpolate1("by ", j_r7.createdByName, "");
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_19_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 43);
+    \u0275\u0275elementStart(0, "span", 39);
     \u0275\u0275text(1, "Archived");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_20_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "p", 44);
+    \u0275\u0275elementStart(0, "p", 40);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
+    const j_r7 = \u0275\u0275nextContext().$implicit;
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(j_r8.description);
+    \u0275\u0275textInterpolate(j_r7.description);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_23_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_23_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span", 47);
+    \u0275\u0275elementStart(0, "span", 43);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
+    const j_r7 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate(ctx_r1.initials(j_r8.assigneeName));
+    \u0275\u0275textInterpolate(ctx_r1.initials(j_r7.assigneeName));
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_For_28_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_For_28_Template(rf, ctx) {
   if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 56)(1, "label", 57)(2, "input", 58);
-    \u0275\u0275listener("change", function WorkBoardComponent_Conditional_16_For_2_For_9_For_28_Template_input_change_2_listener() {
-      const t_r10 = \u0275\u0275restoreView(_r9).$implicit;
+    const _r8 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 52)(1, "label", 53)(2, "input", 54);
+    \u0275\u0275listener("change", function WorkBoardComponent_Conditional_15_For_2_For_9_For_28_Template_input_change_2_listener() {
+      const t_r9 = \u0275\u0275restoreView(_r8).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.toggle(t_r10));
+      return \u0275\u0275resetView(ctx_r1.toggle(t_r9));
     });
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "span");
     \u0275\u0275text(4);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(5, "button", 59);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_16_For_2_For_9_For_28_Template_button_click_5_listener() {
-      const t_r10 = \u0275\u0275restoreView(_r9).$implicit;
+    \u0275\u0275elementStart(5, "button", 55);
+    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_15_For_2_For_9_For_28_Template_button_click_5_listener() {
+      const t_r9 = \u0275\u0275restoreView(_r8).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(4);
-      return \u0275\u0275resetView(ctx_r1.remove(t_r10));
+      return \u0275\u0275resetView(ctx_r1.remove(t_r9));
     });
     \u0275\u0275text(6, "\xD7");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const t_r10 = ctx.$implicit;
-    \u0275\u0275classProp("task--done", t_r10.is_done);
+    const t_r9 = ctx.$implicit;
+    \u0275\u0275classProp("task--done", t_r9.is_done);
     \u0275\u0275advance(2);
-    \u0275\u0275property("checked", t_r10.is_done);
+    \u0275\u0275property("checked", t_r9.is_done);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(t_r10.title);
+    \u0275\u0275textInterpolate(t_r9.title);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_29_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_29_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 52);
+    \u0275\u0275elementStart(0, "div", 48);
     \u0275\u0275text(1, "No tasks");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Conditional_0_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Conditional_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 60);
+    \u0275\u0275elementStart(0, "div", 56);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext(2).$implicit;
+    const j_r7 = \u0275\u0275nextContext(2).$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
     \u0275\u0275advance();
-    \u0275\u0275textInterpolate1("", ctx_r1.remaining(j_r8.id), " left");
+    \u0275\u0275textInterpolate1("", ctx_r1.remaining(j_r7.id), " left");
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Conditional_1_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Conditional_1_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 61);
+    \u0275\u0275elementStart(0, "div", 57);
     \u0275\u0275text(1, "\u2713 all done");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275template(0, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Conditional_0_Template, 2, 1, "div", 60)(1, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Conditional_1_Template, 2, 0, "div", 61);
+    \u0275\u0275template(0, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Conditional_0_Template, 2, 1, "div", 56)(1, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Conditional_1_Template, 2, 0, "div", 57);
   }
   if (rf & 2) {
-    const j_r8 = \u0275\u0275nextContext().$implicit;
+    const j_r7 = \u0275\u0275nextContext().$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275conditional(ctx_r1.remaining(j_r8.id) > 0 ? 0 : 1);
+    \u0275\u0275conditional(ctx_r1.remaining(j_r7.id) > 0 ? 0 : 1);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_For_9_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_For_9_Template(rf, ctx) {
   if (rf & 1) {
-    const _r7 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 30);
-    \u0275\u0275template(1, WorkBoardComponent_Conditional_16_For_2_For_9_div_1_Template, 1, 0, "div", 31);
-    \u0275\u0275elementStart(2, "div", 32)(3, "div", 33);
+    const _r6 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 26);
+    \u0275\u0275template(1, WorkBoardComponent_Conditional_15_For_2_For_9_div_1_Template, 1, 0, "div", 27);
+    \u0275\u0275elementStart(2, "div", 28)(3, "div", 29);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "div", 34)(6, "button", 35);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_button_click_6_listener() {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(5, "div", 30)(6, "button", 31);
+    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_button_click_6_listener() {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.move(j_r8, -1));
+      return \u0275\u0275resetView(ctx_r1.move(j_r7, -1));
     });
     \u0275\u0275text(7, "\u2039");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "button", 36);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_button_click_8_listener() {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(8, "button", 32);
+    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_button_click_8_listener() {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.move(j_r8, 1));
+      return \u0275\u0275resetView(ctx_r1.move(j_r7, 1));
     });
     \u0275\u0275text(9, "\u203A");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(10, "button", 37);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_button_click_10_listener() {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(10, "button", 33);
+    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_button_click_10_listener() {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.openEditor(j_r8));
+      return \u0275\u0275resetView(ctx_r1.openEditor(j_r7));
     });
     \u0275\u0275text(11, "\u270E");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "button", 38);
-    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_button_click_12_listener() {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(12, "button", 34);
+    \u0275\u0275listener("click", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_button_click_12_listener() {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.deleteCard(j_r8));
+      return \u0275\u0275resetView(ctx_r1.deleteCard(j_r7));
     });
     \u0275\u0275text(13, "\xD7");
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(14, "div", 39);
-    \u0275\u0275template(15, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_15_Template, 2, 5)(16, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_16_Template, 2, 0, "span", 40)(17, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_17_Template, 2, 1, "span", 41)(18, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_18_Template, 2, 1, "span", 42)(19, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_19_Template, 2, 0, "span", 43);
+    \u0275\u0275elementStart(14, "div", 35);
+    \u0275\u0275template(15, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_15_Template, 2, 5)(16, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_16_Template, 2, 0, "span", 36)(17, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_17_Template, 2, 1, "span", 37)(18, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_18_Template, 2, 1, "span", 38)(19, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_19_Template, 2, 0, "span", 39);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(20, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_20_Template, 2, 1, "p", 44);
-    \u0275\u0275elementStart(21, "div", 45)(22, "label", 46);
-    \u0275\u0275template(23, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_23_Template, 2, 1, "span", 47);
-    \u0275\u0275elementStart(24, "app-select", 48);
-    \u0275\u0275listener("changed", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_app_select_changed_24_listener($event) {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275template(20, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_20_Template, 2, 1, "p", 40);
+    \u0275\u0275elementStart(21, "div", 41)(22, "label", 42);
+    \u0275\u0275template(23, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_23_Template, 2, 1, "span", 43);
+    \u0275\u0275elementStart(24, "app-select", 44);
+    \u0275\u0275listener("changed", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_app_select_changed_24_listener($event) {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.assign(j_r8, $event));
+      return \u0275\u0275resetView(ctx_r1.assign(j_r7, $event));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(25, "input", 49);
-    \u0275\u0275listener("change", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_input_change_25_listener($event) {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(25, "input", 45);
+    \u0275\u0275listener("change", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_input_change_25_listener($event) {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.setDue(j_r8, $event.target.value));
+      return \u0275\u0275resetView(ctx_r1.setDue(j_r7, $event.target.value));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(26, "div", 50);
-    \u0275\u0275repeaterCreate(27, WorkBoardComponent_Conditional_16_For_2_For_9_For_28_Template, 7, 4, "div", 51, _forTrack1);
-    \u0275\u0275template(29, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_29_Template, 2, 0, "div", 52);
+    \u0275\u0275elementStart(26, "div", 46);
+    \u0275\u0275repeaterCreate(27, WorkBoardComponent_Conditional_15_For_2_For_9_For_28_Template, 7, 4, "div", 47, _forTrack1);
+    \u0275\u0275template(29, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_29_Template, 2, 0, "div", 48);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(30, "div", 53)(31, "input", 54);
-    \u0275\u0275twoWayListener("ngModelChange", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_input_ngModelChange_31_listener($event) {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275elementStart(30, "div", 49)(31, "input", 50);
+    \u0275\u0275twoWayListener("ngModelChange", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_input_ngModelChange_31_listener($event) {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      \u0275\u0275twoWayBindingSet(ctx_r1.newTask[j_r8.id], $event) || (ctx_r1.newTask[j_r8.id] = $event);
+      \u0275\u0275twoWayBindingSet(ctx_r1.newTask[j_r7.id], $event) || (ctx_r1.newTask[j_r7.id] = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275listener("keyup.enter", function WorkBoardComponent_Conditional_16_For_2_For_9_Template_input_keyup_enter_31_listener() {
-      const j_r8 = \u0275\u0275restoreView(_r7).$implicit;
+    \u0275\u0275listener("keyup.enter", function WorkBoardComponent_Conditional_15_For_2_For_9_Template_input_keyup_enter_31_listener() {
+      const j_r7 = \u0275\u0275restoreView(_r6).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r1.add(j_r8.id));
+      return \u0275\u0275resetView(ctx_r1.add(j_r7.id));
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275template(32, WorkBoardComponent_Conditional_16_For_2_For_9_Conditional_32_Template, 2, 1);
+    \u0275\u0275template(32, WorkBoardComponent_Conditional_15_For_2_For_9_Conditional_32_Template, 2, 1);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
     let tmp_34_0;
-    const j_r8 = ctx.$implicit;
+    const j_r7 = ctx.$implicit;
     const ctx_r1 = \u0275\u0275nextContext(3);
-    \u0275\u0275classProp("job--archived", j_r8.isArchived);
+    \u0275\u0275classProp("job--archived", j_r7.isArchived);
     \u0275\u0275advance(4);
-    \u0275\u0275textInterpolate1("\u283F ", j_r8.clientName || j_r8.title, "");
+    \u0275\u0275textInterpolate1("\u283F ", j_r7.clientName || j_r7.title, "");
     \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", !ctx_r1.canPrev(j_r8));
+    \u0275\u0275property("disabled", !ctx_r1.canPrev(j_r7));
     \u0275\u0275advance(2);
-    \u0275\u0275property("disabled", !ctx_r1.canNext(j_r8));
+    \u0275\u0275property("disabled", !ctx_r1.canNext(j_r7));
     \u0275\u0275advance(4);
-    \u0275\u0275property("title", j_r8.bookingId ? "Remove from board" : "Delete card");
+    \u0275\u0275property("title", j_r7.bookingId ? "Remove from board" : "Delete card");
     \u0275\u0275advance(3);
-    \u0275\u0275conditional(j_r8.start_at ? 15 : 16);
+    \u0275\u0275conditional(j_r7.start_at ? 15 : 16);
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(j_r8.workTypeLabel ? 17 : -1);
+    \u0275\u0275conditional(j_r7.workTypeLabel ? 17 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(j_r8.createdByName ? 18 : -1);
+    \u0275\u0275conditional(j_r7.createdByName ? 18 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(j_r8.isArchived ? 19 : -1);
+    \u0275\u0275conditional(j_r7.isArchived ? 19 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(j_r8.description ? 20 : -1);
+    \u0275\u0275conditional(j_r7.description ? 20 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275classProp("job__assignee--set", j_r8.assigneeId);
+    \u0275\u0275classProp("job__assignee--set", j_r7.assigneeId);
     \u0275\u0275advance();
-    \u0275\u0275conditional(j_r8.assigneeId ? 23 : -1);
+    \u0275\u0275conditional(j_r7.assigneeId ? 23 : -1);
     \u0275\u0275advance();
-    \u0275\u0275property("value", (tmp_34_0 = j_r8.assigneeId) !== null && tmp_34_0 !== void 0 ? tmp_34_0 : "")("options", ctx_r1.assigneeOptions())("searchable", false);
+    \u0275\u0275property("value", (tmp_34_0 = j_r7.assigneeId) !== null && tmp_34_0 !== void 0 ? tmp_34_0 : "")("options", ctx_r1.assigneeOptions())("searchable", false);
     \u0275\u0275advance();
-    \u0275\u0275classProp("job__due--overdue", ctx_r1.isOverdue(j_r8));
-    \u0275\u0275property("value", ctx_r1.dueValue(j_r8));
+    \u0275\u0275classProp("job__due--overdue", ctx_r1.isOverdue(j_r7));
+    \u0275\u0275property("value", ctx_r1.dueValue(j_r7));
     \u0275\u0275advance(2);
-    \u0275\u0275repeater(ctx_r1.tasksFor(j_r8.id));
+    \u0275\u0275repeater(ctx_r1.tasksFor(j_r7.id));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.tasksFor(j_r8.id).length === 0 ? 29 : -1);
+    \u0275\u0275conditional(ctx_r1.tasksFor(j_r7.id).length === 0 ? 29 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275twoWayProperty("ngModel", ctx_r1.newTask[j_r8.id]);
+    \u0275\u0275twoWayProperty("ngModel", ctx_r1.newTask[j_r7.id]);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r1.tasksFor(j_r8.id).length ? 32 : -1);
+    \u0275\u0275conditional(ctx_r1.tasksFor(j_r7.id).length ? 32 : -1);
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_Conditional_10_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_Conditional_10_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 28);
+    \u0275\u0275elementStart(0, "div", 24);
     \u0275\u0275text(1, "Drop here");
     \u0275\u0275elementEnd();
   }
 }
-function WorkBoardComponent_Conditional_16_For_2_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_For_2_Template(rf, ctx) {
   if (rf & 1) {
-    const _r5 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 21)(1, "div", 22)(2, "span", 23);
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18)(2, "span", 19);
     \u0275\u0275text(3);
     \u0275\u0275elementEnd();
-    \u0275\u0275template(4, WorkBoardComponent_Conditional_16_For_2_Conditional_4_Template, 1, 2, "span", 24);
-    \u0275\u0275elementStart(5, "span", 25);
+    \u0275\u0275template(4, WorkBoardComponent_Conditional_15_For_2_Conditional_4_Template, 1, 2, "span", 20);
+    \u0275\u0275elementStart(5, "span", 21);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(7, "div", 26);
-    \u0275\u0275listener("cdkDropListDropped", function WorkBoardComponent_Conditional_16_For_2_Template_div_cdkDropListDropped_7_listener($event) {
-      const col_r6 = \u0275\u0275restoreView(_r5).$implicit;
+    \u0275\u0275elementStart(7, "div", 22);
+    \u0275\u0275listener("cdkDropListDropped", function WorkBoardComponent_Conditional_15_For_2_Template_div_cdkDropListDropped_7_listener($event) {
+      const col_r5 = \u0275\u0275restoreView(_r4).$implicit;
       const ctx_r1 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r1.drop($event, col_r6.key));
+      return \u0275\u0275resetView(ctx_r1.drop($event, col_r5.key));
     });
-    \u0275\u0275repeaterCreate(8, WorkBoardComponent_Conditional_16_For_2_For_9_Template, 33, 23, "div", 27, _forTrack1);
-    \u0275\u0275template(10, WorkBoardComponent_Conditional_16_For_2_Conditional_10_Template, 2, 0, "div", 28);
+    \u0275\u0275repeaterCreate(8, WorkBoardComponent_Conditional_15_For_2_For_9_Template, 33, 23, "div", 23, _forTrack1);
+    \u0275\u0275template(10, WorkBoardComponent_Conditional_15_For_2_Conditional_10_Template, 2, 0, "div", 24);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const col_r6 = ctx.$implicit;
+    const col_r5 = ctx.$implicit;
     const ctx_r1 = \u0275\u0275nextContext(2);
-    \u0275\u0275classProp("col--backlog", col_r6.key === "backlog");
+    \u0275\u0275classProp("col--backlog", col_r5.key === "backlog");
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(col_r6.label);
+    \u0275\u0275textInterpolate(col_r5.label);
     \u0275\u0275advance();
-    \u0275\u0275conditional(col_r6.colorId ? 4 : -1);
+    \u0275\u0275conditional(col_r5.colorId ? 4 : -1);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate((ctx_r1.board()[col_r6.key] || \u0275\u0275pureFunction0(7, _c0)).length);
+    \u0275\u0275textInterpolate((ctx_r1.board()[col_r5.key] || \u0275\u0275pureFunction0(7, _c0)).length);
     \u0275\u0275advance();
-    \u0275\u0275property("cdkDropListData", ctx_r1.board()[col_r6.key] || \u0275\u0275pureFunction0(8, _c0));
+    \u0275\u0275property("cdkDropListData", ctx_r1.board()[col_r5.key] || \u0275\u0275pureFunction0(8, _c0));
     \u0275\u0275advance();
-    \u0275\u0275repeater(ctx_r1.board()[col_r6.key] || \u0275\u0275pureFunction0(9, _c0));
+    \u0275\u0275repeater(ctx_r1.board()[col_r5.key] || \u0275\u0275pureFunction0(9, _c0));
     \u0275\u0275advance(2);
-    \u0275\u0275conditional(ctx_r1.board()[col_r6.key].length === 0 ? 10 : -1);
+    \u0275\u0275conditional(ctx_r1.board()[col_r5.key].length === 0 ? 10 : -1);
   }
 }
-function WorkBoardComponent_Conditional_16_Template(rf, ctx) {
+function WorkBoardComponent_Conditional_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 12);
-    \u0275\u0275repeaterCreate(1, WorkBoardComponent_Conditional_16_For_2_Template, 11, 10, "div", 20, _forTrack03);
+    \u0275\u0275elementStart(0, "div", 11);
+    \u0275\u0275repeaterCreate(1, WorkBoardComponent_Conditional_15_For_2_Template, 11, 10, "div", 16, _forTrack03);
     \u0275\u0275elementEnd();
   }
   if (rf & 2) {
@@ -5633,20 +5120,20 @@ function WorkBoardComponent_Conditional_16_Template(rf, ctx) {
     \u0275\u0275repeater(ctx_r1.columns());
   }
 }
-function WorkBoardComponent_ng_template_17_Template(rf, ctx) {
+function WorkBoardComponent_ng_template_16_Template(rf, ctx) {
   if (rf & 1) {
-    const _r11 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 62)(1, "button", 63);
-    \u0275\u0275listener("click", function WorkBoardComponent_ng_template_17_Template_button_click_1_listener() {
-      \u0275\u0275restoreView(_r11);
+    const _r10 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 58)(1, "button", 59);
+    \u0275\u0275listener("click", function WorkBoardComponent_ng_template_16_Template_button_click_1_listener() {
+      \u0275\u0275restoreView(_r10);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.stagesOpen.set(true));
     });
     \u0275\u0275text(2, "Board columns\u2026");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "button", 63);
-    \u0275\u0275listener("click", function WorkBoardComponent_ng_template_17_Template_button_click_3_listener() {
-      \u0275\u0275restoreView(_r11);
+    \u0275\u0275elementStart(3, "button", 59);
+    \u0275\u0275listener("click", function WorkBoardComponent_ng_template_16_Template_button_click_3_listener() {
+      \u0275\u0275restoreView(_r10);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.settingsOpen.set(true));
     });
@@ -5654,7 +5141,7 @@ function WorkBoardComponent_ng_template_17_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-var BACKLOG2 = "backlog";
+var BACKLOG = "backlog";
 var WorkBoardComponent = class _WorkBoardComponent {
   stageHex(id) {
     return colorHex(id);
@@ -5666,11 +5153,11 @@ var WorkBoardComponent = class _WorkBoardComponent {
     this.confirm = inject(ConfirmService);
     this.stages = signal([]);
     this.columns = computed(() => [
-      { key: BACKLOG2, label: "Backlog", colorId: null },
+      { key: BACKLOG, label: "Backlog", colorId: null },
       ...this.stages().map((st) => ({ key: st.key, label: st.label, colorId: st.color_id }))
     ]);
     this.columnKeys = computed(() => this.columns().map((c) => c.key));
-    this.board = signal({ [BACKLOG2]: [] });
+    this.board = signal({ [BACKLOG]: [] });
     this.allJobs = signal([]);
     this.showArchived = signal(false);
     this.archivedCount = computed(() => this.allJobs().filter((j) => j.isArchived).length);
@@ -5678,11 +5165,6 @@ var WorkBoardComponent = class _WorkBoardComponent {
     this.staff = signal([]);
     this.loading = signal(true);
     this.newTask = {};
-    this.jobOptions = signal([]);
-    this.composerOpen = signal(false);
-    this.newCardTitle = "";
-    this.newCardBookingId = "";
-    this.adding = signal(false);
     this.realtime = null;
     this.overdueCount = computed(() => {
       const now = Date.now();
@@ -5691,14 +5173,6 @@ var WorkBoardComponent = class _WorkBoardComponent {
     this.assigneeOptions = computed(() => [
       { value: "", label: "Unassigned" },
       ...this.staff().map((s) => ({ value: s.id, label: s.name }))
-    ]);
-    this.composerJobOptions = computed(() => [
-      { value: "", label: "No job \u2014 personal card" },
-      ...this.jobOptions().map((o) => ({
-        value: o.id,
-        label: o.title,
-        hint: [o.clientName, o.start_at ? new Date(o.start_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null].filter(Boolean).join(" \xB7 ") || void 0
-      }))
     ]);
     this.stagesOpen = signal(false);
     this.settingsOpen = signal(false);
@@ -5735,15 +5209,13 @@ var WorkBoardComponent = class _WorkBoardComponent {
     return __async(this, null, function* () {
       const org = this.auth.orgId();
       if (org) {
-        const [jobs, tasks, jobOptions, staff] = yield Promise.all([
+        const [jobs, tasks, staff] = yield Promise.all([
           this.admin.loadJobs(org),
           this.admin.loadTasks(org),
-          this.admin.loadJobOptions(org),
           this.admin.listStaff(org)
         ]);
         this.stages.set(yield this.admin.listWorkStages(org));
         this.tasks.set(tasks);
-        this.jobOptions.set(jobOptions);
         this.staff.set(staff);
         this.allJobs.set(jobs);
         this.regroup();
@@ -5781,31 +5253,7 @@ var WorkBoardComponent = class _WorkBoardComponent {
   remaining(workItemId) {
     return this.tasksFor(workItemId).filter((t) => !t.is_done).length;
   }
-  // ── New / delete cards ─────────────────────────────────────────────
-  toggleComposer() {
-    this.composerOpen.update((v) => !v);
-    this.newCardTitle = "";
-    this.newCardBookingId = "";
-  }
-  addCard() {
-    return __async(this, null, function* () {
-      const org = this.auth.orgId();
-      const bookingId = this.newCardBookingId || null;
-      if (!org || this.adding() || !bookingId && !this.newCardTitle.trim())
-        return;
-      this.adding.set(true);
-      try {
-        yield this.admin.addWorkItem(org, bookingId, this.newCardTitle.trim());
-        yield this.reload();
-        this.composerOpen.set(false);
-        this.newCardTitle = "";
-        this.newCardBookingId = "";
-        this.toast.success("Card added");
-      } finally {
-        this.adding.set(false);
-      }
-    });
-  }
+  // ── Delete cards ──────────────────────────────────────────────────
   deleteCard(j) {
     return __async(this, null, function* () {
       const ok = yield this.confirm.ask(j.bookingId ? { title: "Remove from board", message: "Remove this card from the Work board? The booking, invoice and calendar event are kept.", confirmLabel: "Remove", danger: true } : { title: "Delete card", message: "Delete this card? This can\u2019t be undone.", confirmLabel: "Delete", danger: true });
@@ -5859,7 +5307,7 @@ var WorkBoardComponent = class _WorkBoardComponent {
       if (i < 0 || i >= keys.length)
         return;
       yield this.moveTo(j, keys[i]);
-      this.toast.success(keys[i] === BACKLOG2 ? "Moved to Backlog" : `Moved to ${this.columnLabel(keys[i])}`);
+      this.toast.success(keys[i] === BACKLOG ? "Moved to Backlog" : `Moved to ${this.columnLabel(keys[i])}`);
     });
   }
   // ── Assignee + due date (Trello-style) ─────────────────────────────
@@ -5921,7 +5369,7 @@ var WorkBoardComponent = class _WorkBoardComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WorkBoardComponent, selectors: [["app-work-board"]], decls: 22, vars: 11, consts: [["workMenu", ""], [1, "work"], [1, "work__head"], [1, "work__title"], [1, "work__sub"], [1, "work__head-actions"], [1, "overdue-tag"], [1, "btn", "btn--ghost", "btn--sm"], ["title", "Work settings", "aria-label", "Work settings", 1, "btn", "btn--ghost", "btn--sm", "work__cog", 3, "cdkMenuTriggerFor"], [1, "btn", "btn--primary", "btn--sm", 3, "click"], [1, "composer"], [1, "muted"], ["cdkDropListGroup", "", 1, "board"], [3, "openChange", "saved", "open", "job", "staff"], [3, "openChange", "changed", "open", "stages"], [3, "openChange", "changed", "open"], [1, "btn", "btn--ghost", "btn--sm", 3, "click"], ["type", "text", "placeholder", "Card title (e.g. Edit reel for IG)", 1, "composer__title", 3, "ngModelChange", "keyup.enter", "ngModel"], ["placeholder", "No job \u2014 personal card", 1, "composer__job", 3, "changed", "value", "options"], [1, "btn", "btn--primary", "btn--sm", 3, "click", "disabled"], [1, "col", 3, "col--backlog"], [1, "col"], [1, "col__head"], [1, "col__label"], [1, "col__dot", 3, "background"], [1, "col__count"], ["cdkDropList", "", 1, "col__body", 3, "cdkDropListDropped", "cdkDropListData"], ["cdkDrag", "", 1, "job", 3, "job--archived"], [1, "col__empty"], [1, "col__dot"], ["cdkDrag", "", 1, "job"], ["class", "job__drag-placeholder", 4, "cdkDragPlaceholder"], [1, "job__top"], ["cdkDragHandle", "", 1, "job__client"], [1, "job__nav"], ["title", "Move back", 1, "job__arrow", 3, "click", "disabled"], ["title", "Move forward", 1, "job__arrow", 3, "click", "disabled"], ["title", "Reserved time, jobs covered, due date", 1, "job__edit", 3, "click"], [1, "job__del", 3, "click", "title"], [1, "job__meta"], [1, "job__tag"], [1, "job__tag", "job__tag--type"], [1, "job__by"], [1, "job__tag", "job__tag--archived"], [1, "job__desc"], [1, "job__manage"], [1, "job__assignee"], [1, "job__avatar"], ["size", "sm", "placeholder", "Unassigned", 3, "changed", "value", "options", "searchable"], ["type", "date", "title", "Deliver-by date", 1, "job__due", 3, "change", "value"], [1, "tasks"], [1, "task", 3, "task--done"], [1, "task", "task--empty"], [1, "job__add"], ["type", "text", "placeholder", "+ add task", 3, "ngModelChange", "keyup.enter", "ngModel"], [1, "job__drag-placeholder"], [1, "task"], [1, "task__check"], ["type", "checkbox", 3, "change", "checked"], ["title", "Remove", 1, "task__del", 3, "click"], [1, "job__remaining"], [1, "job__remaining", "job__remaining--done"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"]], template: function WorkBoardComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _WorkBoardComponent, selectors: [["app-work-board"]], decls: 21, vars: 10, consts: [["workMenu", ""], [1, "work"], [1, "work__head"], [1, "work__title"], [1, "work__sub"], [1, "work__head-actions"], [1, "overdue-tag"], [1, "btn", "btn--ghost", "btn--sm"], ["title", "Work settings", "aria-label", "Work settings", 1, "btn", "btn--ghost", "btn--sm", "work__cog", 3, "cdkMenuTriggerFor"], [1, "btn", "btn--primary", "btn--sm", 3, "click"], [1, "muted"], ["cdkDropListGroup", "", 1, "board"], [3, "openChange", "saved", "open", "job", "staff"], [3, "openChange", "changed", "open", "stages"], [3, "openChange", "changed", "open"], [1, "btn", "btn--ghost", "btn--sm", 3, "click"], [1, "col", 3, "col--backlog"], [1, "col"], [1, "col__head"], [1, "col__label"], [1, "col__dot", 3, "background"], [1, "col__count"], ["cdkDropList", "", 1, "col__body", 3, "cdkDropListDropped", "cdkDropListData"], ["cdkDrag", "", 1, "job", 3, "job--archived"], [1, "col__empty"], [1, "col__dot"], ["cdkDrag", "", 1, "job"], ["class", "job__drag-placeholder", 4, "cdkDragPlaceholder"], [1, "job__top"], ["cdkDragHandle", "", 1, "job__client"], [1, "job__nav"], ["title", "Move back", 1, "job__arrow", 3, "click", "disabled"], ["title", "Move forward", 1, "job__arrow", 3, "click", "disabled"], ["title", "Reserved time, jobs covered, due date", 1, "job__edit", 3, "click"], [1, "job__del", 3, "click", "title"], [1, "job__meta"], [1, "job__tag"], [1, "job__tag", "job__tag--type"], [1, "job__by"], [1, "job__tag", "job__tag--archived"], [1, "job__desc"], [1, "job__manage"], [1, "job__assignee"], [1, "job__avatar"], ["size", "sm", "placeholder", "Unassigned", 3, "changed", "value", "options", "searchable"], ["type", "date", "title", "Deliver-by date", 1, "job__due", 3, "change", "value"], [1, "tasks"], [1, "task", 3, "task--done"], [1, "task", "task--empty"], [1, "job__add"], ["type", "text", "placeholder", "+ add task", 3, "ngModelChange", "keyup.enter", "ngModel"], [1, "job__drag-placeholder"], [1, "task"], [1, "task__check"], ["type", "checkbox", 3, "change", "checked"], ["title", "Remove", 1, "task__del", 3, "click"], [1, "job__remaining"], [1, "job__remaining", "job__remaining--done"], ["cdkMenu", "", 1, "menu"], ["cdkMenuItem", "", 1, "menu__item", 3, "click"]], template: function WorkBoardComponent_Template(rf, ctx) {
       if (rf & 1) {
         const _r1 = \u0275\u0275getCurrentView();
         \u0275\u0275elementStart(0, "div", 1)(1, "div", 2)(2, "div")(3, "h1", 3);
@@ -5938,57 +5386,55 @@ var WorkBoardComponent = class _WorkBoardComponent {
         \u0275\u0275elementStart(12, "button", 9);
         \u0275\u0275listener("click", function WorkBoardComponent_Template_button_click_12_listener() {
           \u0275\u0275restoreView(_r1);
-          return \u0275\u0275resetView(ctx.toggleComposer());
+          return \u0275\u0275resetView(ctx.openEditor());
         });
         \u0275\u0275text(13, "+ New card");
         \u0275\u0275elementEnd()()();
-        \u0275\u0275template(14, WorkBoardComponent_Conditional_14_Template, 7, 4, "div", 10)(15, WorkBoardComponent_Conditional_15_Template, 2, 0, "p", 11)(16, WorkBoardComponent_Conditional_16_Template, 3, 0, "div", 12)(17, WorkBoardComponent_ng_template_17_Template, 5, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
-        \u0275\u0275elementStart(19, "app-work-editor", 13);
-        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_work_editor_openChange_19_listener($event) {
+        \u0275\u0275template(14, WorkBoardComponent_Conditional_14_Template, 2, 0, "p", 10)(15, WorkBoardComponent_Conditional_15_Template, 3, 0, "div", 11)(16, WorkBoardComponent_ng_template_16_Template, 5, 0, "ng-template", null, 0, \u0275\u0275templateRefExtractor);
+        \u0275\u0275elementStart(18, "app-work-editor", 12);
+        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_work_editor_openChange_18_listener($event) {
           \u0275\u0275restoreView(_r1);
           \u0275\u0275twoWayBindingSet(ctx.editorOpen, $event) || (ctx.editorOpen = $event);
           return \u0275\u0275resetView($event);
         });
-        \u0275\u0275listener("saved", function WorkBoardComponent_Template_app_work_editor_saved_19_listener() {
+        \u0275\u0275listener("saved", function WorkBoardComponent_Template_app_work_editor_saved_18_listener() {
           \u0275\u0275restoreView(_r1);
           return \u0275\u0275resetView(ctx.onWorkSaved());
         });
         \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(20, "app-stage-manager", 14);
-        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_stage_manager_openChange_20_listener($event) {
+        \u0275\u0275elementStart(19, "app-stage-manager", 13);
+        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_stage_manager_openChange_19_listener($event) {
           \u0275\u0275restoreView(_r1);
           \u0275\u0275twoWayBindingSet(ctx.stagesOpen, $event) || (ctx.stagesOpen = $event);
           return \u0275\u0275resetView($event);
         });
-        \u0275\u0275listener("changed", function WorkBoardComponent_Template_app_stage_manager_changed_20_listener() {
+        \u0275\u0275listener("changed", function WorkBoardComponent_Template_app_stage_manager_changed_19_listener() {
           \u0275\u0275restoreView(_r1);
           return \u0275\u0275resetView(ctx.onStagesChanged());
         });
         \u0275\u0275elementEnd();
-        \u0275\u0275elementStart(21, "app-work-settings", 15);
-        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_work_settings_openChange_21_listener($event) {
+        \u0275\u0275elementStart(20, "app-work-settings", 14);
+        \u0275\u0275twoWayListener("openChange", function WorkBoardComponent_Template_app_work_settings_openChange_20_listener($event) {
           \u0275\u0275restoreView(_r1);
           \u0275\u0275twoWayBindingSet(ctx.settingsOpen, $event) || (ctx.settingsOpen = $event);
           return \u0275\u0275resetView($event);
         });
-        \u0275\u0275listener("changed", function WorkBoardComponent_Template_app_work_settings_changed_21_listener() {
+        \u0275\u0275listener("changed", function WorkBoardComponent_Template_app_work_settings_changed_20_listener() {
           \u0275\u0275restoreView(_r1);
           return \u0275\u0275resetView(ctx.onStagesChanged());
         });
         \u0275\u0275elementEnd()();
       }
       if (rf & 2) {
-        const workMenu_r12 = \u0275\u0275reference(18);
+        const workMenu_r11 = \u0275\u0275reference(17);
         \u0275\u0275advance(8);
         \u0275\u0275conditional(ctx.overdueCount() > 0 ? 8 : -1);
         \u0275\u0275advance();
         \u0275\u0275conditional(ctx.archivedCount() > 0 ? 9 : -1);
         \u0275\u0275advance();
-        \u0275\u0275property("cdkMenuTriggerFor", workMenu_r12);
+        \u0275\u0275property("cdkMenuTriggerFor", workMenu_r11);
         \u0275\u0275advance(4);
-        \u0275\u0275conditional(ctx.composerOpen() ? 14 : -1);
-        \u0275\u0275advance();
-        \u0275\u0275conditional(ctx.loading() ? 15 : 16);
+        \u0275\u0275conditional(ctx.loading() ? 14 : 15);
         \u0275\u0275advance(4);
         \u0275\u0275twoWayProperty("open", ctx.editorOpen);
         \u0275\u0275property("job", ctx.editing())("staff", ctx.staff());
@@ -6325,39 +5771,6 @@ var WorkBoardComponent = class _WorkBoardComponent {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.composer[_ngcontent-%COMP%] {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 18px;
-}
-.composer__title[_ngcontent-%COMP%] {
-  flex: 1 1 240px;
-}
-.composer__job[_ngcontent-%COMP%] {
-  flex: 1 1 220px;
-}
-.composer[_ngcontent-%COMP%]   input[_ngcontent-%COMP%], 
-.composer[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {
-  padding: 9px 12px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 13.5px;
-  font-family: inherit;
-  color: #0f172a;
-  background: #ffffff;
-  box-sizing: border-box;
-}
-.composer[_ngcontent-%COMP%]   input[_ngcontent-%COMP%]:focus, 
-.composer[_ngcontent-%COMP%]   select[_ngcontent-%COMP%]:focus {
-  outline: none;
-  border-color: #F4A922;
 }
 .board[_ngcontent-%COMP%] {
   display: grid;
@@ -6764,4 +6177,4 @@ var WorkBoardComponent = class _WorkBoardComponent {
 export {
   WorkBoardComponent
 };
-//# sourceMappingURL=chunk-GDQ7KMP5.js.map
+//# sourceMappingURL=chunk-F5AJKZ7M.js.map

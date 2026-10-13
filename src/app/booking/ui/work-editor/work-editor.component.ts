@@ -342,7 +342,14 @@ export class WorkEditorComponent {
     this.saving.set(true);
     try {
       const j = this.job();
-      const id = j ? j.id : await this.admin.addWorkItem(org, null, this.title().trim());
+      // On CREATE, the first linked job becomes the card's originating booking. That is not
+      // cosmetic: `work_items.booking_id` is what decides whether removing the card takes
+      // it off the board or deletes it, and what `setStage` mirrors progress back to. A new
+      // card created with jobs attached but a null booking_id would behave as a personal
+      // to-do and silently stop mirroring its stage to the shoot.
+      // The join table still carries ALL of them — booking_id could only ever name one.
+      const originating = this.coversJob() ? (this.linked()[0] ?? null) : null;
+      const id = j ? j.id : await this.admin.addWorkItem(org, originating, this.title().trim());
       if (!id) { this.toast.error('Could not save the work task.'); return; }
 
       await this.admin.updateWorkItem(id, {
@@ -361,7 +368,11 @@ export class WorkEditorComponent {
       // in a real write rather than matching an assumed starting value.
       const current = j ? (j.isActive ? j.production_status : BACKLOG) : null;
       if (this.stageKey() !== current) {
-        await this.admin.moveWorkCard(id, this.stageKey(), j?.bookingId ?? null, j?.isActive ?? !j);
+        // `false` for a new card, deliberately: create_work_item puts a BOOKING-LINKED
+        // card in the Backlog (activated_at NULL), so claiming it is already active would
+        // skip activateCard and leave it in Backlog however the Status field was set.
+        // activateCard is idempotent, so being wrong the other way costs nothing.
+        await this.admin.moveWorkCard(id, this.stageKey(), j?.bookingId ?? originating, j?.isActive ?? false);
       }
 
       // Checklist: only what changed.

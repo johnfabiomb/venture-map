@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
-import { BookingAdminService, WorkJob, TaskRow, ProductionStage, JobOption, AdminStaff, WorkStage, colorHex } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, WorkJob, TaskRow, AdminStaff, WorkStage, colorHex } from '@booking/core/services/booking-admin.service';
 import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
 import { StageManagerComponent } from '@booking/ui/stage-manager/stage-manager.component';
 import { WorkSettingsComponent } from '@booking/ui/work-settings/work-settings.component';
@@ -63,12 +63,6 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
   newTask: Record<string, string> = {};
 
-  // ── New-card composer ──────────────────────────────────────────────
-  readonly jobOptions = signal<JobOption[]>([]);
-  readonly composerOpen = signal(false);
-  newCardTitle = '';
-  newCardBookingId = '';   // '' = standalone (no job)
-  readonly adding = signal(false);
 
   private realtime: RealtimeHandle | null = null;
 
@@ -90,14 +84,6 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   readonly assigneeOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'Unassigned' },
     ...this.staff().map(s => ({ value: s.id, label: s.name })),
-  ]);
-  readonly composerJobOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'No job — personal card' },
-    ...this.jobOptions().map(o => ({
-      value: o.id, label: o.title,
-      hint: [o.clientName, o.start_at ? new Date(o.start_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null]
-        .filter(Boolean).join(' · ') || undefined,
-    })),
   ]);
 
   readonly stagesOpen = signal(false);
@@ -124,12 +110,11 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   private async reload(): Promise<void> {
     const org = this.auth.orgId();
     if (org) {
-      const [jobs, tasks, jobOptions, staff] = await Promise.all([
-        this.admin.loadJobs(org), this.admin.loadTasks(org), this.admin.loadJobOptions(org), this.admin.listStaff(org),
+      const [jobs, tasks, staff] = await Promise.all([
+        this.admin.loadJobs(org), this.admin.loadTasks(org), this.admin.listStaff(org),
       ]);
       this.stages.set(await this.admin.listWorkStages(org));
       this.tasks.set(tasks);
-      this.jobOptions.set(jobOptions);
       this.staff.set(staff);
       this.allJobs.set(jobs);
       this.regroup();
@@ -158,23 +143,7 @@ export class WorkBoardComponent implements OnInit, OnDestroy {
   tasksFor(workItemId: string): TaskRow[] { return this.tasks().filter(t => t.work_item_id === workItemId); }
   remaining(workItemId: string): number { return this.tasksFor(workItemId).filter(t => !t.is_done).length; }
 
-  // ── New / delete cards ─────────────────────────────────────────────
-  toggleComposer(): void {
-    this.composerOpen.update(v => !v);
-    this.newCardTitle = ''; this.newCardBookingId = '';
-  }
-  async addCard(): Promise<void> {
-    const org = this.auth.orgId();
-    const bookingId = this.newCardBookingId || null;
-    if (!org || this.adding() || (!bookingId && !this.newCardTitle.trim())) return;
-    this.adding.set(true);
-    try {
-      await this.admin.addWorkItem(org, bookingId, this.newCardTitle.trim());
-      await this.reload();
-      this.composerOpen.set(false); this.newCardTitle = ''; this.newCardBookingId = '';
-      this.toast.success('Card added');
-    } finally { this.adding.set(false); }
-  }
+  // ── Delete cards ──────────────────────────────────────────────────
   async deleteCard(j: WorkJob): Promise<void> {
     const ok = await this.confirm.ask(j.bookingId
       ? { title: 'Remove from board', message: 'Remove this card from the Work board? The booking, invoice and calendar event are kept.', confirmLabel: 'Remove', danger: true }
