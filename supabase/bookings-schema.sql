@@ -3948,3 +3948,105 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.record_history_for(text, uuid, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.record_history_for(text, uuid, int) TO authenticated;
+
+
+-- ═══ 30. A time block can BE the work ticket ══════════════════════════════
+-- `needs_production` was a checkbox that flagged a booking and created an EMPTY card:
+-- no type, no brief, no deadline and no reserved time. The flag was set here and the
+-- actual ticket had to be filled in somewhere else, later — which is how cards ended up
+-- with none of it.
+--
+-- The model that already works on this form is the INVOICE: you enter the line items and
+-- the invoice exists when the booking does. Post-production now works the same way. While
+-- picking time blocks you mark one as post-production; that block stops belonging to the
+-- booking and becomes the ticket's RESERVED TIME, and the ticket is filled in there and
+-- then.
+--
+-- No new storage was needed for the block itself: `booking_slots.work_item_id` (§23) and
+-- the `booking_slots_owner_one_of` CHECK have always allowed a block to belong to a work
+-- item instead of a booking, and `booking_slots_no_overlap` already covers both — so a
+-- reserved editing evening genuinely blocks, exactly like a shoot.
+--
+-- Atomic on purpose. Creating the booking and then the ticket from the app would leave a
+-- booking whose ticket half-exists if the second call failed, and the form would have no
+-- sane way to recover.
+DROP FUNCTION IF EXISTS public.create_booking(jsonb, jsonb);
+CREATE OR REPLACE FUNCTION public.create_booking(
+  p_booking jsonb, p_slots jsonb, p_work jsonb DEFAULT NULL)
+RETURNS TABLE (id uuid, booking_ref text)
+LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $$
+DECLARE
+  v_id uuid; v_org uuid; v_staff uuid; v_start timestamptz; v_end timestamptz; v_slot jsonb;
+  v_item public.work_items; v_wstaff uuid;
+BEGIN
+  v_org := (p_booking->>'org_id')::uuid; v_staff := (p_booking->>'staff_id')::uuid;
+  -- The envelope is the SHOOT only. p_slots excludes post-production blocks, so booking a
+  -- Thursday edit for a Tuesday shoot must not stretch the job to three days — the dates
+  -- on the invoice and in every list would be wrong.
+  SELECT min((e->>'start')::timestamptz), max((e->>'end')::timestamptz) INTO v_start, v_end
+    FROM jsonb_array_elements(p_slots) e;
+  IF v_start IS NULL THEN RAISE EXCEPTION 'no_slots'; END IF;
+
+  INSERT INTO bookings (org_id, staff_id, service_id, client_id, contact_name, title, description,
+    start_at, end_at, price_total, price_expenses, status, created_by,
+    allow_card, allow_inperson, deposit_allowed, deposit_percent, needs_production, is_external, location, notes,
+    calendar_detail)
+  VALUES (v_org, v_staff, (p_booking->>'service_id')::uuid, (p_booking->>'client_id')::uuid,
+    NULLIF(p_booking->>'contact_name',''),
+    p_booking->>'title', p_booking->>'description', v_start, v_end,
+    (p_booking->>'price_total')::numeric, COALESCE((p_booking->>'price_expenses')::numeric, 0),
+    COALESCE(p_booking->>'status','booked')::booking_status, COALESCE(p_booking->>'created_by','admin'),
+    COALESCE((p_booking->>'allow_card')::boolean, true), COALESCE((p_booking->>'allow_inperson')::boolean, true),
+    COALESCE((p_booking->>'deposit_allowed')::boolean, true), COALESCE((p_booking->>'deposit_percent')::int, 30),
+    -- Kept only so the legacy trigger and older rows still make sense; the form no longer
+    -- offers it. A ticket now exists because one was asked for, not because a flag was set.
+    COALESCE((p_booking->>'needs_production')::boolean, false), COALESCE((p_booking->>'is_external')::boolean, false),
+    p_booking->>'location', p_booking->>'notes',
+    COALESCE(NULLIF(p_booking->>'calendar_detail',''),
+             (SELECT o.booking_params->>'calendar_detail' FROM organizations o WHERE o.id = v_org),
+             'full'))
+  RETURNING bookings.id INTO v_id;
+
+  FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
+    INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, label)
+    VALUES (v_org, v_id, v_staff, (v_slot->>'start')::timestamptz, (v_slot->>'end')::timestamptz,
+            NULLIF(v_slot->>'label',''));
+  END LOOP;
+
+  -- ── The work ticket, if any block was marked post-production ──────────────
+  IF p_work IS NOT NULL AND jsonb_array_length(COALESCE(p_work->'slots','[]'::jsonb)) > 0 THEN
+    -- Through create_work_item, not a bare INSERT: it writes BOTH work_items.booking_id
+    -- and the work_item_bookings join row (the two must never be split — see §13a) and
+    -- seeds the service's task template.
+    v_item := public.create_work_item(v_org, v_id, NULLIF(btrim(p_work->>'title'),''));
+
+    -- The editor defaults to whoever is shooting, but may be someone else entirely.
+    v_wstaff := COALESCE(NULLIF(p_work->>'assignee_id','')::uuid, v_staff);
+    UPDATE work_items SET
+      assignee_id = v_wstaff,
+      description = NULLIF(btrim(p_work->>'description'),''),
+      work_type   = NULLIF(p_work->>'work_type',''),
+      due_at      = NULLIF(p_work->>'due_at','')::timestamptz
+    WHERE work_items.id = v_item.id;
+
+    -- Deliberately left in the BACKLOG (create_work_item's default for a booking-linked
+    -- card). `work_board.is_active` promotes it the moment the shoot ends, so editing
+    -- booked for next month does not clutter this week's board — and no Status field is
+    -- needed on the booking form to say so.
+    FOR v_slot IN SELECT e FROM jsonb_array_elements(p_work->'slots') e LOOP
+      INSERT INTO booking_slots (org_id, work_item_id, staff_id, start_at, end_at, label)
+      VALUES (v_org, v_item.id, v_wstaff,
+              (v_slot->>'start')::timestamptz, (v_slot->>'end')::timestamptz,
+              NULLIF(v_slot->>'label',''));
+    END LOOP;
+  END IF;
+
+  RETURN QUERY SELECT v_id, b.booking_ref FROM bookings b WHERE b.id = v_id;
+END $$;
+-- Every new function in this database is created EXECUTE-able by PUBLIC (no ALTER
+-- DEFAULT PRIVILEGES for functions), and the DROP above discarded the old grants. The
+-- REVOKE is what keeps `anon` out — public self-serve booking goes through
+-- create_booking_request, never this. (SECURITY INVOKER means RLS would stop an anon
+-- caller anyway; this is the belt to that braces.)
+REVOKE ALL ON FUNCTION public.create_booking(jsonb,jsonb,jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_booking(jsonb,jsonb,jsonb) TO authenticated;

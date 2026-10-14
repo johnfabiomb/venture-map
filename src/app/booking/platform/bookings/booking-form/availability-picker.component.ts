@@ -8,8 +8,14 @@ import { AvailabilityCalendarComponent } from '@booking/ui/availability-calendar
 import { zonedClockToUtc, utcToZoned } from '@booking/core/utils/timezone.util';
 import { nextRange } from '@booking/core/utils/range-select.util';
 
+/** What a block IS. A `work` block stops belonging to the booking and becomes the
+ *  reserved time of its post-production ticket (§30) — a real, blocking calendar entry,
+ *  because `booking_slots` can be owned by a work item instead of a booking. */
+export type SlotKind = 'shoot' | 'work';
+
 export interface PickedSlot {
   iso: string; endIso: string; hours: number; date: string;
+  kind: SlotKind;
   /** Derived display string — "Mon 5 Oct · 08:00–09:00". Not user-editable. Renamed from
    *  `label` so that name could go to the block's NAME, which is what the DB column is. */
   timeLabel: string;
@@ -39,8 +45,18 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
       <div class="blocks">
         <div class="blocks__head">Time blocks <span class="blocks__count">{{ slots().length }}</span></div>
         @for (s of slots(); track s.iso) {
-          <div class="block">
+          <div class="block" [class.block--work]="s.kind === 'work'">
             <span class="block__label">{{ s.timeLabel }}</span>
+            <!-- Shoot or post-production. Marking a block hands it to the job's work
+                 ticket instead of the booking: the time is still reserved and still
+                 blocks, it just answers a different question on the calendar. -->
+            @if (allowWorkBlocks()) {
+            <button type="button" class="block__kind" [class.block__kind--work]="s.kind === 'work'"
+                    (click)="toggleKind(s)"
+                    [title]="s.kind === 'work' ? 'This block is post-production — click to make it a shoot' : 'This block is a shoot — click to make it post-production'">
+              {{ s.kind === 'work' ? 'Post-production' : 'Shoot' }}
+            </button>
+            }
             <!-- Naming a block is what makes a multi-day job readable in the calendar:
                  "Pre-shoot planning" and "Filming day" instead of two identical entries
                  telling you only "(1/2)" and "(2/2)". A datalist suggests the common ones
@@ -132,6 +148,17 @@ const hm = (i: number) => `${pad(Math.floor(i / 2))}:${pad((i % 2) * SLOT_MIN)}`
       border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 9px; background: #fff;
     }
     .block__name:focus { outline: none; border-color: #F4A922; }
+    /* A post-production block reads differently at a glance, because it is a different
+       thing: it is not part of the job's shoot time and will not appear on the invoice. */
+    .block--work { border-color: rgba(244,169,34,0.5); background: rgba(244,169,34,0.05); }
+    .block__kind {
+      flex: 0 0 auto; order: 1;
+      padding: 4px 9px; border-radius: 999px; border: 1px solid #e5e7eb; background: #f8fafc;
+      font-family: inherit; font-size: 11px; font-weight: 700; color: #475569;
+      cursor: pointer; white-space: nowrap;
+    }
+    .block__kind:hover { border-color: #cbd5e1; }
+    .block__kind--work { background: rgba(244,169,34,0.18); border-color: rgba(244,169,34,0.5); color: #92400e; }
     /* Below 16px iOS Safari zooms the page in when the field takes focus, and never zooms
        back out — which is what makes a form feel broken on a phone. */
     @media (max-width: 560px) { .block__name { font-size: 16px; } }
@@ -153,6 +180,13 @@ export class AvailabilityPickerComponent {
   readonly timezone = input<string>('Europe/Malta');
   readonly initialSlots = input<BookingSlot[]>([]);   // edit prefill
   readonly excludeBookingId = input<string>('');
+  /**
+   * Whether a block may be marked as post-production. OFF when editing: only
+   * `create_booking` builds the ticket in one transaction (§30), so offering the toggle on
+   * an edit would be a control that silently does nothing. An existing job's work blocks
+   * belong to its ticket and are changed in the work editor, reachable from the booking.
+   */
+  readonly allowWorkBlocks = input(true);
   readonly slotsChange = output<PickedSlot[]>();
 
   private readonly today = new Date();
@@ -239,7 +273,7 @@ export class AvailabilityPickerComponent {
   private toPicked(startIso: string, endIso: string): PickedSlot {
     const z = utcToZoned(new Date(startIso), this.timezone());
     const hours = (new Date(endIso).getTime() - new Date(startIso).getTime()) / 3_600_000;
-    return { iso: startIso, endIso, hours, date: z.dateStr,
+    return { iso: startIso, endIso, hours, date: z.dateStr, kind: 'shoot',
              timeLabel: this.label(startIso, endIso), label: '' };
   }
   private label(startIso: string, endIso: string): string {
@@ -399,6 +433,14 @@ export class AvailabilityPickerComponent {
    *  element of the bound array in place. */
   setLabel(s: PickedSlot, value: string): void {
     this.slots.update(list => list.map(x => x.iso === s.iso ? { ...x, label: value } : x));
+    this.emit();
+  }
+
+  /** Shoot ⇄ post-production. The time stays reserved either way; what changes is which
+   *  record owns the block, and therefore what the calendar entry says. */
+  toggleKind(s: PickedSlot): void {
+    this.slots.update(list => list.map(x =>
+      x.iso === s.iso ? { ...x, kind: x.kind === 'work' ? 'shoot' : 'work' } : x));
     this.emit();
   }
   clearInProgress(): void { this.rangeStart.set(null); this.rangeEnd.set(null); }

@@ -244,16 +244,49 @@
           </div>
         }
 
-        <div class="opt-row">
-          <label class="check">
-            <input type="checkbox" [(ngModel)]="needsProduction" name="needsProduction" />
-            <span>Needs post-production</span>
-          </label>
-          <app-info-hint label="Needs post-production">
-            Adds this to the Work board (editing through to delivery). Leave it off for
-            meetings and no-edit jobs.
-          </app-info-hint>
-        </div>
+        <!-- "Needs post-production" used to live here as a checkbox. It created an EMPTY
+             card — no type, no brief, no deadline, no time — which then had to be filled
+             in somewhere else. Mark a time block as post-production instead and the ticket
+             is made properly, right here. A job whose editing has no date yet can still
+             join the board from the booking page afterwards. -->
+        @if (hasWork) {
+          <div class="work-block">
+            <div class="work-block__head">
+              <span class="work-block__title">Post-production</span>
+              <span class="work-block__count">{{ workBlocks.length }} block{{ workBlocks.length > 1 ? 's' : '' }} reserved</span>
+            </div>
+            <p class="work-block__intro">
+              A ticket is created with this job, holding the time you marked. That time is
+              reserved on the calendar and blocks other bookings, like a shoot does.
+            </p>
+            <div class="work-block__grid">
+              <label class="field">
+                <span>What needs doing?</span>
+                <input type="text" [(ngModel)]="workTitle" name="workTitle"
+                       [placeholder]="title.trim() || 'Same as the job title'" />
+              </label>
+              <label class="field">
+                <span>Type of work</span>
+                <app-select [value]="workType" (changed)="workType = $event"
+                            [options]="workTypeOptions()" placeholder="Not set" [clearable]="true" />
+              </label>
+              <label class="field">
+                <span>Who edits</span>
+                <app-select [value]="workAssignee" (changed)="workAssignee = $event"
+                            [options]="workerOptions()" [placeholder]="shooterName() || 'Whoever shoots'" [clearable]="true" />
+              </label>
+              <label class="field">
+                <span>Deliver by <em>optional</em></span>
+                <input type="date" [(ngModel)]="workDue" name="workDue" />
+              </label>
+            </div>
+            <label class="field">
+              <span>Details <em>optional</em></span>
+              <textarea rows="2" [(ngModel)]="workDescription" name="workDescription"
+                        placeholder="The brief, what the client asked for, anything you'd forget"></textarea>
+            </label>
+          </div>
+        }
 
         <!-- Calendar privacy. A Google event has ONE description and every attendee reads it,
              so this is the switch that makes it safe to put someone else on the invite. -->
@@ -302,6 +335,7 @@
             [timezone]="orgTimezone()"
             [initialSlots]="prefillSlots"
             [excludeBookingId]="editingId() ?? ''"
+            [allowWorkBlocks]="!isEditing"
             (slotsChange)="onSlotsChanged($event)">
           </app-availability-picker>
         } @else {

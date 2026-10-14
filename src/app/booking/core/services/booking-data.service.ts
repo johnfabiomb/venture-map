@@ -13,6 +13,17 @@ import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime
 
 // Scoped to PlatformShellComponent — provided there, not root.
 // Lifetime matches the admin session; destroyed when user leaves /bookings.
+/** The work ticket a booking form can create alongside the booking (§30). */
+export interface NewBookingWork {
+  title: string;
+  description: string | null;
+  workType: string | null;
+  dueAt: string | null;
+  /** null = whoever is doing the shoot. */
+  assigneeId: string | null;
+  slots: { start: string; end: string; label: string | null }[];
+}
+
 @Injectable()
 export class BookingDataService implements OnDestroy {
   private readonly auth = inject(BookingsAuthService);
@@ -101,6 +112,12 @@ export class BookingDataService implements OnDestroy {
     location?: string | null; notes?: string | null;
     /** How much the Google Calendar event may disclose. Omit to take the org default. */
     calendarDetail?: 'full' | 'minimal';
+    /**
+     * The post-production ticket, when a time block was marked for it (§30). Created in
+     * the SAME transaction as the booking, exactly as the invoice is created from the
+     * line items — so a booking can never exist with a half-made ticket.
+     */
+    work?: NewBookingWork | null;
   }): Promise<{ id?: string; ref?: string; error?: string }> {
     const { data, error } = await bookingsDb.rpc('create_booking', {
       p_booking: {
@@ -118,6 +135,14 @@ export class BookingDataService implements OnDestroy {
         calendar_detail: input.calendarDetail ?? null,
       },
       p_slots: input.slots,
+      p_work: input.work ? {
+        title: input.work.title,
+        description: input.work.description,
+        work_type: input.work.workType,
+        due_at: input.work.dueAt,
+        assignee_id: input.work.assigneeId,
+        slots: input.work.slots,
+      } : null,
     });
     if (error) return { error: this.overlapOr(error) };
     await this.fetchBookings();

@@ -3,7 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
-import { BookingAdminService, AdminService, AdminStaff } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, WorkType } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { LineItem } from '@booking/core/interfaces/invoice.interface';
@@ -68,7 +68,15 @@ export class BookingFormComponent implements OnInit {
   paymentMode: 'both' | 'card' | 'later' = 'both';
   depositMode: 'deposit' | 'full' = 'deposit';
   depositPercent = 30;
-  needsProduction = false;   // add to the Work board (editing → delivery)?
+  // ── The post-production ticket, filled in here when a block is marked for it ──
+  // There is deliberately no Status field: a booking-linked card starts in the Backlog and
+  // `work_board.is_active` promotes it the moment the shoot ends, so editing booked for
+  // next month does not clutter this week's board.
+  workTitle = '';
+  workType = '';
+  workDue = '';
+  workAssignee = '';        // '' = whoever is doing the shoot
+  workDescription = '';
   /** 'minimal' strips money/progress/notes from the Google Calendar event so the job can
    *  safely have other attendees on it. Defaults to the org setting via the RPC. */
   calendarDetail: 'full' | 'minimal' = 'full';
@@ -81,6 +89,14 @@ export class BookingFormComponent implements OnInit {
 
   readonly workerOptions = computed<SelectOption[]>(() =>
     this.workers.map(w => ({ value: w.id, label: w.name })));
+  /** The kinds of work this org does (§25) — the same list the Work board offers. */
+  readonly workTypes = signal<WorkType[]>([]);
+  readonly workTypeOptions = computed<SelectOption[]>(() =>
+    this.workTypes().map(t => ({ value: t.key, label: t.label })));
+  /** Who is shooting, so the "Who edits" field can say that is the default rather than
+   *  showing an empty box that silently means something. */
+  readonly shooterName = computed(() =>
+    this.workers.find(w => w.id === this.staffId)?.name ?? '');
   /** Org-wide, searchable: a client belongs to the business, and a worker must be able to
    *  take on one they have never shot for. */
   readonly clientOptions = computed<SelectOption[]>(() =>
@@ -99,13 +115,15 @@ export class BookingFormComponent implements OnInit {
     await this.auth.initialize();
     const org = this.auth.orgId();
     if (org) {
-      const [services, staff, settings] = await Promise.all([
+      const [services, staff, settings, workTypes] = await Promise.all([
         this.admin.listServices(org),
         this.admin.listStaff(org),
         this.admin.getOrgSettings(org),
+        this.admin.listWorkTypes(org),
       ]);
       this.services.set(services.filter(s => s.is_active));
       this.staff.set(staff.filter(s => s.is_bookable));
+      this.workTypes.set(workTypes);
 
       this.orgDefaults = {
         depositPercent: settings?.booking_params?.deposit_percent ?? 30,
@@ -146,7 +164,7 @@ export class BookingFormComponent implements OnInit {
     this.paymentMode = b.allow_card && b.allow_inperson ? 'both' : b.allow_card ? 'card' : 'later';
     this.depositMode = (b.deposit_allowed ?? this.orgDefaults.depositAllowed) ? 'deposit' : 'full';
     this.depositPercent = b.deposit_percent ?? this.orgDefaults.depositPercent;
-    this.needsProduction = b.needs_production ?? false;
+
     this.calendarDetail = b.calendar_detail ?? 'full';
   }
 
@@ -198,9 +216,18 @@ export class BookingFormComponent implements OnInit {
   get hasCustomer(): boolean {
     return this.clientMode === 'existing' ? !!this.clientId : this.contactName.trim().length > 0;
   }
-  /** The DB slots to persist (one row per chosen block). */
+  // ── Shoot vs post-production (§30) ──────────────────────────────────
+  /** Blocks that belong to the BOOKING. The job's dates come from these alone, so an
+   *  editing evening never stretches the shoot. */
+  get shootBlocks(): PickedSlot[] { return this.selectedSlots.filter(s => s.kind !== 'work'); }
+  /** Blocks that belong to the work TICKET. Still reserved, still blocking — they just
+   *  answer a different question on the calendar. */
+  get workBlocks(): PickedSlot[] { return this.selectedSlots.filter(s => s.kind === 'work'); }
+  get hasWork(): boolean { return this.workBlocks.length > 0; }
+
+  /** The DB slots to persist (one row per chosen SHOOT block). */
   get slotsValue(): BookingSlot[] {
-    return this.selectedSlots.map(s => ({
+    return this.shootBlocks.map(s => ({
       start: s.iso, end: s.endIso,
       // `label` is the block's NAME; `timeLabel` is the derived "Mon 5 Oct · 08:00–09:00"
       // display string and must never be persisted.
@@ -225,7 +252,7 @@ export class BookingFormComponent implements OnInit {
     // and a nameless zero line is not a placeholder, it is nothing.
     const itemsOk = this.lineItems.length > 0
       && this.lineItems.every(i => i.description.trim().length > 0);
-    return !this.saving() && this.hasCustomer && !!this.staffId && this.selectedSlots.length > 0
+    return !this.saving() && this.hasCustomer && !!this.staffId && this.shootBlocks.length > 0
       && itemsOk && this.title.trim().length > 0;
   }
 
@@ -238,7 +265,12 @@ export class BookingFormComponent implements OnInit {
     if (!this.title.trim()) return 'Add a title';
     if (!this.lineItems.length) return 'Add a charge';
     if (this.lineItems.some(i => !i.description.trim())) return 'Describe each charge';
-    if (!this.selectedSlots.length) return 'Pick a time block';
+    // A booking needs a SHOOT block. Post-production alone is not a booking — it is a
+    // work task, which the Work board creates on its own.
+    if (!this.shootBlocks.length) {
+      return this.hasWork ? 'Add a shoot block too — post-production alone isn\'t a booking'
+                          : 'Pick a time block';
+    }
     return '';
   }
 
@@ -268,7 +300,9 @@ export class BookingFormComponent implements OnInit {
         allowInperson: this.paymentMode !== 'card',
         depositAllowed: this.depositMode === 'deposit',
         depositPercent: this.depositPercent,
-        needsProduction: this.needsProduction,
+        // Legacy column: the form no longer offers it. A ticket exists because a block
+        // says so, not because a flag was set.
+        needsProduction: false,
         calendarDetail: this.calendarDetail,
         location: this.location.trim() || null, notes: this.notes.trim() || null,
       };
@@ -287,16 +321,30 @@ export class BookingFormComponent implements OnInit {
         return;
       }
 
-      const res = await this.data.createBooking({ orgId: org, ...shared, confirmed: this.confirmed });
+      const res = await this.data.createBooking({
+        orgId: org, ...shared, confirmed: this.confirmed,
+        // The post-production ticket, created in the SAME transaction as the booking —
+        // the same way the invoice is created from the line items. Null when no block was
+        // marked for it.
+        work: this.hasWork ? {
+          title: this.workTitle.trim() || this.title.trim(),
+          description: this.workDescription.trim() || null,
+          workType: this.workType || null,
+          dueAt: this.workDue ? new Date(`${this.workDue}T12:00:00`).toISOString() : null,
+          assigneeId: this.workAssignee || null,
+          slots: this.workBlocks.map(b => ({
+            start: b.iso, end: b.endIso, label: b.label?.trim() || null,
+          })),
+        } : null,
+      });
       if (res.error || !res.id) { this.errorMsg.set(this.errorText(res.error)); return; }
       // Persist the line-item breakdown as the invoice (source of truth).
       await this.data.saveInvoice(org, res.id, { lineItems: items, notes: null, issueDate: null });
       // Confirmed → push to Google Calendar now. Tentative bookings are pushed only once
       // confirmed (by you, or when the client pays by card).
       if (this.confirmed) await this.data.confirmToCalendar(res.id);
-      // Opted into post-production → drop a linked card on the Work board (seeds the
-      // service's task checklist). The board is otherwise managed manually.
-      if (this.needsProduction) await this.admin.addWorkItem(org, res.id, '');
+      // The work ticket (if any) was created by create_booking itself, so there is no
+      // second call here that could fail and leave the booking without it.
       const link = await this.data.generateLink(res.id);
       this.created.set({ id: res.id, ref: res.ref ?? '', link });
       this.toast.success(`Booking ${res.ref ?? ''} created`);
@@ -344,7 +392,8 @@ export class BookingFormComponent implements OnInit {
     this.paymentMode = 'both';
     this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
     this.depositPercent = this.orgDefaults.depositPercent;
-    this.needsProduction = false;
+    this.workTitle = ''; this.workType = ''; this.workDue = '';
+    this.workAssignee = ''; this.workDescription = '';
     this.calendarDetail = 'full';
     this.confirmed = false;
     this.created.set(null); this.errorMsg.set('');
