@@ -54,8 +54,10 @@
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin-top: 10px; padding: 10px; border: 1.5px dashed $border; border-radius: $radius-md;
 
+  // Sizing only. The border/padding/background below are for a native control; app-select
+  // draws its own trigger, so applying them here wrapped it in a second visible box.
   &__what { flex: 1; min-width: 160px; }
-  &__what, &__hours input {
+  &__hours input {
     font-family: $font; font-size: 14px; color: $text;
     border: 1.5px solid $border; border-radius: $radius-md; padding: 8px 10px; background: $card;
     &:focus { outline: none; border-color: $accent; }

@@ -83,14 +83,14 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
     .pd__field { display: flex; flex-direction: column; gap: 5px; }
     .pd__field > span { font-size: 12px; font-weight: 600; color: #475569; }
     .pd__field em { color: #94a3b8; font-style: normal; font-weight: 400; }
-    .pd__field input, .pd__field select {
+    .pd__field input {
       padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px;
       font-size: 14px; font-family: inherit; color: #0f172a; background: #fff;
       width: 100%; box-sizing: border-box;
     }
     /* Below 16px iOS zooms in on focus and never zooms back out. */
-    @media (max-width: 560px) { .pd__field input, .pd__field select { font-size: 16px; } }
-    .pd__field input:focus, .pd__field select:focus { outline: none; border-color: #F4A922; }
+    @media (max-width: 560px) { .pd__field input { font-size: 16px; } }
+    .pd__field input:focus { outline: none; border-color: #F4A922; }
     .pd__note { margin: 10px 0 0; font-size: 11.5px; font-weight: 600; color: #b45309; }
     .pd__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     @media (max-width: 560px) { .pd__actions .btn { flex: 1 1 0; justify-content: center; } }

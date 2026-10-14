@@ -53,7 +53,12 @@
 // Client select + inline "New" button
 .client-row {
   display: flex; gap: 8px; align-items: stretch;
-  select { flex: 1; min-width: 0; }
+  // `select` here styled a native element that no longer exists — the control became
+  // <app-select>, and this rule silently stopped applying. The result was a client picker
+  // stuck at its intrinsic width with a dead gap beside it, while the "Just a name" input
+  // next door spanned the row. Any leftover rule naming a bare `select` in this codebase
+  // is dead: there are none left.
+  app-select { flex: 1; min-width: 0; }
 }
 .btn--sm { padding: 8px 14px; font-size: 12.5px; white-space: nowrap; }
 

@@ -95,15 +95,15 @@ import { InvoiceListRow } from '@booking/core/interfaces/invoice.interface';
     .xd__field { display: flex; flex-direction: column; gap: 5px; }
     .xd__field > span { font-size: 12px; font-weight: 600; color: #475569; }
     .xd__field em { color: #94a3b8; font-style: normal; font-weight: 400; }
-    .xd__field input, .xd__field select {
+    .xd__field input {
       padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px;
       font-size: 14px; font-family: inherit; color: #0f172a; background: #fff;
       width: 100%; box-sizing: border-box;
     }
     /* Below 16px iOS zooms in on focus and never zooms back out. */
-    @media (max-width: 560px) { .xd__field input, .xd__field select { font-size: 16px; } }
+    @media (max-width: 560px) { .xd__field input { font-size: 16px; } }
     .xd__field input:disabled { background: #f8fafc; color: #64748b; }
-    .xd__field input:focus, .xd__field select:focus { outline: none; border-color: #F4A922; }
+    .xd__field input:focus { outline: none; border-color: #F4A922; }
     .xd__check {
       display: flex; align-items: center; gap: 8px; margin-top: 14px;
       font-size: 12.5px; color: #475569; cursor: pointer;

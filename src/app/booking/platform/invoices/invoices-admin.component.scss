@@ -15,10 +15,8 @@
 
 // .page__head comes from admin.shared (canonical, responsive).
 .head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.year-select {
-  padding: 8px 12px; border: 1.5px solid $border; border-radius: $radius-md;
-  font-size: 13px; font-family: inherit; color: $text; background: $card; cursor: pointer;
-}
+// Width only — app-select draws its own trigger; a border here made it a box in a box.
+.year-select { min-width: 110px; }
 
 .summary {
   display: grid;

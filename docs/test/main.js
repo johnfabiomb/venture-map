@@ -128,79 +128,79 @@ var bookingRoutes = [
       __spreadValues({
         path: "",
         canActivate: [adminGuard],
-        loadComponent: () => import("./chunk-RTPB4HSA.js").then((m) => m.PlatformShellComponent),
+        loadComponent: () => import("./chunk-NYH35JME.js").then((m) => m.PlatformShellComponent),
         children: [
           { path: "", redirectTo: "dashboard", pathMatch: "full" },
           {
             path: "dashboard",
-            loadComponent: () => import("./chunk-JSS3UOM3.js").then((m) => m.DashboardComponent)
+            loadComponent: () => import("./chunk-AIMWPNEW.js").then((m) => m.DashboardComponent)
           },
           {
             path: "list",
-            loadComponent: () => import("./chunk-6AXPTDZE.js").then((m) => m.BookingListComponent)
+            loadComponent: () => import("./chunk-VRGPMPUR.js").then((m) => m.BookingListComponent)
           },
           {
             path: "new",
-            loadComponent: () => import("./chunk-CVZ2WPDD.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-EHOVQDCT.js").then((m) => m.BookingFormComponent)
           },
           {
             path: ":id/edit",
-            loadComponent: () => import("./chunk-CVZ2WPDD.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-EHOVQDCT.js").then((m) => m.BookingFormComponent)
           },
           {
             path: "expenses",
-            loadComponent: () => import("./chunk-QGXYBCDF.js").then((m) => m.ExpensesAdminComponent)
+            loadComponent: () => import("./chunk-HSFI6RWX.js").then((m) => m.ExpensesAdminComponent)
           },
           {
             path: "organizations",
-            loadComponent: () => import("./chunk-BFR54PQB.js").then((m) => m.OrganizationsComponent)
+            loadComponent: () => import("./chunk-UMNY6LGO.js").then((m) => m.OrganizationsComponent)
           },
           {
             path: "invoices",
-            loadComponent: () => import("./chunk-ESFZPIFT.js").then((m) => m.InvoicesAdminComponent)
+            loadComponent: () => import("./chunk-ZA7DMHRW.js").then((m) => m.InvoicesAdminComponent)
           },
           {
             // Standalone invoice — no booking, no time slot. Must precede 'invoices/edit/:invoiceId'
             // so 'new' isn't captured as an id.
             path: "invoices/new",
-            loadComponent: () => import("./chunk-566PGG36.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-EWFIHBM6.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the INVOICE id — the only way to open an invoice that has no booking.
             path: "invoices/edit/:invoiceId",
-            loadComponent: () => import("./chunk-566PGG36.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-EWFIHBM6.js").then((m) => m.InvoiceEditComponent)
           },
           {
             // Keyed on the BOOKING id (kept: the booking detail page links here).
             // Literal segment, so it precedes the catch-all ':id' below.
             path: "invoice-edit/:id",
-            loadComponent: () => import("./chunk-566PGG36.js").then((m) => m.InvoiceEditComponent)
+            loadComponent: () => import("./chunk-EWFIHBM6.js").then((m) => m.InvoiceEditComponent)
           },
           {
             path: "clients",
-            loadComponent: () => import("./chunk-Y5XKY7QQ.js").then((m) => m.ClientListComponent)
+            loadComponent: () => import("./chunk-6ZSWLOIM.js").then((m) => m.ClientListComponent)
           },
           {
             path: "services",
-            loadComponent: () => import("./chunk-WN27UGVL.js").then((m) => m.ServicesAdminComponent)
+            loadComponent: () => import("./chunk-ZFE76H5G.js").then((m) => m.ServicesAdminComponent)
           },
           {
             path: "staff",
-            loadComponent: () => import("./chunk-D7JOLQ4V.js").then((m) => m.StaffAdminComponent)
+            loadComponent: () => import("./chunk-FIYHHOYS.js").then((m) => m.StaffAdminComponent)
           },
           {
             path: "settings",
-            loadComponent: () => import("./chunk-CG4X4N75.js").then((m) => m.SettingsAdminComponent)
+            loadComponent: () => import("./chunk-ZEUO2BIE.js").then((m) => m.SettingsAdminComponent)
           },
           {
             path: "work",
-            loadComponent: () => import("./chunk-F5AJKZ7M.js").then((m) => m.WorkBoardComponent)
+            loadComponent: () => import("./chunk-VS46HYMV.js").then((m) => m.WorkBoardComponent)
           },
           {
             // Keep LAST: ':id' matches a single segment, so it must come after all
             // the literal routes above (list/new/clients/…) to avoid shadowing them.
             path: ":id",
-            loadComponent: () => import("./chunk-P252PQK3.js").then((m) => m.BookingDetailComponent)
+            loadComponent: () => import("./chunk-QD54LVTE.js").then((m) => m.BookingDetailComponent)
           }
         ]
       }, false ? { \u0275entryName: "src/app/booking/platform/platform-shell/platform-shell.component.ts" } : {})
@@ -223,7 +223,7 @@ var routes = [
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-L3ET2M32.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-OIEVAZVH.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 

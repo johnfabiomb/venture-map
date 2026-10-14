@@ -31,13 +31,12 @@
   // `select` included so the job/client/worker/service pickers match the inputs
   // exactly — same height, border and focus ring — instead of falling back to the
   // browser's native control next to styled fields.
-  input, textarea, select {
+  input, textarea {
     padding: 10px 12px; border: 1.5px solid $border; border-radius: $radius-md; font-size: 14px;
     font-family: inherit; color: $text; background: $card; width: 100%; box-sizing: border-box;
     &:focus { outline: none; border-color: $accent; }
   }
   textarea { resize: vertical; }
-  select { cursor: pointer; }
 }
 
 // Two fields per row on desktop, stacking on narrow screens — keeps the pickers

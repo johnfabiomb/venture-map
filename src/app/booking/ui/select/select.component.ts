@@ -93,8 +93,10 @@ export interface SelectOption {
                     role="option" [attr.aria-selected]="isChosen(o.value)"
                     (mouseenter)="activeIndex.set(i)" (click)="pick(o)">
               @if (o.color) { <span class="sel__dot" [style.background]="o.color"></span> }
-              <span class="sel__opt-label">{{ o.label }}</span>
-              @if (o.hint) { <span class="sel__opt-hint">{{ o.hint }}</span> }
+              <span class="sel__opt-text">
+                <span class="sel__opt-label">{{ o.label }}</span>
+                @if (o.hint) { <span class="sel__opt-hint">{{ o.hint }}</span> }
+              </span>
               @if (isChosen(o.value)) { <span class="sel__tick">✓</span> }
             </button>
           } @empty {
@@ -105,7 +107,11 @@ export interface SelectOption {
     </ng-template>
   `,
   styles: [`
-    :host { display: block; position: relative; }
+    /* min-width: 0 so that in a flex row this can SHRINK instead of forcing the row wider
+       than its container. It does not grow on its own — a call site that wants the select
+       to fill a row says so (e.g. .client-row app-select { flex: 1 }), because plenty of
+       them deliberately sit next to a button at their natural size. */
+    :host { display: block; position: relative; min-width: 0; }
 
     .sel__trigger {
       display: flex; align-items: center; gap: 8px; width: 100%;
@@ -180,8 +186,19 @@ export interface SelectOption {
     .sel__opt--active { background: #f1f5f9; }
     .sel__opt--on { font-weight: 700; }
     .sel__opt:disabled { opacity: 0.45; cursor: default; }
-    .sel__opt-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sel__opt-hint { font-size: 11.5px; color: #94a3b8; white-space: nowrap; }
+    /* The label and the hint stack in their own column rather than competing for one row.
+       Side by side, the label had min-width: 0 (so it could shrink to nothing) while the
+       hint was nowrap with the default min-width: auto (so it could not) — the hint
+       therefore took the whole row and a client called "Andrew (Dru)" at
+       "The Insynk Collective" rendered as a lone "A" beside grey company text. The label
+       is the thing being chosen; a secondary detail must never squeeze it out.
+       (No backticks in here: this block is a template literal.) */
+    .sel__opt-text { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }
+    .sel__opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sel__opt-hint {
+      font-size: 11.5px; color: #94a3b8;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .sel__tick { color: #F4A922; font-weight: 800; }
     .sel__empty { margin: 0; padding: 16px 12px; font-size: 12.5px; color: #94a3b8; text-align: center; }
   `],
@@ -226,11 +243,39 @@ export class SelectComponent {
     const s = this.searchable();
     return s === 'auto' ? this.options().length > 7 : s;
   });
+  /**
+   * How well an option matches, 0 = not at all. Ranked rather than merely filtered,
+   * because a plain substring match buries the obvious answer: typing "in" to find
+   * "The Insynk Collective" also matches "Benjam-in" and "Bett-in-a", and with a hundred
+   * clients the one you meant is somewhere in the middle of them.
+   *
+   * A match at the START of a word beats one buried inside it, and the label beats the
+   * hint — the label is the thing being chosen.
+   */
+  private score(o: SelectOption, q: string): number {
+    const label = o.label.toLowerCase();
+    const hint = (o.hint ?? '').toLowerCase();
+    // Does any WORD start with the query? Split rather than a regex so the query needs no
+    // escaping — a client called "R&D (Malta)" would otherwise build an invalid pattern.
+    const wordStart = (text: string) =>
+      text.split(/[^a-z0-9]+/i).some(w => w.startsWith(q));
+    if (label.startsWith(q)) return 5;
+    if (wordStart(label)) return 4;
+    if (hint.startsWith(q) || wordStart(hint)) return 3;
+    if (label.includes(q)) return 2;
+    if (hint.includes(q)) return 1;
+    return 0;
+  }
+
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     if (!q) return this.options();
-    return this.options().filter(o =>
-      o.label.toLowerCase().includes(q) || (o.hint ?? '').toLowerCase().includes(q));
+    return this.options()
+      .map(o => ({ o, s: this.score(o, q) }))
+      .filter(r => r.s > 0)
+      // Stable within a rank, so an unsearched list keeps the order its caller chose.
+      .sort((a, b) => b.s - a.s)
+      .map(r => r.o);
   });
 
   panelWidth(): number { return this.triggerEl().nativeElement.offsetWidth; }

@@ -77,7 +77,7 @@
 .field {
   display: flex; flex-direction: column; gap: 5px;
   span { font-size: 12px; font-weight: 600; color: $text-2; }
-  input, select, textarea {
+  input, textarea {
     padding: 10px 12px; border: 1.5px solid $border; border-radius: $radius-md; font-size: 14px;
     font-family: inherit; color: $text; background: $card; width: 100%; box-sizing: border-box;
     &:focus { outline: none; border-color: $accent; }
@@ -87,13 +87,12 @@
   // and does not zoom back out on blur — the page is then stuck wider than the screen.
   // 14px is right on desktop, so this only lifts it where the trap exists.
   @media (max-width: 560px) {
-    input, select, textarea { font-size: 16px; }
+    input, textarea { font-size: 16px; }
   }
-  select {
-    appearance: none; cursor: pointer; padding-right: 32px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 12px center;
-  }
+  // No `select` rule here on purpose: there is no native <select> left in this module
+  // (ui/select/ replaced all 23), and a hand-drawn chevron for one would be dead CSS that
+  // the next person assumes is live. app-select styles its own trigger and, as a flex item
+  // in this column, already fills the field's width.
 }
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: $text; }
 
