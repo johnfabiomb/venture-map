@@ -6,6 +6,13 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Fixed
+- **You couldn't add post-production when EDITING a booking.** The Shoot / Post-production toggle was deliberately gated to the create form, on the reasoning that only `create_booking` builds the ticket in one transaction so a toggle that silently did nothing would be worse. That reasoning was wrong about the user, not the code: deciding a job needs editing *after* you've booked it is the normal case. The edit form now offers it too, writing the ticket through the work APIs instead.
+  - **The edit form loads BOTH kinds of block.** `setWorkSlots` replaces a ticket's blocks, so loading only the booking's own would have silently wiped the reserved editing time the moment anything else on the form was saved — and there is already a live booking this would have hit.
+  - **It loads the ticket's own fields too** (title, type, deliver by, who, details), so editing the booking edits the ticket rather than quietly creating a second description of the same work.
+  - **Removing every post-production block keeps the ticket** and only clears its reserved time. The work still has to happen; you just haven't said when any more. Deleting it would throw away its brief, its checklist and its place on the board.
+  - Not atomic like the create path — the booking is already saved by the time the ticket is written — so a block that can't be reserved is reported plainly instead of failing the whole edit.
+
 ### Changed
 - **"Payment link" is now the "client link".** It was never just a payment link: one token is the client's whole page for that job — the details, the invoice, paying by card or in person, and the files you deliver once it's paid. Calling it a payment link made the one thing you send sound like one of several. Renamed everywhere, including what a client reads when a link has expired.
 

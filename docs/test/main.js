@@ -141,11 +141,11 @@ var bookingRoutes = [
           },
           {
             path: "new",
-            loadComponent: () => import("./chunk-5HVWKLPB.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-CKMUHNPV.js").then((m) => m.BookingFormComponent)
           },
           {
             path: ":id/edit",
-            loadComponent: () => import("./chunk-5HVWKLPB.js").then((m) => m.BookingFormComponent)
+            loadComponent: () => import("./chunk-CKMUHNPV.js").then((m) => m.BookingFormComponent)
           },
           {
             path: "expenses",
@@ -194,13 +194,13 @@ var bookingRoutes = [
           },
           {
             path: "work",
-            loadComponent: () => import("./chunk-BGFISMVT.js").then((m) => m.WorkBoardComponent)
+            loadComponent: () => import("./chunk-XF57B7LU.js").then((m) => m.WorkBoardComponent)
           },
           {
             // Keep LAST: ':id' matches a single segment, so it must come after all
             // the literal routes above (list/new/clients/…) to avoid shadowing them.
             path: ":id",
-            loadComponent: () => import("./chunk-VI2CKCWL.js").then((m) => m.BookingDetailComponent)
+            loadComponent: () => import("./chunk-CM7PQA3E.js").then((m) => m.BookingDetailComponent)
           }
         ]
       }, false ? { \u0275entryName: "src/app/booking/platform/platform-shell/platform-shell.component.ts" } : {})
@@ -223,7 +223,7 @@ var routes = [
   // Handles /malta, /privacy, /contact, /pay, … (everything except the bare root).
   __spreadValues({
     path: "",
-    loadChildren: () => import("./chunk-KG3NA3EL.js").then((m) => m.mapRoutes)
+    loadChildren: () => import("./chunk-3F6FBR5Q.js").then((m) => m.mapRoutes)
   }, false ? { \u0275entryName: "src/app/map/map.routes.ts" } : {})
 ];
 

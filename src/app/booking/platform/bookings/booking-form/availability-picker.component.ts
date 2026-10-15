@@ -181,10 +181,11 @@ export class AvailabilityPickerComponent {
   readonly initialSlots = input<BookingSlot[]>([]);   // edit prefill
   readonly excludeBookingId = input<string>('');
   /**
-   * Whether a block may be marked as post-production. OFF when editing: only
-   * `create_booking` builds the ticket in one transaction (§30), so offering the toggle on
-   * an edit would be a control that silently does nothing. An existing job's work blocks
-   * belong to its ticket and are changed in the work editor, reachable from the booking.
+   * Whether a block may be marked as post-production. Was OFF when editing, because only
+   * `create_booking` builds the ticket in one transaction — but deciding a job needs
+   * editing AFTER booking it is the normal case, not the exception, and the edit form
+   * simply offered no way to say so. The edit path now writes the ticket through the work
+   * APIs instead, so this stays on everywhere.
    */
   readonly allowWorkBlocks = input(true);
   readonly slotsChange = output<PickedSlot[]>();
@@ -243,7 +244,8 @@ export class AvailabilityPickerComponent {
         // Carry the saved block NAME back in — toPicked only derives the time display, so
         // without this an edit would silently blank every label the owner had typed.
         const ps = init
-          .map(s => ({ ...this.toPicked(s.start, s.end), label: s.label ?? '' }))
+          .map(s => ({ ...this.toPicked(s.start, s.end), label: s.label ?? '',
+                       kind: s.kind ?? 'shoot' as const }))
           .sort((a, b) => a.iso.localeCompare(b.iso));
         this.slots.set(ps);
         const first = utcToZoned(new Date(ps[0].iso), tz);

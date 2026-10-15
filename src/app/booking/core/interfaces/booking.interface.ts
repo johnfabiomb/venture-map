@@ -104,6 +104,9 @@ export interface BookingSlot {
   /** What this block is — "Pre-shoot planning", "Filming day". Optional; when set it
    *  becomes part of the Google Calendar event title so a multi-block job is readable. */
   label?: string | null;
+  /** Who owns the block (§30): the booking, or the job's post-production ticket. Absent
+   *  means 'shoot' — most callers only ever deal with the booking's own blocks. */
+  kind?: 'shoot' | 'work';
 }
 
 /** A worker's occupied time range — feeds the admin availability picker's busy slots. */

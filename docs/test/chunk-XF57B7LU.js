@@ -1,12 +1,12 @@
 import {
   WorkEditorComponent
-} from "./chunk-BNHFNJDJ.js";
+} from "./chunk-UT7YVQKA.js";
 import {
   CdkMenu,
   CdkMenuItem,
   CdkMenuTrigger
 } from "./chunk-YYZD4ABX.js";
-import "./chunk-Y3MR4WWU.js";
+import "./chunk-FUKSCDGT.js";
 import {
   ModalComponent
 } from "./chunk-5MZRX563.js";
@@ -5472,4 +5472,4 @@ var WorkBoardComponent = class _WorkBoardComponent {
 export {
   WorkBoardComponent
 };
-//# sourceMappingURL=chunk-BGFISMVT.js.map
+//# sourceMappingURL=chunk-XF57B7LU.js.map

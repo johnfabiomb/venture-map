@@ -329,7 +329,10 @@ var AvailabilityPickerComponent = class _AvailabilityPickerComponent {
       this.seeded = true;
       const tz = this.timezone();
       untracked(() => {
-        const ps = init.map((s) => __spreadProps(__spreadValues({}, this.toPicked(s.start, s.end)), { label: s.label ?? "" })).sort((a, b) => a.iso.localeCompare(b.iso));
+        const ps = init.map((s) => __spreadProps(__spreadValues({}, this.toPicked(s.start, s.end)), {
+          label: s.label ?? "",
+          kind: s.kind ?? "shoot"
+        })).sort((a, b) => a.iso.localeCompare(b.iso));
         this.slots.set(ps);
         const first = utcToZoned(new Date(ps[0].iso), tz);
         const [yy, mm] = first.dateStr.split("-").map(Number);
@@ -552,4 +555,4 @@ function toDateStr(d) {
 export {
   AvailabilityPickerComponent
 };
-//# sourceMappingURL=chunk-Y3MR4WWU.js.map
+//# sourceMappingURL=chunk-FUKSCDGT.js.map

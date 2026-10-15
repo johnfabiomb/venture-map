@@ -77,6 +77,8 @@ export class BookingFormComponent implements OnInit {
   workDue = '';
   workAssignee = '';        // '' = whoever is doing the shoot
   workDescription = '';
+  /** The job's existing ticket, when editing. Null = none yet; marking a block creates one. */
+  readonly existingWorkItemId = signal<string | null>(null);
   /** 'minimal' strips money/progress/notes from the Google Calendar event so the job can
    *  safely have other attendees on it. Defaults to the org setting via the RPC. */
   calendarDetail: 'full' | 'minimal' = 'full';
@@ -182,7 +184,25 @@ export class BookingFormComponent implements OnInit {
     this.applyBookingFields(b);
 
     // Seed the picker from the booking's real time blocks (one or more).
-    this.prefillSlots = await this.data.getBookingSlots(id);
+    // Both kinds of block, so the full set round-trips. setWorkSlots REPLACES a ticket's
+    // blocks, so loading only the booking's would silently wipe the reserved editing time
+    // the moment anything else on this form was saved.
+    const shoot = (await this.data.getBookingSlots(id))
+      .map(sl => ({ ...sl, kind: 'shoot' as const }));
+    const card = await this.admin.workItemForBooking(id);
+    this.existingWorkItemId.set(card?.id ?? null);
+    let work: BookingSlot[] = [];
+    if (card) {
+      work = (await this.admin.getWorkSlots(card.id)).map(sl => ({ ...sl, kind: 'work' as const }));
+      // Prefill the ticket's own fields so editing the booking edits the ticket too,
+      // rather than quietly creating a second description of the same work.
+      this.workTitle = card.title ?? '';
+      this.workType = card.workType ?? '';
+      this.workDue = card.dueAt ? card.dueAt.slice(0, 10) : '';
+      this.workAssignee = card.assigneeId ?? '';
+      this.workDescription = card.description ?? '';
+    }
+    this.prefillSlots = [...shoot, ...work];
     this.lineItems = await this.loadItems(id, b);
   }
 
@@ -311,7 +331,13 @@ export class BookingFormComponent implements OnInit {
         const res = await this.data.updateBooking(this.editingId()!, shared);
         if (res.error) { this.errorMsg.set(this.errorText(res.error)); return; }
         await this.data.saveInvoice(org, this.editingId()!, { lineItems: items, notes: null, issueDate: null });
-        this.toast.success(`${this.editingRef || 'Booking'} updated`);
+        // `update_booking` deletes slots WHERE booking_id, so the ticket's blocks survive
+        // it untouched — but it cannot create or change a ticket, so that goes through the
+        // work APIs here. Not atomic like the create path; the booking is already saved by
+        // this point, so a failure is reported without losing the edit.
+        const workNote = await this.syncWorkOnEdit(org, this.editingId()!);
+        if (workNote) this.toast.error(workNote, 9000);
+        else this.toast.success(`${this.editingRef || 'Booking'} updated`);
         if (this.paymentMode !== 'later') {
           const link = await this.data.generateLink(this.editingId()!);
           this.created.set({ id: this.editingId()!, ref: this.editingRef, link });
@@ -399,6 +425,46 @@ export class BookingFormComponent implements OnInit {
     this.created.set(null); this.errorMsg.set('');
     // "Create another" starts from blank, so the clone banner must not linger.
     this.copiedFrom.set('');
+  }
+
+  /**
+   * Create or update the job's post-production ticket from the form, on the EDIT path.
+   * Returns a message when something could not be done, '' when all is well.
+   *
+   * Removing every post-production block clears the ticket's reserved time but KEEPS the
+   * ticket: the work still has to happen, you just have not said when any more. Deleting
+   * it would silently throw away its brief, its checklist and its place on the board.
+   */
+  private async syncWorkOnEdit(org: string, bookingId: string): Promise<string> {
+    const blocks = this.workBlocks;
+    let itemId = this.existingWorkItemId();
+    if (!itemId && !blocks.length) return '';          // nothing to do, nothing to undo
+
+    if (!itemId) {
+      itemId = await this.admin.addWorkItem(org, bookingId, this.workTitle.trim() || this.title.trim());
+      if (!itemId) return 'The booking was saved, but its post-production ticket could not be created.';
+      this.existingWorkItemId.set(itemId);
+    }
+
+    await this.admin.updateWorkItem(itemId, {
+      title: this.workTitle.trim() || this.title.trim(),
+      description: this.workDescription.trim() || null,
+      work_type: this.workType || null,
+    });
+    const assignee = this.workAssignee || this.staffId;
+    await this.admin.assignCard(itemId, assignee || null);
+    await this.admin.setDue(itemId, this.workDue ? new Date(`${this.workDue}T12:00:00`).toISOString() : null);
+
+    const { clashes, orphanEventIds } = await this.admin.setWorkSlots(
+      org, itemId, assignee,
+      blocks.map(b => ({ start: b.iso, end: b.endIso, label: b.label?.trim() || null })));
+    this.admin.syncWorkEvent(itemId, orphanEventIds);
+
+    // Said out loud, never swallowed: time that could not be reserved is time the calendar
+    // would otherwise claim is free.
+    return clashes.length
+      ? `Booking saved, but ${clashes.length} post-production block${clashes.length > 1 ? 's' : ''} could not be reserved — that time is already taken.`
+      : '';
   }
 
   goToList(): void { this.router.navigate(['/bookings/list']); }

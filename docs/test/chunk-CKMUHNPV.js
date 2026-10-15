@@ -6,7 +6,7 @@ import {
 } from "./chunk-HNN4TJFX.js";
 import {
   AvailabilityPickerComponent
-} from "./chunk-Y3MR4WWU.js";
+} from "./chunk-FUKSCDGT.js";
 import "./chunk-5MZRX563.js";
 import "./chunk-YSGXMD6R.js";
 import {
@@ -574,69 +574,101 @@ function BookingFormComponent_Conditional_12_Conditional_84_Template(rf, ctx) {
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.confirmed);
   }
 }
+function BookingFormComponent_Conditional_12_Conditional_85_Conditional_4_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 83);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r2 = \u0275\u0275nextContext(3);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate2("", ctx_r2.workBlocks.length, " block", ctx_r2.workBlocks.length > 1 ? "s" : "", " reserved");
+  }
+}
+function BookingFormComponent_Conditional_12_Conditional_85_Conditional_5_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span", 83);
+    \u0275\u0275text(1, "no time reserved yet");
+    \u0275\u0275elementEnd();
+  }
+}
+function BookingFormComponent_Conditional_12_Conditional_85_Conditional_7_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " This job already has a ticket. Mark a time block as ");
+    \u0275\u0275elementStart(1, "strong");
+    \u0275\u0275text(2, "Post-production");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(3, " and it becomes that ticket's reserved time \u2014 blocked on the calendar, like a shoot. Clearing them all keeps the ticket, it just stops holding time. ");
+  }
+}
+function BookingFormComponent_Conditional_12_Conditional_85_Conditional_8_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275text(0, " A ticket is created with this job, holding the time you marked. That time is reserved on the calendar and blocks other bookings, like a shoot does. ");
+  }
+}
 function BookingFormComponent_Conditional_12_Conditional_85_Template(rf, ctx) {
   if (rf & 1) {
     const _r14 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 48)(1, "div", 81)(2, "span", 82);
     \u0275\u0275text(3, "Post-production");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "span", 83);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd()();
+    \u0275\u0275template(4, BookingFormComponent_Conditional_12_Conditional_85_Conditional_4_Template, 2, 2, "span", 83)(5, BookingFormComponent_Conditional_12_Conditional_85_Conditional_5_Template, 2, 0, "span", 83);
+    \u0275\u0275elementEnd();
     \u0275\u0275elementStart(6, "p", 84);
-    \u0275\u0275text(7, " A ticket is created with this job, holding the time you marked. That time is reserved on the calendar and blocks other bookings, like a shoot does. ");
+    \u0275\u0275template(7, BookingFormComponent_Conditional_12_Conditional_85_Conditional_7_Template, 4, 0)(8, BookingFormComponent_Conditional_12_Conditional_85_Conditional_8_Template, 1, 0);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(8, "div", 85)(9, "label", 28)(10, "span");
-    \u0275\u0275text(11, "What needs doing?");
+    \u0275\u0275elementStart(9, "div", 85)(10, "label", 28)(11, "span");
+    \u0275\u0275text(12, "What needs doing?");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "input", 86);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_input_ngModelChange_12_listener($event) {
+    \u0275\u0275elementStart(13, "input", 86);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_input_ngModelChange_13_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.workTitle, $event) || (ctx_r2.workTitle = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(13, "label", 28)(14, "span");
-    \u0275\u0275text(15, "Type of work");
+    \u0275\u0275elementStart(14, "label", 28)(15, "span");
+    \u0275\u0275text(16, "Type of work");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "app-select", 87);
-    \u0275\u0275listener("changed", function BookingFormComponent_Conditional_12_Conditional_85_Template_app_select_changed_16_listener($event) {
+    \u0275\u0275elementStart(17, "app-select", 87);
+    \u0275\u0275listener("changed", function BookingFormComponent_Conditional_12_Conditional_85_Template_app_select_changed_17_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r2.workType = $event);
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(17, "label", 28)(18, "span");
-    \u0275\u0275text(19, "Who edits");
+    \u0275\u0275elementStart(18, "label", 28)(19, "span");
+    \u0275\u0275text(20, "Who edits");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "app-select", 88);
-    \u0275\u0275listener("changed", function BookingFormComponent_Conditional_12_Conditional_85_Template_app_select_changed_20_listener($event) {
+    \u0275\u0275elementStart(21, "app-select", 88);
+    \u0275\u0275listener("changed", function BookingFormComponent_Conditional_12_Conditional_85_Template_app_select_changed_21_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       return \u0275\u0275resetView(ctx_r2.workAssignee = $event);
     });
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(21, "label", 28)(22, "span");
-    \u0275\u0275text(23, "Deliver by ");
-    \u0275\u0275elementStart(24, "em");
-    \u0275\u0275text(25, "optional");
+    \u0275\u0275elementStart(22, "label", 28)(23, "span");
+    \u0275\u0275text(24, "Deliver by ");
+    \u0275\u0275elementStart(25, "em");
+    \u0275\u0275text(26, "optional");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(26, "input", 89);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_input_ngModelChange_26_listener($event) {
+    \u0275\u0275elementStart(27, "input", 89);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_input_ngModelChange_27_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.workDue, $event) || (ctx_r2.workDue = $event);
       return \u0275\u0275resetView($event);
     });
     \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(27, "label", 28)(28, "span");
-    \u0275\u0275text(29, "Details ");
-    \u0275\u0275elementStart(30, "em");
-    \u0275\u0275text(31, "optional");
+    \u0275\u0275elementStart(28, "label", 28)(29, "span");
+    \u0275\u0275text(30, "Details ");
+    \u0275\u0275elementStart(31, "em");
+    \u0275\u0275text(32, "optional");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(32, "textarea", 90);
-    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_textarea_ngModelChange_32_listener($event) {
+    \u0275\u0275elementStart(33, "textarea", 90);
+    \u0275\u0275twoWayListener("ngModelChange", function BookingFormComponent_Conditional_12_Conditional_85_Template_textarea_ngModelChange_33_listener($event) {
       \u0275\u0275restoreView(_r14);
       const ctx_r2 = \u0275\u0275nextContext(2);
       \u0275\u0275twoWayBindingSet(ctx_r2.workDescription, $event) || (ctx_r2.workDescription = $event);
@@ -646,9 +678,11 @@ function BookingFormComponent_Conditional_12_Conditional_85_Template(rf, ctx) {
   }
   if (rf & 2) {
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate2("", ctx_r2.workBlocks.length, " block", ctx_r2.workBlocks.length > 1 ? "s" : "", " reserved");
-    \u0275\u0275advance(7);
+    \u0275\u0275advance(4);
+    \u0275\u0275conditional(ctx_r2.workBlocks.length ? 4 : 5);
+    \u0275\u0275advance(3);
+    \u0275\u0275conditional(ctx_r2.existingWorkItemId() ? 7 : 8);
+    \u0275\u0275advance(6);
     \u0275\u0275twoWayProperty("ngModel", ctx_r2.workTitle);
     \u0275\u0275property("placeholder", ctx_r2.title.trim() || "Same as the job title");
     \u0275\u0275advance(4);
@@ -699,7 +733,7 @@ function BookingFormComponent_Conditional_12_Conditional_111_Template(rf, ctx) {
   if (rf & 2) {
     let tmp_5_0;
     const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275property("staffId", ctx_r2.staffId)("timezone", ctx_r2.orgTimezone())("initialSlots", ctx_r2.prefillSlots)("excludeBookingId", (tmp_5_0 = ctx_r2.editingId()) !== null && tmp_5_0 !== void 0 ? tmp_5_0 : "")("allowWorkBlocks", !ctx_r2.isEditing);
+    \u0275\u0275property("staffId", ctx_r2.staffId)("timezone", ctx_r2.orgTimezone())("initialSlots", ctx_r2.prefillSlots)("excludeBookingId", (tmp_5_0 = ctx_r2.editingId()) !== null && tmp_5_0 !== void 0 ? tmp_5_0 : "");
   }
 }
 function BookingFormComponent_Conditional_12_Conditional_112_Template(rf, ctx) {
@@ -842,7 +876,7 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
     \u0275\u0275elementStart(81, "section", 25)(82, "h2", 26);
     \u0275\u0275text(83, "Options");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(84, BookingFormComponent_Conditional_12_Conditional_84_Template, 13, 1, "div", 47)(85, BookingFormComponent_Conditional_12_Conditional_85_Template, 33, 13, "div", 48);
+    \u0275\u0275template(84, BookingFormComponent_Conditional_12_Conditional_84_Template, 13, 1, "div", 47)(85, BookingFormComponent_Conditional_12_Conditional_85_Template, 34, 13, "div", 48);
     \u0275\u0275elementStart(86, "div", 47)(87, "label", 49)(88, "input", 50);
     \u0275\u0275listener("ngModelChange", function BookingFormComponent_Conditional_12_Template_input_ngModelChange_88_listener($event) {
       \u0275\u0275restoreView(_r6);
@@ -886,7 +920,7 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
     \u0275\u0275elementStart(107, "aside", 59)(108, "div", 60)(109, "h2", 61);
     \u0275\u0275text(110, "Worker availability");
     \u0275\u0275elementEnd();
-    \u0275\u0275template(111, BookingFormComponent_Conditional_12_Conditional_111_Template, 1, 5, "app-availability-picker", 62)(112, BookingFormComponent_Conditional_12_Conditional_112_Template, 5, 0, "div", 63);
+    \u0275\u0275template(111, BookingFormComponent_Conditional_12_Conditional_111_Template, 1, 4, "app-availability-picker", 62)(112, BookingFormComponent_Conditional_12_Conditional_112_Template, 5, 0, "div", 63);
     \u0275\u0275elementEnd()()();
     \u0275\u0275elementStart(113, "app-client-editor", 64);
     \u0275\u0275twoWayListener("openChange", function BookingFormComponent_Conditional_12_Template_app_client_editor_openChange_113_listener($event) {
@@ -933,7 +967,7 @@ function BookingFormComponent_Conditional_12_Template(rf, ctx) {
     \u0275\u0275advance(4);
     \u0275\u0275conditional(!ctx_r2.isEditing ? 84 : -1);
     \u0275\u0275advance();
-    \u0275\u0275conditional(ctx_r2.hasWork ? 85 : -1);
+    \u0275\u0275conditional(ctx_r2.hasWork || ctx_r2.existingWorkItemId() ? 85 : -1);
     \u0275\u0275advance(3);
     \u0275\u0275property("ngModel", ctx_r2.calendarDetail === "minimal");
     \u0275\u0275advance(11);
@@ -991,6 +1025,7 @@ var BookingFormComponent = class _BookingFormComponent {
     this.workDue = "";
     this.workAssignee = "";
     this.workDescription = "";
+    this.existingWorkItemId = signal(null);
     this.calendarDetail = "full";
     this.confirmed = false;
     this.orgDefaults = { depositPercent: 30, depositAllowed: true };
@@ -1085,7 +1120,19 @@ var BookingFormComponent = class _BookingFormComponent {
       this.editingId.set(id);
       this.editingRef = b.booking_ref;
       this.applyBookingFields(b);
-      this.prefillSlots = yield this.data.getBookingSlots(id);
+      const shoot = (yield this.data.getBookingSlots(id)).map((sl) => __spreadProps(__spreadValues({}, sl), { kind: "shoot" }));
+      const card = yield this.admin.workItemForBooking(id);
+      this.existingWorkItemId.set(card?.id ?? null);
+      let work = [];
+      if (card) {
+        work = (yield this.admin.getWorkSlots(card.id)).map((sl) => __spreadProps(__spreadValues({}, sl), { kind: "work" }));
+        this.workTitle = card.title ?? "";
+        this.workType = card.workType ?? "";
+        this.workDue = card.dueAt ? card.dueAt.slice(0, 10) : "";
+        this.workAssignee = card.assigneeId ?? "";
+        this.workDescription = card.description ?? "";
+      }
+      this.prefillSlots = [...shoot, ...work];
       this.lineItems = yield this.loadItems(id, b);
     });
   }
@@ -1240,7 +1287,11 @@ var BookingFormComponent = class _BookingFormComponent {
             return;
           }
           yield this.data.saveInvoice(org, this.editingId(), { lineItems: items, notes: null, issueDate: null });
-          this.toast.success(`${this.editingRef || "Booking"} updated`);
+          const workNote = yield this.syncWorkOnEdit(org, this.editingId());
+          if (workNote)
+            this.toast.error(workNote, 9e3);
+          else
+            this.toast.success(`${this.editingRef || "Booking"} updated`);
           if (this.paymentMode !== "later") {
             const link2 = yield this.data.generateLink(this.editingId());
             this.created.set({ id: this.editingId(), ref: this.editingRef, link: link2 });
@@ -1341,6 +1392,39 @@ var BookingFormComponent = class _BookingFormComponent {
     this.errorMsg.set("");
     this.copiedFrom.set("");
   }
+  /**
+   * Create or update the job's post-production ticket from the form, on the EDIT path.
+   * Returns a message when something could not be done, '' when all is well.
+   *
+   * Removing every post-production block clears the ticket's reserved time but KEEPS the
+   * ticket: the work still has to happen, you just have not said when any more. Deleting
+   * it would silently throw away its brief, its checklist and its place on the board.
+   */
+  syncWorkOnEdit(org, bookingId) {
+    return __async(this, null, function* () {
+      const blocks = this.workBlocks;
+      let itemId = this.existingWorkItemId();
+      if (!itemId && !blocks.length)
+        return "";
+      if (!itemId) {
+        itemId = yield this.admin.addWorkItem(org, bookingId, this.workTitle.trim() || this.title.trim());
+        if (!itemId)
+          return "The booking was saved, but its post-production ticket could not be created.";
+        this.existingWorkItemId.set(itemId);
+      }
+      yield this.admin.updateWorkItem(itemId, {
+        title: this.workTitle.trim() || this.title.trim(),
+        description: this.workDescription.trim() || null,
+        work_type: this.workType || null
+      });
+      const assignee = this.workAssignee || this.staffId;
+      yield this.admin.assignCard(itemId, assignee || null);
+      yield this.admin.setDue(itemId, this.workDue ? (/* @__PURE__ */ new Date(`${this.workDue}T12:00:00`)).toISOString() : null);
+      const { clashes, orphanEventIds } = yield this.admin.setWorkSlots(org, itemId, assignee, blocks.map((b) => ({ start: b.iso, end: b.endIso, label: b.label?.trim() || null })));
+      this.admin.syncWorkEvent(itemId, orphanEventIds);
+      return clashes.length ? `Booking saved, but ${clashes.length} post-production block${clashes.length > 1 ? "s" : ""} could not be reserved \u2014 that time is already taken.` : "";
+    });
+  }
   goToList() {
     this.router.navigate(["/bookings/list"]);
   }
@@ -1350,7 +1434,7 @@ var BookingFormComponent = class _BookingFormComponent {
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingFormComponent, selectors: [["app-booking-form"]], decls: 13, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "loading"], [1, "spinner"], [1, "card", "done"], [1, "done__check"], [1, "done__title"], [1, "done__sub"], [1, "muted"], [1, "done__invoice"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn--ghost", "btn--sm", 3, "href"], [1, "done__actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "routerLink"], [1, "linkbox"], ["readonly", "", 1, "linkbox__input", 3, "focus", "value"], ["type", "button", 1, "btn", "btn--primary", "linkbox__btn", 3, "click"], [1, "done__sub", "done__sub--gap"], [1, "form-layout"], [1, "card", "form", 3, "ngSubmit"], [1, "cloned"], [1, "sec"], [1, "sec__title"], [1, "note"], [1, "field"], [1, "field__top"], ["for", "bf-title"], ["id", "bf-title", "name", "title", "placeholder", "e.g. Interview filming \u2014 Clinica Joia", "required", "", 3, "ngModelChange", "ngModel"], ["label", "Customer"], [1, "seg"], ["type", "button", 1, "seg__btn", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModel"], ["for", "bf-loc"], [1, "opt"], ["id", "bf-loc", "name", "location", "placeholder", "Address or venue", 3, "ngModelChange", "ngModel"], ["label", "Time blocks"], [1, "picked"], [1, "note", "note--warn"], [1, "req"], ["label", "Charges"], [3, "itemsChange", "items", "currency", "services"], ["label", "Payment options"], [3, "changed", "value", "options", "searchable"], [1, "opt-row"], [1, "work-block"], [1, "check"], ["type", "checkbox", "name", "calendarMinimal", 3, "ngModelChange", "ngModel"], ["label", "Keep money off the calendar invite"], ["for", "bf-notes"], ["id", "bf-notes", "name", "notes", "rows", "2", "placeholder", "Anything to remember about this job \u2014 never shown to the client", 3, "ngModelChange", "ngModel"], [1, "error"], [1, "form__actions"], [1, "form__blocked"], ["type", "button", 1, "btn", "btn--ghost", 3, "click"], ["type", "submit", 1, "btn", "btn--primary", 3, "disabled"], [1, "form-aside"], [1, "card", "aside-card"], [1, "aside-card__title"], [3, "staffId", "timezone", "initialSlots", "excludeBookingId", "allowWorkBlocks"], [1, "aside-empty"], [3, "openChange", "saved", "open", "client"], [1, "client-row"], ["placeholder", "Select a client\u2026", 3, "changed", "value", "options", "clearable"], ["type", "button", 1, "btn", "btn--ghost", "btn--sm", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModelChange", "ngModel"], ["placeholder", "Select a worker\u2026", 3, "changed", "value", "options"], [1, "picked__row"], ["aria-hidden", "true", 1, "picked__tick"], [1, "picked__time"], [1, "picked__name"], [1, "row2"], ["label", "Deposit"], [1, "calc"], ["for", "bf-dep"], ["id", "bf-dep", "type", "number", "name", "depositPercent", "min", "1", "max", "100", "step", "1", 3, "ngModelChange", "ngModel"], ["type", "checkbox", "name", "confirmed", 3, "ngModelChange", "ngModel"], ["label", "Already confirmed"], [1, "work-block__head"], [1, "work-block__title"], [1, "work-block__count"], [1, "work-block__intro"], [1, "work-block__grid"], ["type", "text", "name", "workTitle", 3, "ngModelChange", "ngModel", "placeholder"], ["placeholder", "Not set", 3, "changed", "value", "options", "clearable"], [3, "changed", "value", "options", "placeholder", "clearable"], ["type", "date", "name", "workDue", 3, "ngModelChange", "ngModel"], ["rows", "2", "name", "workDescription", "placeholder", "The brief, what the client asked for, anything you'd forget", 3, "ngModelChange", "ngModel"], [3, "slotsChange", "staffId", "timezone", "initialSlots", "excludeBookingId", "allowWorkBlocks"], [1, "aside-empty__icon"]], template: function BookingFormComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _BookingFormComponent, selectors: [["app-booking-form"]], decls: 13, vars: 3, consts: [[1, "page"], [1, "page__head"], [1, "page__title"], [1, "page__sub"], [1, "head-actions"], ["routerLink", "/bookings/list", 1, "btn", "btn--ghost"], [1, "loading"], [1, "spinner"], [1, "card", "done"], [1, "done__check"], [1, "done__title"], [1, "done__sub"], [1, "muted"], [1, "done__invoice"], ["target", "_blank", "rel", "noopener", 1, "btn", "btn--ghost", "btn--sm", 3, "href"], [1, "done__actions"], [1, "btn", "btn--ghost", 3, "click"], [1, "btn", "btn--primary", 3, "routerLink"], [1, "linkbox"], ["readonly", "", 1, "linkbox__input", 3, "focus", "value"], ["type", "button", 1, "btn", "btn--primary", "linkbox__btn", 3, "click"], [1, "done__sub", "done__sub--gap"], [1, "form-layout"], [1, "card", "form", 3, "ngSubmit"], [1, "cloned"], [1, "sec"], [1, "sec__title"], [1, "note"], [1, "field"], [1, "field__top"], ["for", "bf-title"], ["id", "bf-title", "name", "title", "placeholder", "e.g. Interview filming \u2014 Clinica Joia", "required", "", 3, "ngModelChange", "ngModel"], ["label", "Customer"], [1, "seg"], ["type", "button", 1, "seg__btn", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModel"], ["for", "bf-loc"], [1, "opt"], ["id", "bf-loc", "name", "location", "placeholder", "Address or venue", 3, "ngModelChange", "ngModel"], ["label", "Time blocks"], [1, "picked"], [1, "note", "note--warn"], [1, "req"], ["label", "Charges"], [3, "itemsChange", "items", "currency", "services"], ["label", "Payment options"], [3, "changed", "value", "options", "searchable"], [1, "opt-row"], [1, "work-block"], [1, "check"], ["type", "checkbox", "name", "calendarMinimal", 3, "ngModelChange", "ngModel"], ["label", "Keep money off the calendar invite"], ["for", "bf-notes"], ["id", "bf-notes", "name", "notes", "rows", "2", "placeholder", "Anything to remember about this job \u2014 never shown to the client", 3, "ngModelChange", "ngModel"], [1, "error"], [1, "form__actions"], [1, "form__blocked"], ["type", "button", 1, "btn", "btn--ghost", 3, "click"], ["type", "submit", 1, "btn", "btn--primary", 3, "disabled"], [1, "form-aside"], [1, "card", "aside-card"], [1, "aside-card__title"], [3, "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty"], [3, "openChange", "saved", "open", "client"], [1, "client-row"], ["placeholder", "Select a client\u2026", 3, "changed", "value", "options", "clearable"], ["type", "button", 1, "btn", "btn--ghost", "btn--sm", 3, "click"], ["name", "contactName", "placeholder", "e.g. John from Sliema", 3, "ngModelChange", "ngModel"], ["placeholder", "Select a worker\u2026", 3, "changed", "value", "options"], [1, "picked__row"], ["aria-hidden", "true", 1, "picked__tick"], [1, "picked__time"], [1, "picked__name"], [1, "row2"], ["label", "Deposit"], [1, "calc"], ["for", "bf-dep"], ["id", "bf-dep", "type", "number", "name", "depositPercent", "min", "1", "max", "100", "step", "1", 3, "ngModelChange", "ngModel"], ["type", "checkbox", "name", "confirmed", 3, "ngModelChange", "ngModel"], ["label", "Already confirmed"], [1, "work-block__head"], [1, "work-block__title"], [1, "work-block__count"], [1, "work-block__intro"], [1, "work-block__grid"], ["type", "text", "name", "workTitle", 3, "ngModelChange", "ngModel", "placeholder"], ["placeholder", "Not set", 3, "changed", "value", "options", "clearable"], [3, "changed", "value", "options", "placeholder", "clearable"], ["type", "date", "name", "workDue", 3, "ngModelChange", "ngModel"], ["rows", "2", "name", "workDescription", "placeholder", "The brief, what the client asked for, anything you'd forget", 3, "ngModelChange", "ngModel"], [3, "slotsChange", "staffId", "timezone", "initialSlots", "excludeBookingId"], [1, "aside-empty__icon"]], template: function BookingFormComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div")(3, "h1", 2);
         \u0275\u0275text(4);
@@ -1381,4 +1465,4 @@ var BookingFormComponent = class _BookingFormComponent {
 export {
   BookingFormComponent
 };
-//# sourceMappingURL=chunk-5HVWKLPB.js.map
+//# sourceMappingURL=chunk-CKMUHNPV.js.map

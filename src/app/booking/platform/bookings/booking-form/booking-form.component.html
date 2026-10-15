@@ -254,15 +254,28 @@
              in somewhere else. Mark a time block as post-production instead and the ticket
              is made properly, right here. A job whose editing has no date yet can still
              join the board from the booking page afterwards. -->
-        @if (hasWork) {
+        <!-- Also shown when the job already HAS a ticket but no blocks are marked, so its
+             brief and deadline stay editable instead of disappearing with the last block. -->
+        @if (hasWork || existingWorkItemId()) {
           <div class="work-block">
             <div class="work-block__head">
               <span class="work-block__title">Post-production</span>
-              <span class="work-block__count">{{ workBlocks.length }} block{{ workBlocks.length > 1 ? 's' : '' }} reserved</span>
+              @if (workBlocks.length) {
+                <span class="work-block__count">{{ workBlocks.length }} block{{ workBlocks.length > 1 ? 's' : '' }} reserved</span>
+              } @else {
+                <span class="work-block__count">no time reserved yet</span>
+              }
             </div>
             <p class="work-block__intro">
-              A ticket is created with this job, holding the time you marked. That time is
-              reserved on the calendar and blocks other bookings, like a shoot does.
+              @if (existingWorkItemId()) {
+                This job already has a ticket. Mark a time block as
+                <strong>Post-production</strong> and it becomes that ticket's reserved time —
+                blocked on the calendar, like a shoot. Clearing them all keeps the ticket,
+                it just stops holding time.
+              } @else {
+                A ticket is created with this job, holding the time you marked. That time is
+                reserved on the calendar and blocks other bookings, like a shoot does.
+              }
             </p>
             <div class="work-block__grid">
               <label class="field">
@@ -340,7 +353,6 @@
             [timezone]="orgTimezone()"
             [initialSlots]="prefillSlots"
             [excludeBookingId]="editingId() ?? ''"
-            [allowWorkBlocks]="!isEditing"
             (slotsChange)="onSlotsChanged($event)">
           </app-availability-picker>
         } @else {
