@@ -170,7 +170,7 @@
                           {{ busyId() === b.id ? '…' : 'Confirm' }}
                         </button>
                       } @else {
-                        <button class="link-btn" (click)="copyLink(b.id)">{{ copiedId() === b.id ? '✓ Copied' : 'Copy link' }}</button>
+                        <button class="link-btn" (click)="copyLink(b.id)">{{ copiedId() === b.id ? '✓ Copied' : 'Client link' }}</button>
                       }
                       <button class="kebab" [cdkMenuTriggerFor]="rowMenu" [disabled]="busyId() === b.id" aria-label="More actions">
                         <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
@@ -186,7 +186,7 @@
                         }
                         <button class="menu__item" cdkMenuItem (click)="goEdit(b)">Edit booking</button>
                         @if (isPending(b)) {
-                          <button class="menu__item" cdkMenuItem (click)="copyLink(b.id)">Copy link</button>
+                          <button class="menu__item" cdkMenuItem (click)="copyLink(b.id)">Copy client link</button>
                           <button class="menu__item menu__item--danger" cdkMenuItem (click)="decline(b)">Decline request</button>
                         }
                         <button class="menu__item" cdkMenuItem (click)="goDuplicate(b)">Duplicate booking…</button>

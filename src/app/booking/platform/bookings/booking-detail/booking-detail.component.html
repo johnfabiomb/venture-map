@@ -16,7 +16,7 @@
         <p class="page__sub">{{ b.booking_ref }} · {{ b.client_name ?? 'No client' }}</p>
       </div>
       <div class="head-actions">
-        <button class="btn btn--ghost" (click)="copyLink()">{{ copied() ? '✓ Copied' : 'Copy link' }}</button>
+        <button class="btn btn--ghost" (click)="copyLink()">{{ copied() ? '✓ Copied' : 'Copy client link' }}</button>
         <button class="btn btn--primary" (click)="goEdit()">Edit booking</button>
         <!-- Six buttons wrapped onto three rows on a phone. One primary, the rest behind
              a kebab — the same pattern the bookings list already uses. -->
@@ -85,6 +85,44 @@
 
     <!-- When / where / who, FIRST. These were below billing, invoices and delivery, so
          the identity of the job was the last thing on the page. -->
+    <!-- What you send the client. The URL is SHOWN, not hidden behind a copy button: you
+         cannot check what you are about to send, or paste part of it into a message, from
+         a button alone. -->
+    <app-panel title="Share with the client">
+      <div class="share">
+        <div class="share__row">
+          <div class="share__meta">
+            <span class="share__name">Client link</span>
+            <span class="share__what">
+              Their whole page for this job — the details, the invoice, paying by card or
+              in person, and the files you deliver once it's paid.
+            </span>
+          </div>
+          @if (clientLink(); as url) {
+            <div class="share__link">
+              <input class="share__input" [value]="url" readonly
+                     (focus)="$any($event.target).select()" aria-label="Client link" />
+              <button type="button" class="btn btn--primary btn--sm" (click)="copyLink()">
+                {{ copied() ? '✓ Copied' : 'Copy' }}
+              </button>
+              <a class="btn btn--ghost btn--sm" [href]="url" target="_blank" rel="noopener">Open</a>
+            </div>
+          } @else {
+            <p class="share__pending">{{ linkBusy() ? 'Preparing the link…' : 'No link yet.' }}</p>
+          }
+        </div>
+
+        <!-- Not duplicated here on purpose: a job can carry several invoices (a deposit and
+             a final), so "the invoice link" would be ambiguous. Each one carries its own
+             in the Invoices panel below. -->
+        @if (invoices().length) {
+          <p class="share__note">
+            Each invoice has its own link — see <strong>Invoices</strong> below.
+          </p>
+        }
+      </div>
+    </app-panel>
+
     <app-panel title="Job details">
       <div class="facts">
 

@@ -279,11 +279,11 @@ export class BookingListComponent {
 
   async copyLink(bookingId: string): Promise<void> {
     const url = await this.data.generateLink(bookingId);
-    if (!url) { this.toast.error('Could not generate the payment link.'); return; }
+    if (!url) { this.toast.error('Could not generate the client link.'); return; }
     await navigator.clipboard.writeText(url);
     this.copiedId.set(bookingId);
     setTimeout(() => this.copiedId.set(null), 2000);
-    this.toast.success('Payment link copied to clipboard');
+    this.toast.success('Client link copied to clipboard');
   }
 
   async approve(b: BookingSummary): Promise<void> {

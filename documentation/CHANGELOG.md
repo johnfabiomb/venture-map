@@ -7,6 +7,13 @@ All notable changes to Venture Map are recorded here.
 ## [Unreleased]
 
 ### Changed
+- **"Payment link" is now the "client link".** It was never just a payment link: one token is the client's whole page for that job — the details, the invoice, paying by card or in person, and the files you deliver once it's paid. Calling it a payment link made the one thing you send sound like one of several. Renamed everywhere, including what a client reads when a link has expired.
+
+### Added
+- **"Share with the client" on the booking page**, with the URL **visible** rather than hidden behind a copy button — you can't check what you're about to send, or paste part of it into a message by hand, from a button alone. Copy and Open beside it. Invoice links are deliberately *not* duplicated here: a job can carry several invoices (a deposit and a final), so "the invoice link" would be ambiguous — each one keeps its own in the Invoices panel, and the block says so.
+- **"Open booking" after creating one.** The success panel's only ways out were "Create another" and the list, so the job you had just made was the one thing you couldn't go to.
+
+### Changed
 - **A time block can now BE the post-production ticket.** "Needs post-production" was a checkbox that flagged the booking and created an **empty** card — no type, no brief, no deadline, no reserved time — which then had to be filled in somewhere else. The model that already works on this form is the invoice: enter the line items and the invoice exists when the booking does. Post-production works the same way now. While picking time blocks you mark one **Post-production**; it stops belonging to the booking and becomes the ticket's reserved time, and the ticket is filled in right there (what needs doing, type of work, **who edits**, deliver by, details). The checkbox is gone.
   - **Who edits defaults to the shooter and can be anyone.** The block is then reserved against *that* person's calendar — verified: a ticket assigned to Posveda reserves Posveda's time, not the shooter's.
   - **No new storage was needed.** `booking_slots.work_item_id` and the "exactly one owner" constraint have always allowed a block to belong to a work task instead of a booking, and `booking_slots_no_overlap` already covered both — so a reserved editing evening genuinely blocks, exactly like a shoot (verified: the block comes back `blocking = true`).

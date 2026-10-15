@@ -358,7 +358,7 @@ export class BookingFormComponent implements OnInit {
     return error ?? 'Something went wrong. Please try again.';
   }
 
-  /** Shareable invoice link (anon, token-based) — derived from the payment link. */
+  /** Shareable invoice link (anon, token-based) — derived from the client link. */
   get invoiceLink(): string | null {
     const link = this.created()?.link;
     return link ? link.replace('/book/', '/book/invoice?token=') : null;

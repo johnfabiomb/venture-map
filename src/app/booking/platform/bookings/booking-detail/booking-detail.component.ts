@@ -50,6 +50,17 @@ export class BookingDetailComponent implements OnInit {
   readonly lineItems = signal<LineItem[]>([]);   // invoice breakdown (source of truth for the total)
   readonly invoices = signal<InvoiceListRow[]>([]);  // every invoice raised against this job
   readonly copied = signal(false);
+  /**
+   * The client's own page for this job. One token gives them the details, the invoice,
+   * card or in-person payment, AND the files once it is paid — so calling it a "payment
+   * link" undersold it and made the one thing you send sound like one of several.
+   *
+   * Held as state (not just copied to the clipboard) so the actual URL is visible: you
+   * cannot check what you are about to send, or paste it into a message by hand, from a
+   * button alone.
+   */
+  readonly clientLink = signal('');
+  readonly linkBusy = signal(false);
   readonly adding = signal(false);
   readonly addingInvoice = signal(false);
   readonly workItem = signal<WorkJob | null>(null);   // this job's Work-board card, if any
@@ -144,6 +155,8 @@ export class BookingDetailComponent implements OnInit {
       this.workStaff.set((await this.admin.listStaff(this.auth.orgId() ?? ''))
         .map(st => ({ id: st.id, name: st.name })));
       this.applyDelivery(delivery);
+      // Fetched with the page so the URL is on screen rather than behind a click.
+      void this.ensureClientLink();
     }
   }
 
@@ -201,13 +214,26 @@ export class BookingDetailComponent implements OnInit {
     this.toast.info('Payment removed');
   }
 
+  /** Resolve the client link so it can be SHOWN. Generating is idempotent — it returns the
+   *  booking's existing token rather than minting a new one — so a link already sent to a
+   *  client never stops working because this page was opened. */
+  private async ensureClientLink(): Promise<string> {
+    if (this.clientLink()) return this.clientLink();
+    this.linkBusy.set(true);
+    try {
+      const url = await this.data.generateLink(this.id);
+      if (url) this.clientLink.set(url);
+      return url ?? '';
+    } finally { this.linkBusy.set(false); }
+  }
+
   async copyLink(): Promise<void> {
-    const url = await this.data.generateLink(this.id);
-    if (!url) { this.toast.error('Could not generate the payment link.'); return; }
+    const url = await this.ensureClientLink();
+    if (!url) { this.toast.error('Could not generate the client link.'); return; }
     await navigator.clipboard.writeText(url);
     this.copied.set(true);
     setTimeout(() => this.copied.set(false), 2000);
-    this.toast.success('Payment link copied to clipboard');
+    this.toast.success('Client link copied to clipboard');
   }
 
   /** Copy the client-shareable (no-login) invoice link. */

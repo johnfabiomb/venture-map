@@ -293,7 +293,11 @@ export class BookingDataService implements OnDestroy {
     return data?.token ?? null;
   }
 
-  /** Shareable payment link (`/book/:token`). */
+  /** The CLIENT LINK (`/book/:token`) — their whole page for this job: the details, the
+   *  invoice, paying by card or in person, and the files once it is paid. Not a "payment
+   *  link": that name made the one thing you send sound like one of several. Idempotent —
+   *  returns the booking's existing token rather than minting a new one, so a link already
+   *  sent to a client never stops working. */
   async generateLink(bookingId: string): Promise<string | null> {
     const token = await this.createBookingToken(bookingId);
     return token ? `${window.location.origin}/book/${token}` : null;
