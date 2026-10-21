@@ -1,7 +1,7 @@
 <div class="page">
   <div class="page__head">
     <div>
-      <h1 class="page__title">{{ isEditing ? 'Edit booking' : 'New booking' }}</h1>
+      <h1 class="page__title">{{ isEditing ? 'Edit booking' : (isWorkOnly ? 'New work task' : 'New booking') }}</h1>
       <p class="page__sub">
         {{ isEditing ? 'Update the details of this booking.' : 'Create a booking and send the client a link to confirm or pay.' }}
       </p>
@@ -74,8 +74,26 @@
       }
 
       <!-- ══ Job ══════════════════════════════════════════════════════ -->
+      <!-- One form, two outcomes. The mode is stated calmly at the top as a state, not an
+           alert — and the sections that do not apply are collapsed rather than shown
+           greyed, because a client job and an evening's editing genuinely need different
+           questions asked. -->
+      @if (isWorkOnly) {
+        <div class="mode">
+          <span class="mode__icon">✎</span>
+          <div class="mode__body">
+            <span class="mode__title">Your own work</span>
+            <span class="mode__text">
+              Every block is post-production, so this becomes a task on the Work board with
+              the time held on your calendar. Nobody is billed and no client link is made.
+              Set a block back to <strong>Shoot</strong> for a client job.
+            </span>
+          </div>
+        </div>
+      }
+
       <section class="sec">
-        <h2 class="sec__title">Job</h2>
+        <h2 class="sec__title">{{ isWorkOnly ? 'The work' : 'Job' }}</h2>
 
         @if (scopedWorkerName(); as w) {
           <p class="note">For <strong>{{ w }}</strong> — change the worker from the sidebar.</p>
@@ -83,10 +101,15 @@
 
         <div class="field">
           <div class="field__top"><label for="bf-title">Title</label></div>
-          <input id="bf-title" [(ngModel)]="title" name="title"
-                 placeholder="e.g. Interview filming — Clinica Joia" required />
+          <input id="bf-title" data-tour="bf-title" [ngModel]="title" (ngModelChange)="onTitleInput($event)" name="title"
+                 [placeholder]="isWorkOnly ? 'e.g. Edit the Prohealth interviews'
+                                           : (suggestedTitle || 'e.g. Interview filming — Clinica Joia')" />
+          <!-- No "it will be saved as…" note: clearing the box refills it from the
+               suggestion, so a blank title with a suggestion available cannot persist long
+               enough for anyone to read it. -->
         </div>
 
+        @if (!isWorkOnly) {
         <div class="field">
           <div class="field__top">
             <label>Customer</label>
@@ -96,7 +119,7 @@
               <strong>Just a name</strong> is a one-off, never saved, and bills to that name only.
             </app-info-hint>
           </div>
-          <div class="seg">
+          <div class="seg" data-tour="bf-customer">
             <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'existing'"
                     (click)="clientMode = 'existing'">Existing client</button>
             <button type="button" class="seg__btn" [class.seg__btn--on]="clientMode === 'quick'"
@@ -105,7 +128,7 @@
 
           @if (clientMode === 'existing') {
             <div class="client-row">
-                <app-select [value]="clientId" (changed)="clientId = $event"
+                <app-select [value]="clientId" (changed)="clientId = $event; syncTitle()"
                           [options]="clientOptions()" placeholder="Select a client…" [clearable]="true" />
               <button type="button" class="btn btn--ghost btn--sm" (click)="openClientEditor()">+ New</button>
             </div>
@@ -113,9 +136,10 @@
               <span class="note">No VAT or billing address on this client — add them in Clients for a VAT-ready invoice.</span>
             }
           } @else {
-            <input [(ngModel)]="contactName" name="contactName" placeholder="e.g. John from Sliema" />
+            <input [(ngModel)]="contactName" (ngModelChange)="syncTitle()" name="contactName" placeholder="e.g. John from Sliema" />
           }
         </div>
+        }
 
         <!-- Hidden when the worker scope already says who: asking again is asking the
              same question twice, and the answer is already on screen in the sidebar. -->
@@ -132,7 +156,7 @@
 
         <div class="field">
           <div class="field__top"><label for="bf-loc">Location <span class="opt">optional</span></label></div>
-          <input id="bf-loc" [(ngModel)]="location" name="location" placeholder="Address or venue" />
+          <input id="bf-loc" [(ngModel)]="location" (ngModelChange)="syncTitle()" name="location" placeholder="Address or venue" />
         </div>
       </section>
 
@@ -168,6 +192,7 @@
       </section>
 
       <!-- ══ Charges & payment ════════════════════════════════════════ -->
+      @if (!isWorkOnly) {
       <section class="sec">
         <h2 class="sec__title">Charges &amp; payment</h2>
 
@@ -179,7 +204,7 @@
               custom one. The total here is what the client pays, and it becomes the invoice.
             </app-info-hint>
           </div>
-          <app-line-items-editor [items]="lineItems" (itemsChange)="onItemsChange($event)"
+          <app-line-items-editor data-tour="bf-charges" [items]="lineItems" (itemsChange)="onItemsChange($event)"
                                  [currency]="currency()" [services]="services()" />
         </div>
 
@@ -229,12 +254,14 @@
           }
         }
       </section>
+      }
 
       <!-- ══ Options ══════════════════════════════════════════════════ -->
       <section class="sec">
         <h2 class="sec__title">Options</h2>
 
         @if (!isEditing) {
+          @if (!isWorkOnly) {
           <div class="opt-row">
             <label class="check">
               <input type="checkbox" [(ngModel)]="confirmed" name="confirmed" />
@@ -247,6 +274,7 @@
               into Google Calendar now and the client just gets the invoice.
             </app-info-hint>
           </div>
+          }
         }
 
         <!-- "Needs post-production" used to live here as a checkbox. It created an EMPTY
@@ -259,7 +287,7 @@
         @if (hasWork || existingWorkItemId()) {
           <div class="work-block">
             <div class="work-block__head">
-              <span class="work-block__title">Post-production</span>
+              <span class="work-block__title">{{ isWorkOnly ? 'About this work' : 'Post-production' }}</span>
               @if (workBlocks.length) {
                 <span class="work-block__count">{{ workBlocks.length }} block{{ workBlocks.length > 1 ? 's' : '' }} reserved</span>
               } @else {
@@ -272,17 +300,24 @@
                 <strong>Post-production</strong> and it becomes that ticket's reserved time —
                 blocked on the calendar, like a shoot. Clearing them all keeps the ticket,
                 it just stops holding time.
+              } @else if (isWorkOnly) {
+                This is the task itself. The time you marked is reserved on your calendar
+                and blocks other bookings, exactly like a shoot does.
               } @else {
                 A ticket is created with this job, holding the time you marked. That time is
                 reserved on the calendar and blocks other bookings, like a shoot does.
               }
             </p>
             <div class="work-block__grid">
-              <label class="field">
-                <span>What needs doing?</span>
-                <input type="text" [(ngModel)]="workTitle" name="workTitle"
-                       [placeholder]="title.trim() || 'Same as the job title'" />
-              </label>
+              @if (!isWorkOnly) {
+                <!-- In work-only mode the form's own Title IS the task's name, so asking
+                     again here would be the same question twice on one screen. -->
+                <label class="field">
+                  <span>What needs doing?</span>
+                  <input type="text" [(ngModel)]="workTitle" name="workTitle"
+                         [placeholder]="title.trim() || 'Same as the job title'" />
+                </label>
+              }
               <label class="field">
                 <span>Type of work</span>
                 <app-select [value]="workType" (changed)="workType = $event"
@@ -338,7 +373,7 @@
         }
         <button type="button" class="btn btn--ghost" (click)="goToList()">Cancel</button>
         <button type="submit" class="btn btn--primary" [disabled]="!canSubmit">
-          {{ saving() ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save changes' : 'Create booking') }}
+          {{ submitLabel }}
         </button>
       </div>
     </form>
@@ -348,7 +383,7 @@
       <div class="card aside-card">
         <h2 class="aside-card__title">Worker availability</h2>
         @if (staffId) {
-          <app-availability-picker
+          <app-availability-picker data-tour="bf-picker"
             [staffId]="staffId"
             [timezone]="orgTimezone()"
             [initialSlots]="prefillSlots"

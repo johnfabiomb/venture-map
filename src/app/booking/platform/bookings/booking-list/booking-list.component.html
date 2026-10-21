@@ -5,7 +5,7 @@
       <p class="page__sub">All jobs, shoots and appointments</p>
     </div>
     <div class="head-actions">
-      <a class="btn btn--primary" routerLink="/bookings/new">
+      <a class="btn btn--primary" data-tour="new-booking" routerLink="/bookings/new">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M8 3v10M3 8h10"/>
         </svg>
@@ -50,7 +50,7 @@
   } @else {
     <!-- Tabs + search -->
     <div class="toolbar">
-      <div class="tabs" role="tablist">
+      <div class="tabs" role="tablist" data-tour="booking-tabs">
         @for (group of tabGroups; track $index; let gi = $index) {
           @if (gi > 0) { <span class="tabs__sep" aria-hidden="true"></span> }
           @for (t of group; track t.key) {
@@ -63,7 +63,7 @@
           }
         }
       </div>
-      <label class="search">
+      <label class="search" data-tour="booking-search">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="7" cy="7" r="4.5"/><path d="M11 11l3 3"/>
         </svg>

@@ -6,6 +6,62 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Changed
+- **The booking form creates your own work too.** It used to refuse — *"post-production alone isn't a booking"* — which was a rule about the data model showing through as a rule about the user. Reserving an evening to edit is still booking yourself; having to go somewhere else to do it was the thing that was wrong.
+  - Mark every block as **Post-production** and the form creates a **work task** with its time reserved on the calendar: no invoice, no booking reference, no client link. Leave one block as **Shoot** and it is a client job as before. The form says which it is making as soon as the blocks decide it, the Job heading becomes *"Your own work"*, Charges explains why it is not needed, and the button reads **Create work task** rather than Create booking.
+  - **The records stay separate, deliberately.** A booking carries a reference, a price, a deposit and a client-facing pay link; giving every editing evening those would eventually mean invoicing somebody for work they had already paid for. What was worth sharing was the FORM, which is the part that was actually annoying.
+  - The name stays **booking**: it means time that has been reserved, which is as true when you book yourself as when a client books you.
+
+### Added
+- **A tour of the whole platform**, from *"Tour the whole app"* in the sidebar, and automatically on a brand-new account before any page tour. It **walks across pages** — dashboard, bookings, work, invoices, clients, settings — because what it teaches is how the modules feed each other, which no single page's tour can show: a job is entered once and the invoice, the calendar, the post-production and the money all follow from it.
+  - A step can carry a `route`; the tour navigates, waits for the page to render, then measures. Without the wait the spotlight is drawn against the *old* page and lands on nothing, which is the most visible way a cross-page tour looks broken. The card says "Taking you there…" while it moves.
+  - A tour already running ignores its own navigation, or the page tour would restart on top of it mid-step.
+  - Steps whose control is on another page are not pre-filtered on visibility — they cannot be measured from where you are standing — so they are checked as they are reached.
+- Verified: all **26** `data-tour` anchors exist, and all **6** routes the platform tour navigates to are real.
+
+### Fixed
+- The Documents tour would have been offered on **any** Settings tab, so landing on Company offered help about something else. It is keyed to its own tab now.
+
+### Added
+- **A guided tour per module** — Bookings, Creating a booking, A booking, Work board, Invoices, Documents. A spotlight lands on the control, a card says what it does, and steps whose control is not on screen are skipped rather than pointing at nothing. Opens by itself the first time you land on a page, and from **"How … works"** in the sidebar any time. Modelled on Satura's tour.
+  - **The part that matters: a tour reopens when it gains steps.** Each step records the version it was added in, so when a module grows a feature the tour opens as *"New in Bookings"* showing **only what changed**. A tour you read once is useless the week a feature lands — which is the actual problem, since features are being added weekly and then forgotten.
+  - Steps target `data-tour` attributes, never styling classes: a class gets renamed the next time a page is restyled and the tour silently stops pointing at anything. All 18 anchors are verified present.
+  - **Escape or × dismisses without marking the tour read** — "not now" should not cost you the tour for ever. Only reaching the end does.
+
+### Fixed
+- `app-panel` had no `:host` display rule, so it was inline and its bounding box was whatever its line boxes happened to be. Harmless until something needed to measure it — the tour could not, and silently skipped every step pointing at a panel.
+
+### Added
+- **Documents — the paperwork clients ask you to prove.** Public liability insurance, your UAS operator registration, a remote pilot certificate, a flight permit. Kept **once** in Settings → Documents and **attached** to a booking when asked, rather than uploaded again per job or dug out of email. A booking's Documents panel attaches a library item with one click, or takes a job-specific upload.
+  - **One store for two things.** Documents you *give* the client and documents the client *signs* (the engagement letter, coming next) are the same record — a file, of a type, belonging to an org, attached to bookings, possibly with an expiry. Built separately they would have meant two storage paths, two attach screens and two places to look, so the signing columns simply stay null on a file.
+  - **Expiry is tracked where it matters.** Insurance and registrations lapse; a certificate that ran out last month still *looks* handled on a booking until someone checks the date, so an expired or soon-to-expire document is called out in red on the job itself. The expiry box is only asked for on types that actually lapse — it is a question with no answer on a signed contract.
+  - **Attaching is a link, not a copy.** One certificate serves fifty jobs; removing it from one booking leaves it on the others and in your library.
+  - **The bucket is private.** These are insurance certificates and contracts — a public bucket would make every one readable by anyone who guessed a path. Files are reached through short-lived signed URLs, and every storage path begins with the organisation id, which is what the storage policy actually checks (verified: a path with a non-uuid first segment, a bare filename, or `../..` is denied, and the guard doesn't error on any of them).
+  - The row is created **before** the upload: the other order risks a file in the bucket that no row points at — invisible, undeletable through the app, and still billed for. A failed upload takes its empty row back out.
+
+### Security
+- `soft_delete` was callable by PUBLIC. It is `SECURITY DEFINER` but gated on `is_org_admin` internally, so an anonymous caller only ever got `forbidden` — hygiene rather than a hole, and pre-existing rather than new. Revoked. An audit of every other `SECURITY DEFINER` function callable by PUBLIC found **20**, and the sensitive ones (`create_org`, `get_earnings`, `save_invoice`, `delete_booking`, `get_profit`, `upsert_my_client`, `list_deleted_bookings`, `get_invoice`) are **all gated internally**. Several of the rest must stay public — the token lookups and public availability — so revoking the remainder needs its own pass rather than a blanket change.
+
+### Added
+- **The booking title writes itself.** It fills in as you pick the client, type the location and add a charge, and **stops the moment you type your own** — after that nothing overwrites it. Clearing the box hands control back and the suggestion returns, so "clear it" doubles as "give me the suggested one again". The title is also **no longer required**: left blank it is derived on save, so *"I don't have a title"* can't be the thing stopping a booking.
+  - The rule is **what, and which one** — enough to tell a job apart from the others. With a location: *Drone Pilot Filming at Mercury Tower* (the place is what separates four shoots for the same client, and the client is on the booking anyway). Without one: *Camera Filming for RockMedia*.
+  - **The work comes from the CHARGE**, not the service: this form always saves `service_id` as null because the service is chosen per line item, so the booking's own service field could never have supplied it. A line naming a service gives the clean name; otherwise the description is used with its `— 2 hours` tail stripped, since the quantity is already on the charge line and would date the title the moment the hours changed.
+  - A charge that says nothing — "Custom charge", "Extra", a bare amount — produces **no suggestion** rather than *"Custom charge at Mercury Tower"*. An empty box you fill is better than a confident guess that is wrong.
+  - A long location is reduced to its venue: *"AestheLab Clinic & Academy International, 27 D. Cachia, Iklin IKL 1271"* becomes *"AestheLab Clinic & Academy International"* — the part before the first comma is what a person would say out loud.
+  - **No date or time in it, deliberately.** The booking carries its dates in every view that matters, and on the calendar the date *is* the position of the event. One hand-written title did include it and is the hardest in the list to scan.
+  - Editing or cloning a booking treats its existing title as yours, so changing the location on a saved job never silently rewrites it.
+
+### Fixed
+- **The dropdown panel was narrower than the field above it.** Its width was read during change detection, which under OnPush is not reliably after the trigger has its laid-out width — so the overlay fell back to sizing itself to its widest option. It is now measured at the moment the panel opens.
+- **An option whose hint repeated its own label showed the text twice**, one greyed under the other — a client whose company *is* its name, like "242 MALTA LTD". A hint identical to the label is now dropped.
+
+### Changed
+- **Blue Grotto has new photos and a 5-image gallery.** The cover is now a frame from the Oct 2026 Blue Grotto reel, joined by a second reel frame and three FPV stills (the arch, a boat entering the grotto, the coastline). The FPV stills carry the reel's own grade, fitted from its ungraded and graded exports, so the whole set reads as one shoot. Cover and thumbnail keep their old paths, so shared links and the og:image don't change.
+- **The booking form's design language is now shared, and the invoice form uses it.** The things that made the booking form read well — quiet uppercase **sections** with a rule between groups, a label with its **(i)** on one baseline, short contextual notes — lived only in that one stylesheet. So every other form re-invented a worse version: explanations crammed into labels (*"Issue date (sets the number's year)"*), a paragraph of hint text under every heading, and one flat run of fields with nothing to say where a group ended. `.sec`, `.field__top`, `.field .note`, `.field-row` and `.form` moved into `admin.shared.scss`, and the duplicates were deleted so they cannot drift.
+- **The invoice editor rebuilt on it.** Three separate cards became one with five sections (Invoice · Billed to · Dates · Charges · Note); every parenthetical label and hint paragraph became an **(i)** that actually explains the thing — what the issue date does to the numbering, what the Worker field is for, what happens when the due date is blank. The "+ New client" button was styled with the **back-link** class; it is a link button now.
+- **Settings' General and Booking rules tabs** got the same treatment. Deposit %, Hold and Min lead time were bare jargon — each now has an (i) saying what it does and, as importantly, what it does *not* touch (changing the deposit never alters a payment link already sent; minimum lead time doesn't restrict bookings you create yourself).
+  - Deliberately **not** applied to Email, Payments and Integrations: a form you fill daily hides explanation behind an (i), but a setup page you touch once a month benefits from visible prose. Blanket-applying the rule would have made those worse.
+
 ### Fixed
 - **You couldn't add post-production when EDITING a booking.** The Shoot / Post-production toggle was deliberately gated to the create form, on the reasoning that only `create_booking` builds the ticket in one transaction so a toggle that silently did nothing would be worse. That reasoning was wrong about the user, not the code: deciding a job needs editing *after* you've booked it is the normal case. The edit form now offers it too, writing the ticket through the work APIs instead.
   - **The edit form loads BOTH kinds of block.** `setWorkSlots` replaces a ticket's blocks, so loading only the booking's own would have silently wiped the reserved editing time the moment anything else on the form was saved — and there is already a live booking this would have hit.

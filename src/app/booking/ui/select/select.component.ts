@@ -95,7 +95,9 @@ export interface SelectOption {
               @if (o.color) { <span class="sel__dot" [style.background]="o.color"></span> }
               <span class="sel__opt-text">
                 <span class="sel__opt-label">{{ o.label }}</span>
-                @if (o.hint) { <span class="sel__opt-hint">{{ o.hint }}</span> }
+                <!-- A hint that repeats the label says nothing — a client whose company IS
+                     its name rendered "242 MALTA LTD" twice, one greyed under the other. -->
+                @if (o.hint && o.hint !== o.label) { <span class="sel__opt-hint">{{ o.hint }}</span> }
               </span>
               @if (isChosen(o.value)) { <span class="sel__tick">✓</span> }
             </button>
@@ -278,7 +280,16 @@ export class SelectComponent {
       .map(r => r.o);
   });
 
-  panelWidth(): number { return this.triggerEl().nativeElement.offsetWidth; }
+  /**
+   * The panel matches the trigger's width, measured AT THE MOMENT IT OPENS.
+   *
+   * It used to be a method read during change detection. Under OnPush that is evaluated
+   * when Angular happens to check the component, which is not reliably after the trigger
+   * has its final laid-out width — so the overlay fell back to sizing itself to its widest
+   * option and the dropdown came out far narrower than the field above it.
+   */
+  readonly panelW = signal(0);
+  panelWidth(): number { return this.panelW(); }
 
   constructor() {
     // Focus the search as the panel opens, so typing filters immediately rather than
@@ -294,6 +305,9 @@ export class SelectComponent {
     if (this.open()) { this.close(); return; }
     this.query.set('');
     this.activeIndex.set(Math.max(0, this.filtered().findIndex(o => this.isChosen(o.value))));
+    // Measured before the panel exists, so the width is the trigger's real one rather than
+    // whatever the overlay would have inferred from its contents.
+    this.panelW.set(this.triggerEl().nativeElement.offsetWidth);
     this.open.set(true);
   }
   close(): void { this.open.set(false); this.query.set(''); }

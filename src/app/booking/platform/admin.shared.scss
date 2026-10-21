@@ -94,6 +94,53 @@
   // the next person assumes is live. app-select styles its own trigger and, as a flex item
   // in this column, already fills the field's width.
 }
+// ── The form language ───────────────────────────────────────────────────
+// A card laid out AS a form: sections stacked with consistent breathing room. Several
+// pages used three separate cards instead, which made one short form read as three
+// unrelated tasks.
+.form { display: flex; flex-direction: column; gap: 20px; }
+
+// Lifted out of booking-form, where it was invented and then stayed local — which is why
+// every other form re-invented a worse version of it: explanations crammed into labels
+// ("Issue date (sets the number's year)"), a paragraph of hint text under every heading,
+// and one flat run of fields with nothing to say where a group ended.
+//
+// A SECTION is a group of fields under a quiet uppercase title, with a rule between
+// groups. It does the work a sentence would, without the sentence.
+.sec {
+  display: flex; flex-direction: column; gap: 14px;
+  & + & { border-top: 1px solid $border; padding-top: 20px; }
+  &__title {
+    margin: 0; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em; color: $text-3;
+  }
+}
+
+// Label + its (i). min-height keeps rows with and without an icon on the same baseline.
+.field__top {
+  display: flex; align-items: center; gap: 4px; min-height: 20px;
+  label { font-size: 12px; font-weight: 600; color: $text-2; }
+}
+
+// Short contextual lines only — anything explanatory belongs behind the (i), never as a
+// paragraph under the heading and never in the label itself.
+// Scoped under .field because `.field span` above would otherwise outrank it.
+.field .note {
+  font-size: 11.5px; font-weight: 500; color: $text-3; line-height: 1.45;
+  &--warn { color: #b45309; }
+}
+
+// Two fields side by side, stacking on a phone. Every form had its own near-copy.
+.field-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+  &--three {
+    grid-template-columns: repeat(3, 1fr);
+    @media (max-width: 860px) { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 640px) { grid-template-columns: 1fr; }
+  }
+}
+
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: $text; }
 
 .list { display: flex; flex-direction: column; gap: 10px; }

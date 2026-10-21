@@ -9,6 +9,7 @@ import { ToastService } from '@booking/ui/toast/toast.service';
 import { LineItem } from '@booking/core/interfaces/invoice.interface';
 import { Client, BookingSlot, EditableBooking } from '@booking/core/interfaces/booking.interface';
 import { AvailabilityPickerComponent, PickedSlot } from './availability-picker.component';
+import { suggestBookingTitle } from '@booking/core/utils/booking-title.util';
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
@@ -79,6 +80,51 @@ export class BookingFormComponent implements OnInit {
   workDescription = '';
   /** The job's existing ticket, when editing. Null = none yet; marking a block creates one. */
   readonly existingWorkItemId = signal<string | null>(null);
+
+  // ── Title ────────────────────────────────────────────────────────────────
+  /** True once the owner has typed their own title. From then on nothing overwrites it —
+   *  a field that keeps changing under you while you fill in the rest of the form is
+   *  worse than no help at all. */
+  private titleTouched = false;
+
+  /** What the form would call this job, from what has been entered so far. '' when there
+   *  is not enough to say anything useful. */
+  get suggestedTitle(): string {
+    return suggestBookingTitle({
+      // The CHARGE carries the real work. This form always saves the booking with
+      // service_id null — the service is picked per line item — so the booking's own
+      // service field could never have supplied it. A line that names a service gives the
+      // clean name outright; otherwise the description is used and its " — 2 hours" tail
+      // is stripped by the util.
+      work: (() => {
+        const withService = this.lineItems.find(i => i.serviceId && i.description.trim());
+        if (withService) {
+          return this.services().find(sv => sv.id === withService.serviceId)?.name
+                 ?? withService.description;
+        }
+        return this.lineItems.find(i => i.description.trim())?.description;
+      })(),
+      location: this.location,
+      client: this.clientMode === 'existing'
+        ? this.data.clients().find(c => c.id === this.clientId)?.name
+        : this.contactName,
+    });
+  }
+
+  /** Called whenever something the title is built from changes. */
+  syncTitle(): void {
+    if (this.titleTouched) return;
+    this.title = this.suggestedTitle;
+  }
+
+  onTitleInput(value: string): void {
+    this.title = value;
+    // Emptying the box hands control back, and the suggestion returns immediately — so
+    // "clear it" doubles as "give me the suggested one again". Without this, deleting a
+    // title you no longer wanted would leave the field permanently blank.
+    this.titleTouched = value.trim().length > 0;
+    if (!this.titleTouched) this.syncTitle();
+  }
   /** 'minimal' strips money/progress/notes from the Google Calendar event so the job can
    *  safely have other attendees on it. Defaults to the org setting via the RPC. */
   calendarDetail: 'full' | 'minimal' = 'full';
@@ -161,6 +207,9 @@ export class BookingFormComponent implements OnInit {
     }
     this.staffId = b.staff_id;
     this.title = b.title;
+    // An existing title is the owner's, whether they typed it or accepted a suggestion.
+    // Without this, editing the location on a saved booking would silently rewrite it.
+    this.titleTouched = !!b.title?.trim();
     this.location = b.location ?? '';
     this.notes = b.notes ?? '';
     this.paymentMode = b.allow_card && b.allow_inperson ? 'both' : b.allow_card ? 'card' : 'later';
@@ -244,6 +293,16 @@ export class BookingFormComponent implements OnInit {
    *  answer a different question on the calendar. */
   get workBlocks(): PickedSlot[] { return this.selectedSlots.filter(s => s.kind === 'work'); }
   get hasWork(): boolean { return this.workBlocks.length > 0; }
+  /**
+   * Nothing but post-production time — your own work, with no client job behind it.
+   *
+   * This form then creates a WORK TASK and no booking at all. The two stay separate
+   * records on purpose: a booking carries a reference, a price, a deposit and a
+   * client-facing pay link, and giving every editing evening those would eventually mean
+   * invoicing somebody for work they had already paid for. What is shared is this form —
+   * which is the part that was actually annoying.
+   */
+  get isWorkOnly(): boolean { return !this.shootBlocks.length && this.hasWork; }
 
   /** The DB slots to persist (one row per chosen SHOOT block). */
   get slotsValue(): BookingSlot[] {
@@ -257,7 +316,7 @@ export class BookingFormComponent implements OnInit {
 
   // ── Change handlers ─────────────────────────────────────────────────
   // Charges (pricing) are decoupled from the calendar — editing items never touches the time blocks.
-  onItemsChange(items: LineItem[]): void { this.lineItems = items; }
+  onItemsChange(items: LineItem[]): void { this.lineItems = items; this.syncTitle(); }
   // The picker clears its blocks (and emits []) when the worker changes, so no manual reset needed.
   onSlotsChanged(slots: PickedSlot[]): void { this.selectedSlots = slots; }
 
@@ -272,25 +331,43 @@ export class BookingFormComponent implements OnInit {
     // and a nameless zero line is not a placeholder, it is nothing.
     const itemsOk = this.lineItems.length > 0
       && this.lineItems.every(i => i.description.trim().length > 0);
+    // Your own work needs no customer and no charges — there is nobody to bill. It needs
+    // a worker, a block and something to call it.
+    if (this.isWorkOnly) {
+      return !this.saving() && !!this.staffId
+        && (this.title.trim().length > 0 || this.workTitle.trim().length > 0);
+    }
+    // No title requirement: it is derived from the job when left blank (see
+    // suggestedTitle). "I don't have a title" should never be the thing stopping a
+    // booking from being saved.
     return !this.saving() && this.hasCustomer && !!this.staffId && this.shootBlocks.length > 0
-      && itemsOk && this.title.trim().length > 0;
+      && itemsOk && (this.title.trim().length > 0 || this.suggestedTitle.length > 0);
   }
 
   /** The first thing still missing, in the order the form asks for it. Empty when the
    *  booking is ready to save. Surfaced next to a disabled Create button so the reason is
    *  never off-screen — the time blocks in particular are picked far below it on a phone. */
+  /** What pressing the button will actually make — said out loud, because this one form
+   *  now produces two different things depending on what is in it. */
+  get submitLabel(): string {
+    if (this.saving()) return 'Saving…';
+    if (this.isEditing) return 'Save changes';
+    return this.isWorkOnly ? 'Create work task' : 'Create booking';
+  }
+
   get blockedReason(): string {
+    if (this.isWorkOnly) {
+      if (!this.staffId) return 'Pick who is doing it';
+      if (!this.title.trim() && !this.workTitle.trim()) return 'Say what the work is';
+      return '';
+    }
     if (!this.hasCustomer) return 'Pick a customer';
     if (!this.staffId) return 'Pick a worker';
-    if (!this.title.trim()) return 'Add a title';
     if (!this.lineItems.length) return 'Add a charge';
     if (this.lineItems.some(i => !i.description.trim())) return 'Describe each charge';
-    // A booking needs a SHOOT block. Post-production alone is not a booking — it is a
-    // work task, which the Work board creates on its own.
-    if (!this.shootBlocks.length) {
-      return this.hasWork ? 'Add a shoot block too — post-production alone isn\'t a booking'
-                          : 'Pick a time block';
-    }
+    // Only reachable when the charges say nothing a title could be built from.
+    if (!this.title.trim() && !this.suggestedTitle) return 'Add a title';
+    if (!this.shootBlocks.length) return 'Pick a time block';
     return '';
   }
 
@@ -302,6 +379,11 @@ export class BookingFormComponent implements OnInit {
     this.saving.set(true);
     this.errorMsg.set('');
     try {
+      // Your own work: a work task and nothing else — no booking reference, no invoice,
+      // no client link. Handled before anything else so none of the booking machinery
+      // below can half-run.
+      if (!this.isEditing && this.isWorkOnly) { await this.createWorkOnly(org); return; }
+
       // Keep the service metadata (serviceId/hours) so the breakdown round-trips on edit.
       const items: LineItem[] = this.lineItems.map(i => ({
         description: i.description.trim(), amount: Number(i.amount) || 0,
@@ -312,7 +394,7 @@ export class BookingFormComponent implements OnInit {
         staffId: this.staffId, serviceId: null,
         clientId: this.clientMode === 'existing' ? this.clientId : null,
         contactName: this.clientMode === 'quick' ? this.contactName.trim() : null,
-        title: this.title.trim(),
+        title: this.title.trim() || this.suggestedTitle,
         description: items.map(i => i.description).join('\n'),  // client-facing summary on the pay page
         slots: this.slotsValue,
         priceTotal: this.priceTotal,
@@ -414,7 +496,7 @@ export class BookingFormComponent implements OnInit {
     this.selectedSlots = [];
     this.prefillSlots = [];
     this.lineItems = [];
-    this.title = ''; this.location = ''; this.notes = '';
+    this.title = ''; this.titleTouched = false; this.location = ''; this.notes = '';
     this.paymentMode = 'both';
     this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
     this.depositPercent = this.orgDefaults.depositPercent;
@@ -465,6 +547,38 @@ export class BookingFormComponent implements OnInit {
     return clashes.length
       ? `Booking saved, but ${clashes.length} post-production block${clashes.length > 1 ? 's' : ''} could not be reserved — that time is already taken.`
       : '';
+  }
+
+  /**
+   * Reserve time for your own work with no client job behind it — an editing evening, a
+   * site recce, admin. Creates a work task and its blocks; nothing that bills anyone.
+   */
+  private async createWorkOnly(org: string): Promise<void> {
+    const title = (this.workTitle.trim() || this.title.trim());
+    const id = await this.admin.addWorkItem(org, null, title);
+    if (!id) { this.errorMsg.set('Could not create the work task.'); return; }
+
+    const assignee = this.workAssignee || this.staffId;
+    await this.admin.updateWorkItem(id, {
+      title,
+      description: this.workDescription.trim() || null,
+      work_type: this.workType || null,
+    });
+    await this.admin.assignCard(id, assignee || null);
+    await this.admin.setDue(id, this.workDue ? new Date(`${this.workDue}T12:00:00`).toISOString() : null);
+
+    const { clashes, orphanEventIds } = await this.admin.setWorkSlots(
+      org, id, assignee,
+      this.workBlocks.map(b => ({ start: b.iso, end: b.endIso, label: b.label?.trim() || null })));
+    this.admin.syncWorkEvent(id, orphanEventIds);
+
+    if (clashes.length) {
+      this.toast.error(
+        `Work task saved, but ${clashes.length} block${clashes.length > 1 ? 's' : ''} could not be reserved — that time is already taken.`, 9000);
+    } else {
+      this.toast.success(`“${title}” added to the Work board`);
+    }
+    this.router.navigate(['/bookings/work']);
   }
 
   goToList(): void { this.router.navigate(['/bookings/list']); }

@@ -14,6 +14,7 @@
       <button class="tab" [class.tab--active]="tab() === 'general'"      (click)="setTab('general')">General</button>
       <button class="tab" [class.tab--active]="tab() === 'booking'"      (click)="setTab('booking')">Booking rules</button>
       <button class="tab" [class.tab--active]="tab() === 'company'"      (click)="setTab('company')">Company &amp; Invoicing</button>
+      <button class="tab" [class.tab--active]="tab() === 'documents'"    (click)="setTab('documents')">Documents</button>
       <button class="tab" [class.tab--active]="tab() === 'email'"        (click)="setTab('email')">Email &amp; sending</button>
       <button class="tab" [class.tab--active]="tab() === 'team'"         (click)="setTab('team')">Team</button>
       <button class="tab" [class.tab--active]="tab() === 'payments'"     (click)="setTab('payments')">Payments</button>
@@ -24,39 +25,95 @@
 
       <!-- ── General ──────────────────────────────────────────────── -->
       @case ('general') {
-        <div class="card">
-          <h2 class="card__h">General</h2>
-          <div class="grid">
-            <label class="field"><span>Timezone</span>
-              <app-select [value]="timezone" (changed)="timezone = $event" [options]="tzOptions" />
-            </label>
-            <label class="field"><span>Currency</span>
-              <app-select [value]="currency" (changed)="currency = $event" [options]="currencyOptions" />
-            </label>
-          </div>
-          <label class="check"><input type="checkbox" [(ngModel)]="workBoard" /> Enable <strong>Work board</strong> — post-production to-do for confirmed jobs</label>
-          <div class="actions">
-            <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
-            @if (saved()) { <span class="ok-tag">✓ Saved</span> }
-          </div>
+        <div class="card form">
+          <section class="sec">
+            <h2 class="sec__title">General</h2>
+            <div class="field-row">
+              <div class="field">
+                <div class="field__top">
+                  <label>Timezone</label>
+                  <app-info-hint label="Timezone">
+                    Every time in the app is shown in this zone — availability, calendar
+                    events and what a client sees on their link. Times are stored in UTC,
+                    so changing this re-labels existing bookings rather than moving them.
+                  </app-info-hint>
+                </div>
+                <app-select [value]="timezone" (changed)="timezone = $event" [options]="tzOptions" />
+              </div>
+              <div class="field">
+                <div class="field__top">
+                  <label>Currency</label>
+                  <app-info-hint label="Currency">
+                    Used on invoices, payment pages and every total in the app. It does not
+                    convert anything — existing figures keep their numbers and are simply
+                    shown in this currency.
+                  </app-info-hint>
+                </div>
+                <app-select [value]="currency" (changed)="currency = $event" [options]="currencyOptions" />
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" [(ngModel)]="workBoard" /> Enable <strong>Work board</strong> — post-production to-do for confirmed jobs</label>
+            <div class="actions">
+              <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
+              @if (saved()) { <span class="ok-tag">✓ Saved</span> }
+            </div>
+          </section>
         </div>
       }
 
       <!-- ── Booking rules ────────────────────────────────────────── -->
       @case ('booking') {
-        <div class="card">
-          <h2 class="card__h">Booking rules</h2>
-          <div class="grid">
-            <label class="field"><span>Deposit %</span><input type="number" min="0" max="100" [(ngModel)]="depositPercent" /></label>
-            <label class="field"><span>Hold (minutes)</span><input type="number" min="1" [(ngModel)]="holdMinutes" /></label>
-            <label class="field"><span>Min lead time (minutes)</span><input type="number" min="0" [(ngModel)]="minLeadMinutes" /></label>
-          </div>
-          <label class="check"><input type="checkbox" [(ngModel)]="depositAllowed" /> Allow deposits by default <span class="opt">(off = clients pay in full; can still be overridden per booking)</span></label>
-          <label class="check"><input type="checkbox" [(ngModel)]="cashAllowed" /> Allow cash requests</label>
-          <div class="actions">
-            <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
-            @if (saved()) { <span class="ok-tag">✓ Saved</span> }
-          </div>
+        <div class="card form">
+          <section class="sec">
+            <h2 class="sec__title">Booking rules</h2>
+            <div class="field-row field-row--three">
+              <div class="field">
+                <div class="field__top">
+                  <label>Deposit %</label>
+                  <app-info-hint label="Deposit">
+                    How much of the total a client pays up front to confirm a job. The
+                    rest is due later. Set per booking as well — changing it here never
+                    alters a payment link you have already sent.
+                  </app-info-hint>
+                </div>
+                <input type="number" min="0" max="100" [(ngModel)]="depositPercent" />
+              </div>
+              <div class="field">
+                <div class="field__top">
+                  <label>Hold</label>
+                  <app-info-hint label="Hold">
+                    How long a slot stays reserved while a client is part-way through
+                    paying by card. If they abandon it, the time is released automatically
+                    so it does not sit blocked for ever. Minutes.
+                  </app-info-hint>
+                </div>
+                <input type="number" min="1" [(ngModel)]="holdMinutes" />
+              </div>
+              <div class="field">
+                <div class="field__top">
+                  <label>Min lead time</label>
+                  <app-info-hint label="Minimum lead time">
+                    How much notice you need. Clients cannot book a slot starting sooner
+                    than this, which is what stops someone booking you for 20 minutes from
+                    now. It does not restrict bookings you create yourself. Minutes.
+                  </app-info-hint>
+                </div>
+                <input type="number" min="0" [(ngModel)]="minLeadMinutes" />
+              </div>
+            </div>
+            <label class="check">
+              <input type="checkbox" [(ngModel)]="depositAllowed" /> Allow deposits by default
+              <app-info-hint label="Allow deposits">
+                Off means clients pay in full to confirm. Either way it can be overridden on
+                an individual booking.
+              </app-info-hint>
+            </label>
+            <label class="check"><input type="checkbox" [(ngModel)]="cashAllowed" /> Allow cash requests</label>
+            <div class="actions">
+              <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
+              @if (saved()) { <span class="ok-tag">✓ Saved</span> }
+            </div>
+          </section>
         </div>
       }
 
@@ -89,9 +146,16 @@
             <p class="hint">No VAT breakdown is shown on invoices. Turn this on once you register for VAT.</p>
           }
 
-          <label class="field"><span>VAT / legal note <span class="opt">(printed on every invoice)</span></span>
+          <div class="field">
+            <div class="field__top">
+              <label>VAT / legal note</label>
+              <app-info-hint label="VAT / legal note">
+                Printed on every invoice, under the totals. Where an Article 11 exemption
+                or any wording your accountant requires belongs.
+              </app-info-hint>
+            </div>
             <textarea rows="2" [(ngModel)]="vatNote" placeholder="e.g. Reverse charge — VAT to be accounted for by the recipient. (Ask your accountant for the exact wording.)"></textarea>
-          </label>
+          </div>
 
           <div class="grid">
             <label class="field"><span>Invoice number prefix</span>
@@ -122,6 +186,47 @@
       }
 
       <!-- ── Team & organizations ─────────────────────────────────── -->
+      <!-- ── Documents library ────────────────────────────────────── -->
+      @case ('documents') {
+        <div class="card form">
+          <section class="sec">
+            <h2 class="sec__title">Your documents</h2>
+            <p class="hint">
+              The paperwork clients ask you to prove — public liability insurance, your UAS
+              operator registration, a remote pilot certificate. Keep each one here once and
+              attach it to a booking when it is asked for, instead of digging through email.
+            </p>
+
+            @if (library().length === 0) {
+              <p class="muted">Nothing here yet.</p>
+            } @else {
+              <div class="int">
+                @for (d of library(); track d.id) {
+                  <div class="int__row">
+                    <button type="button" class="link-btn int__name" (click)="openDoc(d)">{{ d.title }}</button>
+                    @switch (docExpiry(d)) {
+                      @case ('expired') { <span class="badge badge--overdue">expired {{ d.expires_on | date:'d MMM y' }}</span> }
+                      @case ('soon')    { <span class="badge badge--overdue">expires {{ d.expires_on | date:'d MMM y' }}</span> }
+                      @case ('ok')      { <span class="int__detail">valid to {{ d.expires_on | date:'d MMM y' }}</span> }
+                    }
+                    <span class="int__detail">{{ d.file_name }}</span>
+                    <button class="link-btn link-btn--danger" (click)="deleteDoc(d)">Delete</button>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="actions">
+              <button class="btn btn--primary" data-tour="doc-add" (click)="docDialogOpen.set(true)">+ Add a document</button>
+            </div>
+            <p class="hint">
+              An expiry is worth filling in for anything that lapses: a certificate that ran
+              out last month still looks handled on a booking until someone checks the date.
+            </p>
+          </section>
+        </div>
+      }
+
       @case ('email') {
         <div class="card">
           <h2 class="card__h">Send invoices from your own address</h2>
@@ -405,3 +510,7 @@
     }
   }
 </div>
+
+<!-- Hosted once for the page; the Documents tab opens it in library mode. -->
+<app-document-dialog [(open)]="docDialogOpen" [forceLibrary]="true"
+                     [allowLibraryChoice]="false" (saved)="loadLibrary()" />

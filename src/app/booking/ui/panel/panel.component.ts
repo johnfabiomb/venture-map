@@ -35,6 +35,10 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
     </section>
   `,
   styles: [`
+    /* Without this the host is inline, so its bounding box is whatever its line boxes
+       happen to be — which made the guided tour unable to measure a panel and silently
+       skip the step pointing at it. A panel is a block. */
+    :host { display: block; }
     .pn {
       background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
       padding: 14px 18px; overflow: hidden;

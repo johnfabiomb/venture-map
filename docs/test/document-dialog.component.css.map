@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/booking/ui/document-dialog/document-dialog.component.ts"],
+  "sourcesContent": ["\n    .dd__file { font-size: 11.5px; color: #475569; }\n    .dd__err { font-size: 11.5px; font-weight: 600; color: #b91c1c; }\n    .dd__check {\n      display: flex; gap: 9px; align-items: flex-start; padding: 11px 12px; margin-top: 4px;\n      border: 1.5px solid #e2e8f0; border-radius: 8px; cursor: pointer;\n    }\n    .dd__check input { width: 16px; height: 16px; accent-color: #F4A922; flex-shrink: 0; margin-top: 1px; }\n    .dd__check span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: #334155; }\n    .dd__check em { font-style: normal; font-size: 11.5px; color: #64748b; line-height: 1.45; }\n    .dd__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }\n    @media (max-width: 560px) { .dd__actions .btn { flex: 1 1 0; justify-content: center; } }\n  "],
+  "mappings": ";AACI,CAAA;AAAY,aAAA;AAAmB,SAAA;;AAC/B,CAAA;AAAW,aAAA;AAAmB,eAAA;AAAkB,SAAA;;AAChD,CAAA;AACE,WAAA;AAAe,OAAA;AAAU,eAAA;AAAyB,WAAA,KAAA;AAAoB,cAAA;AACtE,UAAA,MAAA,MAAA;AAA6B,iBAAA;AAAoB,UAAA;;AAEnD,CAJA,UAIA;AAAmB,SAAA;AAAa,UAAA;AAAc,gBAAA;AAAuB,eAAA;AAAgB,cAAA;;AACrF,CALA,UAKA;AAAkB,WAAA;AAAe,kBAAA;AAAwB,OAAA;AAAU,aAAA;AAAiB,SAAA;;AACpF,CANA,UAMA;AAAgB,cAAA;AAAoB,aAAA;AAAmB,SAAA;AAAgB,eAAA;;AACvE,CAAA;AAAe,WAAA;AAAe,mBAAA;AAA2B,OAAA;AAAW,cAAA;;AACpE,OAAA,CAAA,SAAA,EAAA;AAA4B,GAD5B,YAC4B,CAAA;AAAoB,UAAA,EAAA,EAAA;AAAa,qBAAA;;;",
+  "names": []
+}

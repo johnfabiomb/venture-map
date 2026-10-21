@@ -1,8 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BookingAdminService, ConnectStatus, OrgMember, OrgInvite, InvoiceDetails, InvoiceSettings, GCAL_COLORS } from '@booking/core/services/booking-admin.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
+import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
+import { DocumentDialogComponent } from '@booking/ui/document-dialog/document-dialog.component';
+import { DocumentsService, OrgDocument } from '@booking/core/services/documents.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
@@ -25,7 +29,7 @@ function supportedList(key: 'timeZone' | 'currency', fallback: string[]): string
 @Component({
   selector: 'app-settings-admin',
   standalone: true,
-  imports: [FormsModule, SelectComponent],
+  imports: [FormsModule, SelectComponent, InfoHintComponent, DocumentDialogComponent, DatePipe],
   templateUrl: './settings-admin.component.html',
   styleUrl: './settings-admin.component.scss',
 })
@@ -43,7 +47,7 @@ export class SettingsAdminComponent implements OnInit {
   readonly saved = signal(false);
 
   // Which section is shown.
-  readonly tabs = ['general', 'booking', 'company', 'email', 'team', 'payments', 'integrations'] as const;
+  readonly tabs = ['general', 'booking', 'company', 'documents', 'email', 'team', 'payments', 'integrations'] as const;
   readonly tab = signal<typeof this.tabs[number]>('general');
   setTab(t: typeof this.tabs[number]): void { this.tab.set(t); }
   /** Open a named tab from `?tab=…`, so another page can link straight to the thing it is
@@ -61,6 +65,35 @@ export class SettingsAdminComponent implements OnInit {
   /** Invitations sent but not yet claimed (§27). */
   readonly invites = signal<OrgInvite[]>([]);
   // ── Shared organisation calendar (§28) ───────────────────────────────────
+  // ── Documents library (§31) ──────────────────────────────────────────────
+  // Your own paperwork — insurance, registration, permits — kept once and attached to a
+  // booking when a client asks, rather than uploaded again per job.
+  private readonly docs = inject(DocumentsService);
+  readonly library = signal<OrgDocument[]>([]);
+  readonly docDialogOpen = signal(false);
+
+  async loadLibrary(): Promise<void> {
+    const org = this.auth.orgId();
+    if (org) this.library.set(await this.docs.listLibrary(org));
+  }
+  async openDoc(d: OrgDocument): Promise<void> {
+    if (!d.file_path) { this.toast.error('That document has no file.'); return; }
+    const url = await this.docs.signedUrl(d.file_path);
+    if (!url) { this.toast.error('Could not open that document.'); return; }
+    window.open(url, '_blank', 'noopener');
+  }
+  async deleteDoc(d: OrgDocument): Promise<void> {
+    if (!(await this.confirm.ask({
+      title: `Delete ${d.title}`,
+      message: 'The file is removed and it comes off every booking it is attached to. This cannot be undone.',
+      confirmLabel: 'Delete', danger: true,
+    }))) return;
+    await this.docs.remove(d);
+    await this.loadLibrary();
+    this.toast.info('Document deleted');
+  }
+  docExpiry(d: OrgDocument): 'none' | 'ok' | 'soon' | 'expired' { return this.docs.expiryState(d); }
+
   readonly calendarMirror = signal(false);
   readonly calendarIdValue = signal('primary');
   /** Optional: also create a bookable worker when the invitation is claimed, so the new
@@ -202,6 +235,7 @@ export class SettingsAdminComponent implements OnInit {
     }
     this.loading.set(false);
     this.applyTabParam();
+    void this.loadLibrary();
     this.checkIntegrations();
     this.loadMembers();
 

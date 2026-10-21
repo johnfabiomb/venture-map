@@ -47,7 +47,7 @@
          DARK variant so it reads as part of the sidebar rather than a browser control
          dropped into it. -->
     @if (auth.staff().length > 1) {
-      <div class="who">
+      <div class="who" data-tour="nav-scope">
         <span class="who__label">Viewing</span>
         <app-select variant="dark"
                     [value]="auth.staffId() ?? ''"
@@ -57,13 +57,28 @@
       </div>
     }
 
+    <!-- Opens this page's tour. Shown only where there is one, so it never promises help
+         that does not exist. -->
+    <div class="help">
+      @if (pageTour(); as t) {
+        <button type="button" class="who__help" data-tour="nav-help" (click)="startTour()">
+          <span class="who__help-icon">?</span> How {{ t.label === 'Bookings' ? 'bookings' : t.label.toLowerCase() }} works
+        </button>
+      }
+      <!-- The whole platform, across pages — how the modules feed each other, which no
+           single page's tour can show. -->
+      <button type="button" class="who__help who__help--all" (click)="startPlatformTour()">
+        <span class="who__help-icon">★</span> Tour the whole app
+      </button>
+    </div>
+
     <nav class="nav">
       <!-- Two groups, deliberately. Everything above the rule follows the worker scope;
            everything below is the organization's and is the same whoever you are looking
            at. Splitting them NOW is what makes a later "this worker sees only their own
            things" a permission check rather than a rebuild. -->
       <div class="nav__group">{{ auth.activeStaff()?.name ?? 'Organization' }}</div>
-      <a class="nav__item" routerLink="/bookings/dashboard" routerLinkActive="nav__item--active">
+      <a class="nav__item" data-tour="nav-dashboard" routerLink="/bookings/dashboard" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <rect x="3" y="3" width="6" height="8" rx="1.5"/><rect x="11" y="3" width="6" height="5" rx="1.5"/>
           <rect x="3" y="13" width="6" height="4" rx="1.5"/><rect x="11" y="10" width="6" height="7" rx="1.5"/>
@@ -71,7 +86,7 @@
         <span>Dashboard</span>
       </a>
 
-      <a class="nav__item" routerLink="/bookings/list" routerLinkActive="nav__item--active">
+      <a class="nav__item" data-tour="nav-bookings" routerLink="/bookings/list" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <rect x="3" y="4" width="14" height="13" rx="2"/>
           <path d="M7 2v4M13 2v4M3 9h14"/>
@@ -83,7 +98,7 @@
       </a>
 
       @if (auth.features().work_board) {
-        <a class="nav__item" routerLink="/bookings/work" routerLinkActive="nav__item--active">
+        <a class="nav__item" data-tour="nav-work" routerLink="/bookings/work" routerLinkActive="nav__item--active">
           <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
             <path d="M4 5h12M4 10h12M4 15h7"/><circle cx="16" cy="15" r="1.5" fill="currentColor" stroke="none"/>
           </svg>
@@ -91,7 +106,7 @@
         </a>
       }
 
-      <a class="nav__item" routerLink="/bookings/invoices" routerLinkActive="nav__item--active">
+      <a class="nav__item" data-tour="nav-invoices" routerLink="/bookings/invoices" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M5 2h7l3 3v13H5z"/><path d="M8 8h4M8 11h4M8 14h2"/>
         </svg>
@@ -106,7 +121,7 @@
         <span>Costs &amp; profit</span>
       </a>
 
-      <a class="nav__item" routerLink="/bookings/clients" routerLinkActive="nav__item--active">
+      <a class="nav__item" data-tour="nav-clients" routerLink="/bookings/clients" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="8" cy="7" r="3"/>
           <path d="M2 17c0-3.314 2.686-5 6-5s6 1.686 6 5"/>
@@ -137,7 +152,7 @@
         </svg>
         <span>Staff</span>
       </a>
-      <a class="nav__item" routerLink="/bookings/settings" routerLinkActive="nav__item--active">
+      <a class="nav__item" data-tour="nav-settings" routerLink="/bookings/settings" routerLinkActive="nav__item--active">
         <svg class="nav__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="10" cy="10" r="2.5"/>
           <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15 5l-1.4 1.4M6.4 13.6L5 15M15 15l-1.4-1.4M6.4 6.4L5 5"/>
@@ -171,3 +186,4 @@
 
 <app-toast-host />
 <app-confirm-host />
+<app-tour-host />

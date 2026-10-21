@@ -17,30 +17,8 @@
 
 .form { display: flex; flex-direction: column; gap: 20px; }
 
-// ── Sections ────────────────────────────────────────────────────────────
-// The form was one flat run of fields, so nothing signalled where "the job" ended and
-// "what it costs" began. A rule between groups does that without adding any words.
-.sec {
-  display: flex; flex-direction: column; gap: 14px;
-  & + & { border-top: 1px solid $border; padding-top: 20px; }
-  &__title {
-    margin: 0; font-size: 11px; font-weight: 800;
-    text-transform: uppercase; letter-spacing: 0.08em; color: $text-3;
-  }
-}
-
-// Label + its (i). min-height keeps rows with and without an icon on the same baseline.
-.field__top {
-  display: flex; align-items: center; gap: 4px; min-height: 20px;
-  label { font-size: 12px; font-weight: 600; color: $text-2; }
-}
-
-// Short contextual lines only — anything explanatory belongs behind the (i).
-// Scoped under .field because admin.shared's `.field span` would otherwise outrank it.
-.field .note {
-  font-size: 11.5px; font-weight: 500; color: $text-3; line-height: 1.45;
-  &--warn { color: #b45309; }
-}
+// .sec / .field__top / .field .note now live in admin.shared — they were invented here
+// and every other form re-invented a worse version. Shared, so they cannot drift.
 
 // Live arithmetic, not instruction: it answers "so what does the client actually pay?",
 // which is why it stays on screen instead of hiding behind an (i).
@@ -225,4 +203,27 @@
     &:focus { outline: none; border-color: $accent; }
     @media (max-width: 560px) { font-size: 16px; }
   }
+}
+
+// What this form is about to create. A calm state, not an alert: it is not a warning and
+// nothing has gone wrong — the blocks simply decided which of two things is being made.
+// Stated once at the top, with the sections that cannot apply collapsed rather than
+// greyed, because a client job and an evening's editing need different questions asked.
+.mode {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 15px; margin-bottom: 4px;
+  background: rgba(244, 169, 34, 0.07);
+  border: 1px solid rgba(244, 169, 34, 0.35);
+  border-radius: $radius-md;
+
+  &__icon {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(244, 169, 34, 0.9); color: #000;
+    font-size: 13px; line-height: 1;
+  }
+  &__body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  &__title { font-size: 13px; font-weight: 800; color: $text; }
+  &__text { font-size: 12px; line-height: 1.5; color: $text-2; }
 }

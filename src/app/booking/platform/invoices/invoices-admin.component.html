@@ -12,7 +12,7 @@
                     [options]="yearOptions()" [searchable]="false" />
         <button class="btn btn--ghost" (click)="exportCsv()">Export CSV</button>
       }
-      <a class="btn btn--primary" routerLink="/bookings/invoices/new">New invoice</a>
+      <a class="btn btn--primary" routerLink="/bookings/invoices/new" data-tour="inv-new">New invoice</a>
     </div>
   </div>
 
@@ -28,7 +28,7 @@
          all, and an overhead like software belongs to no invoice ever. No arithmetic on
          this page could answer "what did I keep". That lives on the P&L and per job.
          Overdue replaces it: a question an invoice list genuinely can answer. -->
-    <div class="summary">
+    <div class="summary" data-tour="inv-summary">
       <div class="summary__card"><span class="summary__label">Invoices</span><span class="summary__val">{{ counts().all }}</span></div>
       <div class="summary__card"><span class="summary__label">Billed (gross)</span><span class="summary__val">{{ totalBilled() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Collected</span><span class="summary__val summary__val--ok">{{ totalPaid() | currency:currency():'symbol':'1.0-2' }}</span></div>

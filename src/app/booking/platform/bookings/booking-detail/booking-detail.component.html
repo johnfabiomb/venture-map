@@ -88,7 +88,7 @@
     <!-- What you send the client. The URL is SHOWN, not hidden behind a copy button: you
          cannot check what you are about to send, or paste part of it into a message, from
          a button alone. -->
-    <app-panel title="Share with the client">
+    <app-panel title="Share with the client" data-tour="bd-share">
       <div class="share">
         <div class="share__row">
           <div class="share__meta">
@@ -195,7 +195,7 @@
 
     <!-- Invoices raised against this job. Usually one; a second appears when a deposit
          and a final are issued separately, or when scope grew after the first was sent. -->
-    <app-panel title="Invoices" [meta]="invoices().length + (invoices().length === 1 ? ' invoice' : ' invoices')">
+    <app-panel data-tour="bd-invoices" title="Invoices" [meta]="invoices().length + (invoices().length === 1 ? ' invoice' : ' invoices')">
       <button panel-actions type="button" class="link-btn" [disabled]="addingInvoice()" (click)="addInvoice()">
         {{ addingInvoice() ? 'Adding…' : '+ Add' }}
       </button>
@@ -270,7 +270,7 @@
 
     <!-- Costs. Deliberately on the same column as payments: money in and money out read
          together, and profit means nothing with only one of them on screen. -->
-    <app-panel title="Costs" [meta]="expenses().length + (expenses().length === 1 ? ' item' : ' items')">
+    <app-panel data-tour="bd-costs" title="Costs" [meta]="expenses().length + (expenses().length === 1 ? ' item' : ' items')">
       <button panel-actions type="button" class="link-btn" (click)="openCostDialog()">+ Add</button>
 
       @if (expenses().length === 0) {
@@ -310,6 +310,46 @@
     </app-panel>
 
     <!-- A summary, not a form. Editing happens in a modal like every other action here. -->
+    <!-- Paperwork for this job: what the client asked you to prove (insurance, permits)
+         and anything specific to this booking. Library documents are ATTACHED here, not
+         copied, so one certificate serves every job. -->
+    <app-panel data-tour="bd-documents" title="Documents"
+               [meta]="documents().length ? documents().length + (documents().length === 1 ? ' attached' : ' attached') : 'none yet'">
+      @if (documents().length === 0) {
+        <p class="empty-line">Nothing attached. Clients often ask for your insurance or a permit before a shoot.</p>
+      } @else {
+        <div class="docs">
+          @for (d of documents(); track d.id) {
+            <div class="doc" [class.doc--expired]="expiry(d) === 'expired'">
+              <button type="button" class="doc__main" (click)="openDoc(d)">
+                <span class="doc__title">{{ d.title }}</span>
+                <span class="doc__meta">
+                  {{ d.file_name }}
+                  @if (d.is_library) { · <span class="tag">shared</span> }
+                  @switch (expiry(d)) {
+                    @case ('expired') { · <span class="doc__warn">expired {{ d.expires_on | date:'d MMM y' }}</span> }
+                    @case ('soon') { · <span class="doc__warn">expires {{ d.expires_on | date:'d MMM y' }}</span> }
+                    @case ('ok') { · valid to {{ d.expires_on | date:'d MMM y' }} }
+                  }
+                </span>
+              </button>
+              <button type="button" class="link-btn link-btn--danger" (click)="detachDoc(d)"
+                      [title]="d.is_library ? 'Remove from this job (kept in your documents)' : 'Remove'">
+                Remove
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="docs__actions">
+        <button class="btn btn--primary btn--sm" (click)="docDialogOpen.set(true)">+ Add a document</button>
+        @for (d of attachableLibrary(); track d.id) {
+          <button class="btn btn--ghost btn--sm" (click)="attachDoc(d)">+ {{ d.title }}</button>
+        }
+      </div>
+    </app-panel>
+
     <app-panel title="Delivery" [meta]="deliveryMeta()">
       <button panel-actions type="button" class="link-btn" (click)="deliveryDialogOpen.set(true)">
         {{ hasDelivery() ? 'Edit' : '+ Attach' }}
@@ -346,6 +386,7 @@
     <!-- The job's work task, editable without leaving the booking. -->
     <app-work-editor [(open)]="workEditorOpen" [job]="workItem()" [staff]="workStaff()"
                      (saved)="onWorkTaskSaved()" />
+    <app-document-dialog [(open)]="docDialogOpen" [bookingId]="id" (saved)="loadDocuments()" />
     }
   }
 </div>

@@ -12,6 +12,8 @@ import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialo
 import { PanelComponent } from '@booking/ui/panel/panel.component';
 import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
 import { WorkEditorComponent } from '@booking/ui/work-editor/work-editor.component';
+import { DocumentDialogComponent } from '@booking/ui/document-dialog/document-dialog.component';
+import { DocumentsService, OrgDocument } from '@booking/core/services/documents.service';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
@@ -31,7 +33,8 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, ExpenseDialogComponent,
             PanelComponent, PaymentDialogComponent, DeliveryDialogComponent,
             CdkMenuTrigger, CdkMenu, CdkMenuItem,
-            InvoiceActionsComponent, InvoiceSendComponent, WorkEditorComponent],
+            InvoiceActionsComponent, InvoiceSendComponent, WorkEditorComponent,
+            DocumentDialogComponent],
   templateUrl: './booking-detail.component.html',
   styleUrl: './booking-detail.component.scss',
 })
@@ -65,6 +68,53 @@ export class BookingDetailComponent implements OnInit {
   readonly addingInvoice = signal(false);
   readonly workItem = signal<WorkJob | null>(null);   // this job's Work-board card, if any
   readonly addingCard = signal(false);
+  // ── Documents (§31) ──────────────────────────────────────────────────────
+  readonly docs = inject(DocumentsService);
+  readonly documents = signal<OrgDocument[]>([]);
+  /** Reusable org documents not yet attached here — what "attach my insurance" offers. */
+  readonly library = signal<OrgDocument[]>([]);
+  readonly docDialogOpen = signal(false);
+  readonly attachableLibrary = computed(() => {
+    const on = new Set(this.documents().map(d => d.id));
+    return this.library().filter(d => !on.has(d.id));
+  });
+
+  async loadDocuments(): Promise<void> {
+    const org = this.auth.orgId();
+    const [attached, lib] = await Promise.all([
+      this.docs.listForBooking(this.id),
+      org ? this.docs.listLibrary(org) : Promise.resolve([] as OrgDocument[]),
+    ]);
+    this.documents.set(attached);
+    this.library.set(lib);
+  }
+
+  async attachDoc(d: OrgDocument): Promise<void> {
+    const org = this.auth.orgId();
+    if (!org) return;
+    await this.docs.attach(org, this.id, d.id);
+    await this.loadDocuments();
+    this.toast.success(`${d.title} attached`);
+  }
+
+  async detachDoc(d: OrgDocument): Promise<void> {
+    // Detach, never delete: a library document is attached to other jobs, and removing it
+    // from this one must not take it off those.
+    await this.docs.detach(this.id, d.id);
+    await this.loadDocuments();
+    this.toast.info(d.is_library ? 'Removed from this job' : 'Removed');
+  }
+
+  /** Opens the file through a short-lived signed URL — the bucket is private. */
+  async openDoc(d: OrgDocument): Promise<void> {
+    if (!d.file_path) { this.toast.error('That document has no file.'); return; }
+    const url = await this.docs.signedUrl(d.file_path);
+    if (!url) { this.toast.error('Could not open that document.'); return; }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  expiry(d: OrgDocument): 'none' | 'ok' | 'soon' | 'expired' { return this.docs.expiryState(d); }
+
   readonly workEditorOpen = signal(false);
   /** The editor needs the roster for its "Who" field. Loaded only once a card exists —
    *  there is nothing to assign otherwise. */
@@ -151,6 +201,7 @@ export class BookingDetailComponent implements OnInit {
       this.lineItems.set(items);
       this.invoices.set(invoices);
       this.workItem.set(card);
+      void this.loadDocuments();
       // Needed by the work-task editor hosted on this page.
       this.workStaff.set((await this.admin.listStaff(this.auth.orgId() ?? ''))
         .map(st => ({ id: st.id, name: st.name })));

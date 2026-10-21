@@ -10,6 +10,7 @@ import { BookingAdminService, AdminService, AdminStaff, JobOption } from '@booki
 import { LineItem, InvoiceInput, InvoiceStatus } from '@booking/core/interfaces/invoice.interface';
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
+import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
 import { Client } from '@booking/core/interfaces/booking.interface';
 
 // The invoice editor. An invoice is the MONEY record: it may sit on a job in the
@@ -26,7 +27,7 @@ import { Client } from '@booking/core/interfaces/booking.interface';
 @Component({
   selector: 'app-invoice-edit',
   standalone: true,
-  imports: [FormsModule, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent],
+  imports: [FormsModule, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent, InfoHintComponent],
   templateUrl: './invoice-edit.component.html',
   styleUrl: './invoice-edit.component.scss',
 })

@@ -8,7 +8,7 @@
       @if (overdueCount() > 0) { <span class="overdue-tag">{{ overdueCount() }} overdue</span> }
       @if (archivedCount() > 0) {
         <!-- Delivered work does not vanish, it just stops taking up the board. -->
-        <button class="btn btn--ghost btn--sm" (click)="toggleArchived()">
+        <button class="btn btn--ghost btn--sm" data-tour="work-history" (click)="toggleArchived()">
           {{ showArchived() ? 'Hide history' : 'History (' + archivedCount() + ')' }}
         </button>
       }
@@ -16,12 +16,12 @@
            anywhere that opened it; a menu rather than a row of buttons because the next
            work setting would be the point the header stopped being readable. -->
       <button class="btn btn--ghost btn--sm work__cog" [cdkMenuTriggerFor]="workMenu"
-              title="Work settings" aria-label="Work settings">⚙</button>
+              title="Work settings" aria-label="Work settings" data-tour="work-cog">⚙</button>
       <!-- Opens the FULL task editor, not a two-field strip. A card has a brief, a type,
            a status, an owner, a deadline, the jobs it covers, a checklist and reserved
            time — asking for a title and nothing else just moves the real work to a second
            step everyone forgets. -->
-      <button class="btn btn--primary btn--sm" (click)="openEditor()">+ New card</button>
+      <button class="btn btn--primary btn--sm" data-tour="work-new" (click)="openEditor()">+ New card</button>
     </div>
   </div>
 

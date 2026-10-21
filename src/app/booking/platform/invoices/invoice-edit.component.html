@@ -23,75 +23,140 @@
       }
     </div>
 
-    <div class="card">
-      <h2 class="card__h">What this invoice is for</h2>
-      <p class="hint">
-        Leave the job empty to bill work that never had a time slot. Picking a job links
-        the invoice to it and keeps that booking's total in step.
-      </p>
+    <div class="card form">
+      <!-- ══ What it is ═══════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Invoice</h2>
 
-      <label class="field">
-        <span>Job <span class="opt">(optional)</span></span>
-        <app-select [value]="jobId" (changed)="jobId = $event; onJobChange()" [options]="jobSelectOptions()" placeholder="No job — invoice only" />
-      </label>
+        <div class="field">
+          <div class="field__top">
+            <label for="iv-title">Title</label>
+          </div>
+          <input id="iv-title" type="text" [(ngModel)]="title" placeholder="e.g. Drone filming — Valletta" />
+        </div>
 
-      <label class="field">
-        <span>Title</span>
-        <input type="text" [(ngModel)]="title" placeholder="e.g. Drone filming — Valletta" />
-      </label>
+        <div class="field">
+          <div class="field__top">
+            <label>Job</label>
+            <app-info-hint label="Job">
+              Linking a job keeps that booking's total in step with this invoice.
+              Leave it empty to bill work that never had a time slot — a licence, a
+              re-edit, a call-out.
+            </app-info-hint>
+          </div>
+          <app-select [value]="jobId" (changed)="jobId = $event; onJobChange()"
+                      [options]="jobSelectOptions()" placeholder="No job — invoice only" />
+        </div>
+      </section>
 
-      <div class="field-row">
-        <label class="field">
-          <span>Client <span class="opt">(optional)</span></span>
-          <app-select [value]="clientId" (changed)="clientId = $event" [options]="clientSelectOptions()" placeholder="No saved client" [clearable]="true" />
-        </label>
-        <label class="field">
-          <span>…or a one-off name</span>
-          <input type="text" [(ngModel)]="contactName" placeholder="Billed to this name only" />
-        </label>
-      </div>
-      <button type="button" class="back" (click)="openClientEditor()">+ New client</button>
+      <!-- ══ Who it bills ═════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Billed to</h2>
 
-      <div class="field-row">
-        <label class="field">
-          <span>Worker <span class="opt">(who earned it)</span></span>
-          <app-select [value]="staffId" (changed)="staffId = $event" [options]="staffSelectOptions()" placeholder="Unassigned" [clearable]="true" />
-        </label>
-        <label class="field">
-          <span>Service <span class="opt">(for reporting)</span></span>
-          <app-select [value]="serviceId" (changed)="serviceId = $event" [options]="serviceSelectOptions()" placeholder="Unattributed" [clearable]="true" />
-        </label>
-      </div>
+        <div class="field">
+          <div class="field__top">
+            <label>Customer</label>
+            <app-info-hint label="Customer">
+              A <strong>saved client</strong> brings its company, VAT number and billing
+              address onto the invoice, so it is VAT-ready and reusable. A
+              <strong>one-off name</strong> bills to that name only and is never saved.
+            </app-info-hint>
+          </div>
+          <div class="field-row">
+            <app-select [value]="clientId" (changed)="clientId = $event"
+                        [options]="clientSelectOptions()" placeholder="Saved client" [clearable]="true" />
+            <input type="text" [(ngModel)]="contactName" placeholder="…or a one-off name" />
+          </div>
+          <button type="button" class="link-btn" (click)="openClientEditor()">+ New client</button>
+        </div>
 
-      <div class="field-row">
-        <label class="field">
-          <span>Work done on</span>
-          <input type="date" [(ngModel)]="serviceDate" />
-        </label>
-        <label class="field">
-          <span>Issue date <span class="opt">(sets the number's year)</span></span>
-          <input type="date" [(ngModel)]="issueDate" />
-        </label>
-        <label class="field">
-          <span>Due date <span class="opt">(blank = your default payment terms)</span></span>
-          <input type="date" [(ngModel)]="dueDate" />
-        </label>
-      </div>
-    </div>
+        <div class="field-row">
+          <div class="field">
+            <div class="field__top">
+              <label>Worker</label>
+              <app-info-hint label="Worker">
+                Who earned this money. It decides whose figures this invoice appears in
+                when you view the business by worker. It is never printed on the invoice.
+              </app-info-hint>
+            </div>
+            <app-select [value]="staffId" (changed)="staffId = $event"
+                        [options]="staffSelectOptions()" placeholder="Unassigned" [clearable]="true" />
+          </div>
+          <div class="field">
+            <div class="field__top">
+              <label>Service</label>
+              <app-info-hint label="Service">
+                Groups this invoice in earnings-by-service reporting. Optional, and not
+                shown to the client — the charges below are what they read.
+              </app-info-hint>
+            </div>
+            <app-select [value]="serviceId" (changed)="serviceId = $event"
+                        [options]="serviceSelectOptions()" placeholder="Unattributed" [clearable]="true" />
+          </div>
+        </div>
+      </section>
 
-    <div class="card">
-      <h2 class="card__h">Line items</h2>
-      <p class="hint">
-        These are the source of truth for what the client is charged.
-        @if (!isStandalone) { Saving updates the booking's total (and its calendar event) to match. }
-      </p>
-      <app-line-items-editor [(items)]="items" [currency]="currency" [services]="services()" />
-    </div>
+      <!-- ══ Dates ════════════════════════════════════════════════════ -->
+      <section class="sec">
+        <h2 class="sec__title">Dates</h2>
+        <div class="field-row field-row--three">
+          <div class="field">
+            <div class="field__top"><label>Work done on</label></div>
+            <input type="date" [(ngModel)]="serviceDate" />
+          </div>
+          <div class="field">
+            <div class="field__top">
+              <label>Issue date</label>
+              <app-info-hint label="Issue date">
+                The date the invoice is raised. Its YEAR sets the invoice number's year,
+                which is why the numbering stays continuous even when you bill a job
+                months after shooting it.
+              </app-info-hint>
+            </div>
+            <input type="date" [(ngModel)]="issueDate" />
+          </div>
+          <div class="field">
+            <div class="field__top">
+              <label>Due date</label>
+              <app-info-hint label="Due date">
+                When payment is expected. Leave it blank and your organisation's standard
+                payment terms are applied from the issue date. Overdue is measured from
+                this.
+              </app-info-hint>
+            </div>
+            <input type="date" [(ngModel)]="dueDate" />
+          </div>
+        </div>
+      </section>
 
-    <div class="card">
-      <label class="field"><span>Invoice note <span class="opt">(optional, printed on this invoice)</span></span>
-        <textarea rows="2" [(ngModel)]="notes" placeholder="Anything specific the client asked for on this invoice"></textarea>
-      </label>
+      <!-- ══ Charges ══════════════════════════════════════════════════ -->
+      <section class="sec">
+        <div class="field__top">
+          <h2 class="sec__title">Charges</h2>
+          <app-info-hint label="Charges">
+            These are the source of truth for what the client is charged.
+            @if (!isStandalone) {
+              Saving updates the booking's total — and its calendar event — to match.
+            }
+          </app-info-hint>
+        </div>
+        <app-line-items-editor [(items)]="items" [currency]="currency" [services]="services()" />
+      </section>
+
+      <!-- ══ Note ═════════════════════════════════════════════════════ -->
+      <section class="sec">
+        <div class="field">
+          <div class="field__top">
+            <label for="iv-note">Note</label>
+            <app-info-hint label="Note">
+              Printed on this invoice, under the charges. For anything the client asked to
+              see in writing — a reference, a purchase order, agreed terms.
+            </app-info-hint>
+          </div>
+          <textarea id="iv-note" rows="2" [(ngModel)]="notes"
+                    placeholder="Anything specific the client asked for on this invoice"></textarea>
+        </div>
+      </section>
     </div>
 
     <div class="actions">

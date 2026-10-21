@@ -41,13 +41,8 @@
 
 // Two fields per row on desktop, stacking on narrow screens — keeps the pickers
 // evenly aligned rather than a long ragged column.
-.field-row {
-  // minmax(0, 1fr), not 1fr: a bare `1fr` floors at the track's content minimum, and these
-  // cells hold <select>s whose longest option (a client company, a service name) then
-  // forces the row wider than the card between 560px and the desktop layout.
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 14px;
-  .field { min-width: 0; }
-  @media (max-width: 560px) { grid-template-columns: 1fr; }
-}
 
 .actions { display: flex; align-items: center; gap: 10px; }
+
+// .form lives in admin.shared — one card with sections inside, like the booking form.
+.card__h { margin: 0 0 4px; }

@@ -2197,7 +2197,8 @@ BEGIN
   -- wire a delete button to it — an upsert(onConflict:booking_id) can't resolve its conflict
   -- target against a soft-deleted row (hide_deleted hides it), so "Remove" clears in place.
   IF p_table NOT IN ('bookings','payments','services','staff','work_items','tasks',
-                     'deliveries','invoices','invoice_lines','invoice_sends','expenses') THEN
+                     'deliveries','invoices','invoice_lines','invoice_sends','expenses',
+                     'documents') THEN
     RAISE EXCEPTION 'soft_delete: table % not allowed', p_table USING errcode = '42501';
   END IF;
   EXECUTE format('SELECT org_id FROM public.%I WHERE id = $1 AND deleted_at IS NULL', p_table)
@@ -2209,6 +2210,11 @@ BEGIN
   EXECUTE format('UPDATE public.%I SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL', p_table)
     USING p_id;
 END $f$;
+-- Every function here is created EXECUTE-able by PUBLIC (this database has no ALTER
+-- DEFAULT PRIVILEGES for functions), so the REVOKE is what keeps `anon` out. The body is
+-- gated on is_org_admin so an anon caller only ever got 'forbidden', but a
+-- SECURITY DEFINER function should not be callable by the public at all.
+REVOKE ALL ON FUNCTION public.soft_delete(text, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.soft_delete(text, uuid) TO authenticated;
 
 
@@ -4050,3 +4056,176 @@ END $$;
 -- caller anyway; this is the belt to that braces.)
 REVOKE ALL ON FUNCTION public.create_booking(jsonb,jsonb,jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_booking(jsonb,jsonb,jsonb) TO authenticated;
+
+
+-- ═══ 31. Documents — one store for what you GIVE and what you GET SIGNED ═══
+-- Two needs that look different and are the same record:
+--   * documents you HAND THE CLIENT — public liability insurance, a flight permit, your
+--     UAS registration. Clients ask for these, so they are kept once and attached when
+--     needed rather than hunted for in email every time.
+--   * documents the CLIENT SIGNS — the letter of engagement Transport Malta wants.
+-- Both are "a file, of a type, belonging to an organisation, attached to bookings,
+-- possibly with an expiry, shareable by link". Building them separately would mean two
+-- storage paths, two attach screens and two places to look, so there is ONE table and the
+-- signing columns simply stay null on a file.
+--
+-- `kind` is the fork: 'file' is uploaded, 'letter' is generated from a template and can be
+-- sent for signature.
+
+-- ── 31a. The kinds of document this organisation deals in ─────────────────
+-- A table, not a constant, for the same reason work_types is (§25): the labels are shown
+-- to people, the set differs per business, and a drone operator's list is not a
+-- photographer's.
+CREATE TABLE IF NOT EXISTS public.document_types (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  key         TEXT NOT NULL,
+  label       TEXT NOT NULL,
+  kind        TEXT NOT NULL DEFAULT 'file' CHECK (kind IN ('file','letter')),
+  -- Does this type normally carry an expiry? Insurance does; a signed letter does not.
+  -- Drives whether the form asks, and whether the document can go stale.
+  tracks_expiry BOOLEAN NOT NULL DEFAULT false,
+  -- Offered by default when a client asks "send me your paperwork".
+  is_standard BOOLEAN NOT NULL DEFAULT false,
+  sort        INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at  TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS document_types_org_key
+  ON public.document_types(org_id, key) WHERE deleted_at IS NULL;
+
+ALTER TABLE public.document_types ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS doctypes_admin ON public.document_types;
+CREATE POLICY doctypes_admin ON public.document_types FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+DROP POLICY IF EXISTS hide_deleted ON public.document_types;
+CREATE POLICY hide_deleted ON public.document_types
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.document_types TO authenticated;
+GRANT ALL ON public.document_types TO service_role;
+
+INSERT INTO public.document_types (org_id, key, label, kind, tracks_expiry, is_standard, sort)
+SELECT o.id, v.key, v.label, v.kind, v.tracks_expiry, v.is_standard, v.sort
+FROM public.organizations o
+CROSS JOIN (VALUES
+  ('insurance',         'Public liability insurance',   'file',   true,  true,  1),
+  ('uas_registration',  'UAS operator registration',    'file',   true,  true,  2),
+  ('pilot_licence',     'Remote pilot certificate',     'file',   true,  true,  3),
+  ('permit',            'Flight permit / authorisation','file',   true,  false, 4),
+  ('risk_assessment',   'Risk assessment',              'file',   false, false, 5),
+  ('engagement_letter', 'Letter of engagement',         'letter', false, false, 6),
+  ('contract',          'Contract / terms',             'file',   false, false, 7),
+  ('other',             'Other',                        'file',   false, false, 8)
+) AS v(key, label, kind, tracks_expiry, is_standard, sort)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.document_types dt
+   WHERE dt.org_id = o.id AND dt.key = v.key AND dt.deleted_at IS NULL);
+
+-- ── 31b. The documents ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.documents (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id        UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL DEFAULT 'file' CHECK (kind IN ('file','letter')),
+  doc_type      TEXT,                      -- document_types.key; free-form so a renamed type never orphans a file
+  title         TEXT NOT NULL,
+  -- A REUSABLE org document (your insurance certificate) rather than one belonging to a
+  -- single job. Library documents are attached to bookings through booking_documents, so
+  -- one certificate serves fifty jobs without fifty copies of the file.
+  is_library    BOOLEAN NOT NULL DEFAULT false,
+  client_id     UUID REFERENCES public.clients(id) ON DELETE SET NULL,
+
+  -- The stored file. Path is {org_id}/{document_id}/{filename} — the leading org id is
+  -- what the storage policy checks, so it is load-bearing, not decoration.
+  file_path     TEXT,
+  file_name     TEXT,
+  file_size     BIGINT,
+  mime_type     TEXT,
+  -- Proves a copy is the original. Set for generated letters; optional for uploads.
+  file_sha256   TEXT,
+
+  -- Validity. An expired insurance certificate attached to next week's job is worse than
+  -- none, because it looks handled.
+  issued_on     DATE,
+  expires_on    DATE,
+
+  notes         TEXT,
+  created_by    UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS documents_org_idx     ON public.documents(org_id);
+CREATE INDEX IF NOT EXISTS documents_library_idx ON public.documents(org_id, is_library) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS documents_expiry_idx  ON public.documents(org_id, expires_on) WHERE expires_on IS NOT NULL AND deleted_at IS NULL;
+
+ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS documents_admin ON public.documents;
+CREATE POLICY documents_admin ON public.documents FOR ALL
+  USING (public.is_org_admin(org_id)) WITH CHECK (public.is_org_admin(org_id));
+DROP POLICY IF EXISTS hide_deleted ON public.documents;
+CREATE POLICY hide_deleted ON public.documents
+  AS RESTRICTIVE FOR SELECT USING (deleted_at IS NULL);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.documents TO authenticated;
+GRANT ALL ON public.documents TO service_role;
+
+DROP TRIGGER IF EXISTS documents_updated ON public.documents;
+CREATE TRIGGER documents_updated BEFORE UPDATE ON public.documents
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ── 31c. Which bookings a document is attached to ─────────────────────────
+-- Many-to-many, exactly like work_item_bookings (§23): one insurance certificate belongs
+-- to every job a client asked for it on. A re-creatable LINK, so no deleted_at.
+CREATE TABLE IF NOT EXISTS public.booking_documents (
+  org_id      UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  booking_id  UUID NOT NULL REFERENCES public.bookings(id)      ON DELETE CASCADE,
+  document_id UUID NOT NULL REFERENCES public.documents(id)     ON DELETE CASCADE,
+  attached_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  attached_by UUID REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid(),
+  PRIMARY KEY (booking_id, document_id)
+);
+CREATE INDEX IF NOT EXISTS booking_documents_doc_idx ON public.booking_documents(document_id);
+
+ALTER TABLE public.booking_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS bookdocs_admin ON public.booking_documents;
+-- Table-qualified on purpose: an unqualified `org_id` inside the EXISTS binds to the
+-- INNER table and silently becomes a tautology — a bug this schema has shipped twice.
+CREATE POLICY bookdocs_admin ON public.booking_documents FOR ALL
+  USING (public.is_org_admin(booking_documents.org_id))
+  WITH CHECK (public.is_org_admin(booking_documents.org_id)
+              AND EXISTS (SELECT 1 FROM public.bookings b
+                           WHERE b.id = booking_documents.booking_id
+                             AND b.org_id = booking_documents.org_id));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.booking_documents TO authenticated;
+GRANT ALL ON public.booking_documents TO service_role;
+
+-- ── 31d. Storage ──────────────────────────────────────────────────────────
+-- PRIVATE. These are insurance certificates, permits and signed contracts; a public
+-- bucket would make every one of them readable by anyone who guessed a path. Reads go
+-- through short-lived signed URLs.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('documents', 'documents', false, 26214400,   -- 25 MB
+        ARRAY['application/pdf','image/png','image/jpeg','image/webp','image/heic'])
+ON CONFLICT (id) DO UPDATE
+  SET public = false, file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- The first path segment IS the org id, and this is what enforces it. The regex guard is
+-- not optional: `(storage.foldername(name))[1]::uuid` on a non-uuid path raises instead of
+-- returning false, which would make the policy error rather than deny.
+DROP POLICY IF EXISTS documents_org_read ON storage.objects;
+CREATE POLICY documents_org_read ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'documents'
+         AND (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+         AND public.is_org_admin(((storage.foldername(name))[1])::uuid));
+
+DROP POLICY IF EXISTS documents_org_write ON storage.objects;
+CREATE POLICY documents_org_write ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'documents'
+         AND (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+         AND public.is_org_admin(((storage.foldername(name))[1])::uuid));
+
+DROP POLICY IF EXISTS documents_org_delete ON storage.objects;
+CREATE POLICY documents_org_delete ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'documents'
+         AND (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+         AND public.is_org_admin(((storage.foldername(name))[1])::uuid));

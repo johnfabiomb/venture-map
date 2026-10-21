@@ -263,3 +263,33 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   &--org { margin-top: 14px; padding-top: 12px; border-top: 1px solid $border; }
 }
+
+/* "How this works" — opens the page's guided tour. In the sidebar rather than each page's
+   header so there is one place to look, whatever you are on. */
+.who__help {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  margin: 0 0 14px; padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.72);
+  text-align: left;
+  &:hover { background: rgba(255, 255, 255, 0.11); color: #fff; }
+}
+.who__help-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; flex-shrink: 0;
+  border-radius: 50%; background: rgba(244, 169, 34, 0.9); color: #000;
+  font-size: 11px; font-weight: 800;
+}
+
+.help { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.help .who__help { margin-bottom: 0; }
+/* The whole-app tour sits under the page one and reads as the quieter of the two: it is
+   the thing you run once, not the thing you reach for on a given screen. */
+.who__help--all {
+  background: none;
+  border-color: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.55);
+  .who__help-icon { background: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.85); }
+  &:hover { background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.9); }
+}

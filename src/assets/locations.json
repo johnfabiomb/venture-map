@@ -6,6 +6,13 @@
             "slug": "blue-grotto",
             "description": "The <b>Blue Grotto</b> is renowned for its stunning azure waters and impressive natural arches, located on the southern coast of Malta near the village of Żurrieq. Accessible by boat, this network of sea caverns mirrors the phosphorescent colors of the underwater flora. The grotto and surrounding area are popular for snorkeling, diving, and boat trips, offering visitors a breathtaking view of the clear, blue sea against a backdrop of high cliffs.",
             "img": "/assets/images/places/blue-grotto.webp",
+            "images": [
+                "/assets/images/places/blue-grotto.webp",
+                "/assets/images/places/blue-grotto-2.webp",
+                "/assets/images/places/blue-grotto-3.webp",
+                "/assets/images/places/blue-grotto-4.webp",
+                "/assets/images/places/blue-grotto-5.webp"
+            ],
             "lon": 14.4562387,
             "lat": 35.8207177,
             "url": "https://www.instagram.com/johnfabiomb/embed",
