@@ -162,6 +162,11 @@ export interface OrgSettings {
     cash_allowed?: boolean;
     /** Days a card stays on the board after reaching a terminal stage (§25). Default 3. */
     work_archive_days?: number;
+    /** Google event colour id (1–11) for SHOOTS (§32). Post-production takes its colour
+     *  from its board stage instead. A booking may override this. Default '9'. */
+    booking_color_id?: string;
+    /** How much a calendar invite may disclose, org-wide. */
+    calendar_detail?: 'full' | 'minimal';
   };
   features?: { work_board?: boolean };
   /** The shared organisation calendar (§28). Admin-writable — and they had to be added to

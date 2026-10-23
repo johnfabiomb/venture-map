@@ -95,6 +95,8 @@ export interface EditableBooking {
    * it safe to invite a second shooter or the client to the event itself.
    */
   calendar_detail: 'full' | 'minimal';
+  /** Google event colour id (1–11). Null = the organisation's default (§32). */
+  calendar_color_id: string | null;
 }
 
 /** One time block of a booking (a booking can have several, across days). */

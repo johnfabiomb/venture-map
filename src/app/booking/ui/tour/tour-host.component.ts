@@ -3,6 +3,8 @@ import { TourService } from './tour.service';
 
 interface SpotBox { top: number; left: number; width: number; height: number; }
 
+const CARD_W = 330;
+
 /**
  * The guided tour overlay: a spotlight on the control a step points at, and a card saying
  * what it does. Mounted ONCE in the platform shell, like the toast and confirm hosts.
@@ -38,9 +40,9 @@ interface SpotBox { top: number; left: number; width: number; height: number; }
             <span class="tr__count">{{ tour.index() + 1 }} / {{ tour.steps().length }}</span>
             <div class="tr__btns">
               @if (tour.index() > 0) {
-                <button type="button" class="btn btn--ghost btn--sm" (click)="tour.back()">Back</button>
+                <button type="button" class="tr__btn tr__btn--ghost" (click)="tour.back()">Back</button>
               }
-              <button type="button" class="btn btn--primary btn--sm" (click)="tour.next()">
+              <button type="button" class="tr__btn tr__btn--primary" (click)="tour.next()">
                 {{ tour.atEnd() ? 'Done' : 'Next' }}
               </button>
             </div>
@@ -78,6 +80,20 @@ interface SpotBox { top: number; left: number; width: number; height: number; }
     .tr__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
     .tr__count { font-size: 11.5px; font-weight: 700; color: #94a3b8; }
     .tr__btns { display: flex; gap: 8px; }
+
+    /* Styled here rather than relying on the global .btn. The tour is the first thing a
+       new person sees, and an unstyled browser button in it reads as broken software —
+       so this one does not depend on a class arriving from somewhere else. */
+    .tr__btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 7px 14px; border-radius: 8px; border: 1.5px solid transparent;
+      font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      transition: 0.15s ease;
+    }
+    .tr__btn--primary { background: #F4A922; color: #000; }
+    .tr__btn--primary:hover { filter: brightness(0.94); }
+    .tr__btn--ghost { background: #fff; border-color: #e2e8f0; color: #475569; }
+    .tr__btn--ghost:hover { border-color: #94a3b8; }
   `],
 })
 export class TourHostComponent {
@@ -113,30 +129,52 @@ export class TourHostComponent {
 
   private place(): void {
     const step = this.tour.current();
-    const pad = 8;
     const el = step?.target ? document.querySelector(step.target) : null;
 
-    if (!el) {
-      this.spot.set(null);
-      // Centred, because a step with no target is about the page as a whole.
-      this.cardTop.set(Math.max(24, window.innerHeight / 2 - 110));
-      this.cardLeft.set(Math.max(16, window.innerWidth / 2 - 165));
+    if (!el) { this.centre(); return; }
+
+    const r = el.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > window.innerHeight) {
+      // INSTANT, not smooth. getBoundingClientRect immediately after a smooth scroll
+      // returns the position the element is scrolling FROM, so the spotlight and the card
+      // were placed off screen and the step looked frozen — a dimmed page with no card
+      // and nothing to click. A scroll that has already finished can simply be measured.
+      el.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+    this.measure(el);
+  }
+
+  private centre(): void {
+    this.spot.set(null);
+    // A step with no target is about the page as a whole.
+    this.cardTop.set(Math.max(24, window.innerHeight / 2 - 110));
+    this.cardLeft.set(Math.max(16, window.innerWidth / 2 - CARD_W / 2));
+  }
+
+  private measure(el: Element): void {
+    const pad = 8;
+    const b = el.getBoundingClientRect();
+
+    // Still nowhere useful — a collapsed panel, or something that left the page. Falling
+    // back to a centred card keeps the step READABLE instead of stranding the tour behind
+    // a dimmed screen, which is what "stuck" looked like.
+    if (b.width === 0 || b.height === 0 || b.bottom < 0 || b.top > window.innerHeight) {
+      this.centre();
       return;
     }
 
-    const r = el.getBoundingClientRect();
-    // Bring it into view before measuring, or the spotlight lands off screen on a long page.
-    if (r.top < 0 || r.bottom > window.innerHeight) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
-    const b = el.getBoundingClientRect();
     this.spot.set({ top: b.top - pad, left: b.left - pad, width: b.width + pad * 2, height: b.height + pad * 2 });
 
-    const cardW = Math.min(330, window.innerWidth - 32);
-    const cardH = 190;
-    // Below the target when there is room, otherwise above it.
+    const cardW = Math.min(CARD_W, window.innerWidth - 32);
+    const cardH = 200;
     const below = b.bottom + pad + 12;
-    this.cardTop.set(below + cardH < window.innerHeight ? below : Math.max(16, b.top - cardH - 12));
+    const above = b.top - cardH - 12;
+    // Below when it fits, above when that fits, otherwise pinned inside the viewport —
+    // never allowed to sit past the bottom edge where it cannot be read or clicked.
+    const top = below + cardH < window.innerHeight ? below
+              : above > 16 ? above
+              : Math.max(16, window.innerHeight - cardH - 16);
+    this.cardTop.set(top);
     this.cardLeft.set(Math.min(Math.max(16, b.left), window.innerWidth - cardW - 16));
   }
 }

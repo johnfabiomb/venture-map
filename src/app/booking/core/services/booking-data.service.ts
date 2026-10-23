@@ -112,6 +112,8 @@ export class BookingDataService implements OnDestroy {
     location?: string | null; notes?: string | null;
     /** How much the Google Calendar event may disclose. Omit to take the org default. */
     calendarDetail?: 'full' | 'minimal';
+    /** Google event colour id (1–11) for this booking's events. Omit for the org default. */
+    calendarColorId?: string | null;
     /**
      * The post-production ticket, when a time block was marked for it (§30). Created in
      * the SAME transaction as the booking, exactly as the invoice is created from the
@@ -133,6 +135,7 @@ export class BookingDataService implements OnDestroy {
         location: input.location ?? null, notes: input.notes ?? null,
         // Omitted (null) means "use the org default" — create_booking resolves it.
         calendar_detail: input.calendarDetail ?? null,
+        calendar_color_id: input.calendarColorId ?? null,
       },
       p_slots: input.slots,
       p_work: input.work ? {
@@ -154,7 +157,7 @@ export class BookingDataService implements OnDestroy {
   async getBooking(id: string): Promise<EditableBooking | null> {
     const { data } = await bookingsDb
       .from('bookings')
-      .select('id, org_id, booking_ref, staff_id, service_id, client_id, contact_name, title, description, start_at, end_at, price_total, location, notes, status, allow_card, allow_inperson, deposit_percent, deposit_allowed, needs_production, calendar_detail')
+      .select('id, org_id, booking_ref, staff_id, service_id, client_id, contact_name, title, description, start_at, end_at, price_total, location, notes, status, allow_card, allow_inperson, deposit_percent, deposit_allowed, needs_production, calendar_detail, calendar_color_id')
       .eq('id', id)
       .maybeSingle();
     return (data as EditableBooking) ?? null;
@@ -178,6 +181,7 @@ export class BookingDataService implements OnDestroy {
     depositAllowed: boolean; depositPercent: number; needsProduction: boolean;
     location?: string | null; notes?: string | null;
     calendarDetail?: 'full' | 'minimal';
+    calendarColorId?: string | null;
   }): Promise<{ ok?: boolean; error?: string }> {
     const { data, error } = await bookingsDb.rpc('update_booking', {
       p_booking_id: id,
@@ -192,6 +196,7 @@ export class BookingDataService implements OnDestroy {
         // update_booking only overwrites this when a value is actually sent, so an edit
         // from a screen that doesn't expose the field can't reset it to 'full'.
         calendar_detail: input.calendarDetail ?? null,
+        calendar_color_id: input.calendarColorId ?? null,
       },
       p_slots: input.slots,
     });

@@ -116,12 +116,12 @@ function composeDescription(b: BookingRow): string {
  */
 export async function ensureBookingEvent(service: SupabaseClient, bookingId: string): Promise<string | null> {
   const { data } = await service.from('bookings')
-    .select('id, org_id, staff_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, client:client_id(name), service:service_id(name), staffRow:staff_id(calendar_color_id), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id)')
+    .select('id, org_id, staff_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, calendar_color_id, client:client_id(name), service:service_id(name), staffRow:staff_id(calendar_color_id), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id)')
     .eq('id', bookingId)
     .single();
   if (!data) return null;
   const b = data as BookingRow & {
-    org_id: string; staff_id: string | null;
+    org_id: string; staff_id: string | null; calendar_color_id: string | null;
     staffRow?: { calendar_color_id: string | null } | Array<{ calendar_color_id: string | null }> | null;
   };
 
@@ -137,6 +137,16 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
   // their colour scheme, not ours.
   const sr = Array.isArray(b.staffRow) ? b.staffRow[0] : b.staffRow;
   const mirrorColor = sr?.calendar_color_id ?? null;
+
+  // A shoot's colour (§32). Was never set at all, so Google used the calendar's own
+  // default and every booking came out the same blue as everything else — which, now that
+  // post-production shares the calendar, made "which of these is editing" answerable only
+  // by reading each title. Per-booking choice wins, then the org default, then Blueberry.
+  const { data: orgRow } = await service.from('organizations')
+    .select('booking_params').eq('id', b.org_id).maybeSingle();
+  const orgColor = (orgRow as { booking_params?: Record<string, string> } | null)
+    ?.booking_params?.['booking_color_id'];
+  const bookingColor = b.calendar_color_id ?? orgColor ?? '9';
 
   // Only confirmed bookings live on the calendar. (Cancellation handles deletion.)
   if (!BLOCKING_STATUSES.includes(b.status)) return b.google_event_id ?? null;
@@ -170,6 +180,7 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
       if (slot.google_event_id) {
         await updateCalendarEvent(slot.google_event_id, {
           summary, description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
+          colorId: bookingColor,
         }, cals.primary);
         eventIds.push(slot.google_event_id);
       } else {
@@ -178,7 +189,7 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
           // keeps it last in the title on the create path too.
           title: `${b.title}${part}`,
           description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
-          bookingRef: b.booking_ref, target: cals.primary,
+          bookingRef: b.booking_ref, colorId: bookingColor, target: cals.primary,
         });
         eventIds.push(eventId);
         if (slot.id !== 'envelope') {

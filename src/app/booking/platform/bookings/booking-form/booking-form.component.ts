@@ -3,7 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
-import { BookingAdminService, AdminService, AdminStaff, WorkType } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, WorkType, GCAL_COLORS } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { LineItem } from '@booking/core/interfaces/invoice.interface';
@@ -78,6 +78,18 @@ export class BookingFormComponent implements OnInit {
   workDue = '';
   workAssignee = '';        // '' = whoever is doing the shoot
   workDescription = '';
+  /** This booking's colour on the calendar. '' = the organisation's default (§32). */
+  calendarColorId = '';
+  readonly colorOptions = computed<SelectOption[]>(() => [
+    { value: '', label: this.defaultColorLabel(), hint: 'your usual colour for shoots' },
+    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+  ]);
+  /** The org default, named — "Default" alone tells you nothing about what you will see. */
+  private orgColorId = '9';
+  private defaultColorLabel(): string {
+    const c = GCAL_COLORS.find(x => x.id === this.orgColorId);
+    return c ? `Default (${c.name})` : 'Default';
+  }
   /** The job's existing ticket, when editing. Null = none yet; marking a block creates one. */
   readonly existingWorkItemId = signal<string | null>(null);
 
@@ -179,6 +191,7 @@ export class BookingFormComponent implements OnInit {
       };
       if (settings?.timezone) this.orgTimezone.set(settings.timezone);
       if (settings?.currency) this.currency.set(settings.currency);
+      this.orgColorId = (settings?.booking_params as Record<string, string> | undefined)?.['booking_color_id'] ?? '9';
       this.depositPercent = this.orgDefaults.depositPercent;
       this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
 
@@ -210,6 +223,7 @@ export class BookingFormComponent implements OnInit {
     // An existing title is the owner's, whether they typed it or accepted a suggestion.
     // Without this, editing the location on a saved booking would silently rewrite it.
     this.titleTouched = !!b.title?.trim();
+    this.calendarColorId = b.calendar_color_id ?? '';
     this.location = b.location ?? '';
     this.notes = b.notes ?? '';
     this.paymentMode = b.allow_card && b.allow_inperson ? 'both' : b.allow_card ? 'card' : 'later';
@@ -406,6 +420,7 @@ export class BookingFormComponent implements OnInit {
         // says so, not because a flag was set.
         needsProduction: false,
         calendarDetail: this.calendarDetail,
+        calendarColorId: this.calendarColorId || null,
         location: this.location.trim() || null, notes: this.notes.trim() || null,
       };
 
@@ -451,6 +466,15 @@ export class BookingFormComponent implements OnInit {
       // Confirmed → push to Google Calendar now. Tentative bookings are pushed only once
       // confirmed (by you, or when the client pays by card).
       if (this.confirmed) await this.data.confirmToCalendar(res.id);
+      // The ticket's reserved time needs its OWN calendar event, and nothing was pushing
+      // it: create_booking makes the work item and its blocks in the database, but only
+      // sync-work-event writes the calendar. So a booking created with a post-production
+      // block reserved the time — it blocked, correctly — and then never appeared in the
+      // diary. The id is fetched rather than returned, to avoid changing the RPC's shape.
+      if (this.hasWork) {
+        const card = await this.admin.workItemForBooking(res.id);
+        if (card) this.admin.syncWorkEvent(card.id, []);
+      }
       // The work ticket (if any) was created by create_booking itself, so there is no
       // second call here that could fail and leave the booking without it.
       const link = await this.data.generateLink(res.id);
@@ -500,6 +524,7 @@ export class BookingFormComponent implements OnInit {
     this.paymentMode = 'both';
     this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
     this.depositPercent = this.orgDefaults.depositPercent;
+    this.calendarColorId = '';
     this.workTitle = ''; this.workType = ''; this.workDue = '';
     this.workAssignee = ''; this.workDescription = '';
     this.calendarDetail = 'full';

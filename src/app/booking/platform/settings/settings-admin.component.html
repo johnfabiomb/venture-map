@@ -109,6 +109,20 @@
               </app-info-hint>
             </label>
             <label class="check"><input type="checkbox" [(ngModel)]="cashAllowed" /> Allow cash requests</label>
+
+            <div class="field">
+              <div class="field__top">
+                <label>Colour for shoots on your calendar</label>
+                <app-info-hint label="Shoot colour">
+                  Shoots and post-production share one calendar, so colour is what tells
+                  them apart at a glance. Post-production takes its colour from its board
+                  stage instead — yellow to start with — which you set under the Work
+                  board's cog. Any booking can override this one.
+                </app-info-hint>
+              </div>
+              <app-select [value]="bookingColorId" (changed)="bookingColorId = $event"
+                          [options]="bookingColorOptions" [searchable]="false" />
+            </div>
             <div class="actions">
               <button class="btn btn--primary" [disabled]="saving()" (click)="save()">{{ saving() ? 'Saving…' : 'Save settings' }}</button>
               @if (saved()) { <span class="ok-tag">✓ Saved</span> }

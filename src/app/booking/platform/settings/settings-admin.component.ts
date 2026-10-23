@@ -104,6 +104,14 @@ export class SettingsAdminComponent implements OnInit {
     { value: '', label: 'No colour' },
     ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
   ];
+  /** The default colour a SHOOT gets on the calendar (§32). Post-production takes its
+   *  colour from its board stage instead, set in the Work board's cog. */
+  bookingColorId = '9';
+  /** Everything booking_params held when the page loaded, so a save never drops a key
+   *  written by another screen. */
+  private loadedBookingParams: Record<string, unknown> = {};
+  readonly bookingColorOptions: SelectOption[] =
+    GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex }));
   newMemberEmail = '';
   newMemberRole = 'admin';
   readonly addingMember = signal(false);
@@ -200,6 +208,8 @@ export class SettingsAdminComponent implements OnInit {
         this.holdMinutes = p.hold_minutes ?? 15;
         this.minLeadMinutes = p.min_lead_minutes ?? 120;
         this.cashAllowed = p.cash_allowed ?? true;
+        this.bookingColorId = (p as Record<string, string>)['booking_color_id'] ?? '9';
+        this.loadedBookingParams = { ...(p as Record<string, unknown>) };
         this.workBoard = s.features?.work_board ?? false;
         this.calendarMirror.set(s.calendar_mirror ?? false);
         this.calendarIdValue.set(s.calendar_id || 'primary');
@@ -334,10 +344,16 @@ export class SettingsAdminComponent implements OnInit {
     try {
       await this.admin.updateOrgSettings(org, {
         timezone: this.timezone.trim(), currency: this.currency.trim().toUpperCase(),
+        // The spread matters here for the same reason it does on invoice_details below —
+        // and it was missing. booking_params also carries `work_archive_days` (the Work
+        // board's History window) and `calendar_detail`, neither of which this page knows
+        // about, so every save from ANY tab silently reset them to their defaults.
         booking_params: {
+          ...this.loadedBookingParams,
           deposit_percent: Number(this.depositPercent), deposit_allowed: this.depositAllowed,
           hold_minutes: Number(this.holdMinutes),
           min_lead_minutes: Number(this.minLeadMinutes), cash_allowed: this.cashAllowed,
+          booking_color_id: this.bookingColorId,
         },
         features: { work_board: this.workBoard },
         // The spread is load-bearing. This rebuilds the blob from the fields on this page,

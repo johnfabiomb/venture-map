@@ -54,6 +54,17 @@ export class TourService {
   readonly atEnd = computed(() => this.index() >= this.steps().length - 1);
 
   /** Which version of each tour has been read. */
+  /**
+   * Tours put aside with × or Escape, for this browsing session only.
+   *
+   * Dismissing recorded nothing, so `autoStart` happily reopened the same tour on the
+   * very next navigation — which, since it fires on every route change, meant the tour
+   * reappeared every time you tried to get on with something. Marking it fully read would
+   * be the other extreme: "not now" should not cost you the tour for ever. In memory, so
+   * it comes back next time the app is opened.
+   */
+  private snoozed = new Set<string>();
+
   private seen(): Record<string, number> {
     try { return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}'); } catch { return {}; }
   }
@@ -80,6 +91,7 @@ export class TourService {
    * page and cannot be measured from here. They are filtered as they are reached instead.
    */
   start(tour: Tour): void {
+    this.snoozed.delete(tour.key);
     const steps = tour.steps.filter(s => s.route || this.visible(s));
     if (!steps.length) return;
     this.isWhatsNew.set(false);
@@ -90,14 +102,30 @@ export class TourService {
   }
 
   /**
-   * Open automatically if this tour has never been read, or show only what is new since
-   * it last was. Returns true if something opened.
+   * Open on its own — but only when that is genuinely worth interrupting someone for.
+   *
+   * By default that is ONLY the "what's new" case: a module you have already read a tour
+   * for has gained steps, and being told about a feature you asked for beats discovering
+   * it by accident. A full first-time tour is NOT opened this way, because it fired on
+   * every page you had not yet visited, which meant the tour appeared whenever you were
+   * trying to get on with something. Those stay one click away on the sidebar button.
+   *
+   * `allowFirstRun` is for the whole-app tour on a brand-new account, where there is no
+   * work in progress to interrupt.
    */
-  autoStart(tour: Tour): boolean {
+  autoStart(tour: Tour, opts: { allowFirstRun?: boolean } = {}): boolean {
+    if (this.snoozed.has(tour.key)) return false;
+    // Never interrupt a tour that is already running — including itself, since the
+    // platform tour drives its own navigation.
+    if (this.tour() !== null) return false;
     const seenVersion = this.seen()[tour.key];
     if (seenVersion === tour.version) return false;
 
-    if (seenVersion === undefined) { this.start(tour); return this.open(); }
+    if (seenVersion === undefined) {
+      if (!opts.allowFirstRun) return false;
+      this.start(tour);
+      return this.open();
+    }
 
     const fresh = tour.steps.filter(s => (s.since ?? 0) > seenVersion && this.visible(s));
     if (!fresh.length) { this.markSeen(tour.key, tour.version); return false; }
@@ -147,8 +175,12 @@ export class TourService {
     this.isWhatsNew.set(false);
   }
 
-  /** Dismiss WITHOUT marking it read — "not now" should not cost you the tour for ever. */
+  /** Dismiss WITHOUT marking it read — "not now" should not cost you the tour for ever.
+   *  It is snoozed for this session so it stops reappearing, and stays available from the
+   *  sidebar button, which calls start() and ignores the snooze. */
   dismiss(): void {
+    const t = this.tour();
+    if (t) this.snoozed.add(t.key);
     this.tour.set(null);
     this.steps.set([]);
     this.index.set(0);

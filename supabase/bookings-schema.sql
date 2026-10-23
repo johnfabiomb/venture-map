@@ -297,7 +297,7 @@ BEGIN
   INSERT INTO bookings (org_id, staff_id, service_id, client_id, contact_name, title, description,
     start_at, end_at, price_total, price_expenses, status, created_by,
     allow_card, allow_inperson, deposit_allowed, deposit_percent, needs_production, is_external, location, notes,
-    calendar_detail)
+    calendar_detail, calendar_color_id)
   VALUES (v_org, v_staff, (p_booking->>'service_id')::uuid, (p_booking->>'client_id')::uuid,
     NULLIF(p_booking->>'contact_name',''),
     p_booking->>'title', p_booking->>'description', v_start, v_end,
@@ -311,7 +311,10 @@ BEGIN
     -- so nothing changes for a caller that knows nothing about this field).
     COALESCE(NULLIF(p_booking->>'calendar_detail',''),
              (SELECT o.booking_params->>'calendar_detail' FROM organizations o WHERE o.id = v_org),
-             'full'))
+             'full'),
+    -- NULL means "the org default", resolved when the event is written (§32) rather than
+    -- frozen here — but an explicit choice is stored and wins for ever.
+    NULLIF(p_booking->>'calendar_color_id',''))
   RETURNING bookings.id INTO v_id;
   FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
     INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, label)
@@ -356,7 +359,12 @@ BEGIN
     -- Patch-style: only overwritten when the caller actually sends a value, so an edit from
     -- a screen that doesn't know about this field can't silently reset it to 'full' and
     -- re-expose the money on a job the owner had deliberately made minimal.
-    calendar_detail=COALESCE(NULLIF(p_booking->>'calendar_detail',''), calendar_detail)
+    calendar_detail=COALESCE(NULLIF(p_booking->>'calendar_detail',''), calendar_detail),
+    -- PATCHED, not replaced: an edit that does not mention the colour must not clear a
+    -- choice already made, which is how every other field on this UPDATE behaves.
+    calendar_color_id=CASE WHEN p_booking ? 'calendar_color_id'
+                           THEN NULLIF(p_booking->>'calendar_color_id','')
+                           ELSE calendar_color_id END
   WHERE id=p_booking_id;
   FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
     INSERT INTO booking_slots (org_id, booking_id, staff_id, start_at, end_at, label, google_event_id)
@@ -3996,7 +4004,7 @@ BEGIN
   INSERT INTO bookings (org_id, staff_id, service_id, client_id, contact_name, title, description,
     start_at, end_at, price_total, price_expenses, status, created_by,
     allow_card, allow_inperson, deposit_allowed, deposit_percent, needs_production, is_external, location, notes,
-    calendar_detail)
+    calendar_detail, calendar_color_id)
   VALUES (v_org, v_staff, (p_booking->>'service_id')::uuid, (p_booking->>'client_id')::uuid,
     NULLIF(p_booking->>'contact_name',''),
     p_booking->>'title', p_booking->>'description', v_start, v_end,
@@ -4010,7 +4018,10 @@ BEGIN
     p_booking->>'location', p_booking->>'notes',
     COALESCE(NULLIF(p_booking->>'calendar_detail',''),
              (SELECT o.booking_params->>'calendar_detail' FROM organizations o WHERE o.id = v_org),
-             'full'))
+             'full'),
+    -- NULL means "the org default", resolved when the event is written (§32) rather than
+    -- frozen here — but an explicit choice is stored and wins for ever.
+    NULLIF(p_booking->>'calendar_color_id',''))
   RETURNING bookings.id INTO v_id;
 
   FOR v_slot IN SELECT e FROM jsonb_array_elements(p_slots) e LOOP
@@ -4229,3 +4240,29 @@ CREATE POLICY documents_org_delete ON storage.objects FOR DELETE TO authenticate
   USING (bucket_id = 'documents'
          AND (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
          AND public.is_org_admin(((storage.foldername(name))[1])::uuid));
+
+
+-- ═══ 32. Calendar colour for a shoot ══════════════════════════════════════
+-- Work already had one: `work_stages.color_id`, seeded Banana, so editing time is yellow.
+-- A BOOKING had none at all — createCalendarEvent was called without a colorId, so Google
+-- fell back to the calendar's own default and every shoot came out the same blue. With
+-- shoots and post-production now sharing one calendar, "which of these is editing" was
+-- answerable only by reading each title.
+--
+-- Two levels, same shape as every other default in this schema: an organisation default,
+-- and a per-booking override that wins. The override is stored explicitly rather than
+-- inherited at read time, so changing the org default later never repaints a job whose
+-- colour was chosen deliberately.
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS calendar_color_id TEXT;
+
+COMMENT ON COLUMN public.bookings.calendar_color_id IS
+  'Google event colour id (1-11) for this booking''s events. NULL = the org default in '
+  'booking_params.booking_color_id, which itself falls back to 9 (Blueberry). See §32.';
+
+-- Seed the org default to a blue, which is what shoots have looked like all along — so
+-- nothing visibly changes for existing jobs; they simply become deliberate rather than
+-- accidental.
+UPDATE public.organizations
+   SET booking_params = COALESCE(booking_params, '{}'::jsonb)
+                        || jsonb_build_object('booking_color_id', '9')
+ WHERE booking_params->>'booking_color_id' IS NULL;

@@ -341,6 +341,26 @@
           </div>
         }
 
+        <!-- Shoots and post-production now share one calendar, so colour is what tells
+             them apart at a glance — editing is yellow by default, a shoot is blue. Only
+             shown for a client job: a work task takes its colour from its board stage,
+             which is set once in the Work board's cog rather than per task. -->
+        @if (!isWorkOnly) {
+          <div class="field">
+            <div class="field__top">
+              <label>Colour on your calendar</label>
+              <app-info-hint label="Calendar colour">
+                Google has eleven fixed event colours, so this offers exactly what it will
+                actually show. Post-production has its own colour per board stage — yellow
+                to start with — so editing time is distinguishable from a shoot without
+                reading the titles.
+              </app-info-hint>
+            </div>
+            <app-select [value]="calendarColorId" (changed)="calendarColorId = $event"
+                        [options]="colorOptions()" [searchable]="false" />
+          </div>
+        }
+
         <!-- Calendar privacy. A Google event has ONE description and every attendee reads it,
              so this is the switch that makes it safe to put someone else on the invite. -->
         <div class="opt-row">

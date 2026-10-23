@@ -81,9 +81,12 @@ export class PlatformShellComponent implements OnInit {
       // A tour already running drives its own navigation — reacting to it would restart
       // the page tour on top of the platform tour mid-step.
       if (this.tours.open()) return;
-      // The whole-app tour comes first on a brand-new account: learning what the modules
-      // are for has to precede learning one page's controls.
-      if (this.tours.autoStart(TOURS['platform'])) return;
+      // The whole-app tour is the ONE that may open itself unprompted, and only on a
+      // brand-new account where there is nothing in progress to interrupt.
+      if (this.tours.autoStart(TOURS['platform'], { allowFirstRun: true })) return;
+      // A page tour only interrupts to show what has CHANGED since it was last read.
+      // Opening the full thing on every page not yet visited made the tour appear
+      // whenever you were trying to get something done.
       if (t) setTimeout(() => this.tours.autoStart(t), 700);
     });
 

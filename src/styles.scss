@@ -645,3 +645,101 @@ button, button span {
     font-size: 16px !important;
   }
 }
+/* ── Booking-platform button, GLOBAL ──────────────────────────────────────
+   `.btn` was defined only in `booking/platform/admin.shared.scss`, which page components
+   `@use` — so it is compiled into each PAGE's scoped stylesheet and never reaches a
+   `ui/` component. Eight dialogs rendered `class="btn"` and got browser-default buttons:
+   Record payment, Record a cost, Delivery, Add a document, the work editor, board
+   columns, work settings, the confirm dialog and the guided tour.
+
+   Global is the right home: a button should look the same wherever it is. Components that
+   define their own `.btn` still win — emulated encapsulation gives theirs an attribute
+   selector (`.btn[_ngcontent-x]`, specificity 0,2,0) against this plain `.btn` (0,1,0) —
+   so the map's two button styles and every existing page are untouched. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  transition: 0.15s ease;
+  text-decoration: none;
+
+  &--primary { background: #F4A922; color: #000; }
+  &--primary:hover:not(:disabled) { filter: brightness(0.94); }
+  &--ghost { background: #fff; border-color: #e2e8f0; color: #475569; }
+  &--ghost:hover:not(:disabled) { border-color: #94a3b8; }
+  &--sm { padding: 6px 12px; font-size: 12px; }
+  /* Destructive. Previously defined only inside the confirm dialog, so any other dialog
+     asking someone to delete something got a button that did not look like one. */
+  &--danger { background: #ef4444; color: #fff; }
+  &--danger:hover:not(:disabled) { filter: brightness(0.94); }
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+/* ── Booking-platform form language, GLOBAL ───────────────────────────────
+   Same problem as `.btn` above and the same fix. `.field` / `.field__top` / `.field-row`
+   live in `booking/platform/admin.shared.scss`, so a `ui/` dialog that uses them renders
+   bare browser defaults — the Add-a-document dialog showed large unstyled labels and a
+   default text box.
+
+   Everything stays scoped under `.field`, which the map app does not use, so no rule here
+   can reach a non-booking page. Components defining their own still win: emulated
+   encapsulation makes theirs more specific. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  > span { font-size: 12px; font-weight: 600; color: #475569; }
+  em { color: #94a3b8; font-style: normal; font-weight: 400; }
+
+  input, textarea, select {
+    padding: 10px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #0f172a;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    &:focus { outline: none; border-color: #F4A922; }
+  }
+  textarea { resize: vertical; }
+  input[type='file'] { border: none; padding: 6px 0; font-size: 13px; }
+
+  /* Below 16px iOS zooms in when a field takes focus and never zooms back out. */
+  @media (max-width: 560px) {
+    input, textarea, select { font-size: 16px; }
+  }
+}
+
+/* Label + its (i), on one baseline. */
+.field__top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+
+  label { font-size: 12px; font-weight: 600; color: #475569; }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
+
+  &--three {
+    grid-template-columns: repeat(3, 1fr);
+    @media (max-width: 860px) { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 640px) { grid-template-columns: 1fr; }
+  }
+}
