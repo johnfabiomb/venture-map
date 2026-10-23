@@ -1,6 +1,6 @@
 {
   "name": "venture-map",
-  "version": "2.0.78",
+  "version": "2.0.79",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
