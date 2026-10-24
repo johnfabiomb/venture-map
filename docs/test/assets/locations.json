@@ -40,7 +40,8 @@
             ],
             "locality": "Żurrieq",
             "showLabel": false,
-            "thumb": "/assets/images/places/blue-grotto-thumb.webp"
+            "thumb": "/assets/images/places/blue-grotto-thumb.webp",
+            "card": "/assets/images/places/blue-grotto-card.webp"
         },
         {
             "id": 2,
@@ -74,7 +75,8 @@
             ],
             "locality": "Birżebbuġa",
             "showLabel": false,
-            "thumb": "/assets/images/places/2-thumb.webp"
+            "thumb": "/assets/images/places/2-thumb.webp",
+            "card": "/assets/images/places/2-card.webp"
         },
         {
             "id": 3,
@@ -109,7 +111,8 @@
             ],
             "locality": "Birżebbuġa",
             "showLabel": false,
-            "thumb": "/assets/images/places/0-thumb.webp"
+            "thumb": "/assets/images/places/0-thumb.webp",
+            "card": "/assets/images/places/0-card.webp"
         },
         {
             "id": 4,
@@ -118,6 +121,7 @@
             "description": "This is a Natural Arch at <b>Ras Il-Hamrija</b> located on the coast of Qrendi, between Wied iż-Żurrieq and Għar Lapsi",
             "img": "/assets/images/places/ras-il-hamrija-window/ras-il-hamrija-window.webp",
             "thumb": "/assets/images/places/ras-il-hamrija-window/ras-il-hamrija-window-thumb.webp",
+            "card": "/assets/images/places/ras-il-hamrija-window/ras-il-hamrija-window-card.webp",
             "images": [
                 "/assets/images/places/ras-il-hamrija-window/ras-il-hamrija-window-2.webp",
                 "/assets/images/places/ras-il-hamrija-window/ras-il-hamrija-window.webp",
@@ -182,7 +186,8 @@
             ],
             "locality": "Rabat",
             "showLabel": false,
-            "thumb": "/assets/images/places/4-thumb.webp"
+            "thumb": "/assets/images/places/4-thumb.webp",
+            "card": "/assets/images/places/4-card.webp"
         },
         {
             "id": 6,
@@ -215,7 +220,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/5-thumb.webp"
+            "thumb": "/assets/images/places/5-thumb.webp",
+            "card": "/assets/images/places/5-card.webp"
         },
         {
             "id": 7,
@@ -250,7 +256,8 @@
             ],
             "locality": "Comino",
             "showLabel": false,
-            "thumb": "/assets/images/places/elephant-rock-thumb.webp"
+            "thumb": "/assets/images/places/elephant-rock-thumb.webp",
+            "card": "/assets/images/places/elephant-rock-card.webp"
         },
         {
             "id": 8,
@@ -260,6 +267,7 @@
             "description": "Munxar Path is a scenic coastal walk in Marsaskala, offering breathtaking views of the Mediterranean Sea and the rugged Maltese coastline. This trail is perfect for nature enthusiasts and walkers who enjoy peaceful, picturesque landscapes. Along the path, hikers can observe local flora and fauna, explore small, hidden coves, and enjoy tranquil moments by the sea.",
             "img": "/assets/images/places/munxar-path/munxar-path.webp",
             "thumb": "/assets/images/places/munxar-path/munxar-path-thumb.webp",
+            "card": "/assets/images/places/munxar-path/munxar-path-card.webp",
             "images": [
                 "/assets/images/places/munxar-path/munxar-path.webp",
                 "/assets/images/places/munxar-path/munxar-path-2.webp",
@@ -392,7 +400,8 @@
             ],
             "locality": "Marsaskala",
             "showLabel": false,
-            "thumb": "/assets/images/places/10-thumb.webp"
+            "thumb": "/assets/images/places/10-thumb.webp",
+            "card": "/assets/images/places/10-card.webp"
         },
         {
             "id": 11,
@@ -426,7 +435,8 @@
             ],
             "locality": "Kalkara",
             "showLabel": false,
-            "thumb": "/assets/images/places/11-thumb.webp"
+            "thumb": "/assets/images/places/11-thumb.webp",
+            "card": "/assets/images/places/11-card.webp"
         },
         {
             "id": 12,
@@ -461,7 +471,8 @@
             ],
             "locality": "Naxxar",
             "showLabel": false,
-            "thumb": "/assets/images/places/12-thumb.webp"
+            "thumb": "/assets/images/places/12-thumb.webp",
+            "card": "/assets/images/places/12-card.webp"
         },
         {
             "id": 13,
@@ -496,7 +507,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/13-thumb.webp"
+            "thumb": "/assets/images/places/13-thumb.webp",
+            "card": "/assets/images/places/13-card.webp"
         },
         {
             "id": 14,
@@ -531,7 +543,8 @@
             ],
             "locality": "Comino",
             "showLabel": false,
-            "thumb": "/assets/images/places/16-thumb.webp"
+            "thumb": "/assets/images/places/16-thumb.webp",
+            "card": "/assets/images/places/16-card.webp"
         },
         {
             "id": 17,
@@ -566,7 +579,8 @@
             ],
             "locality": "Comino",
             "showLabel": false,
-            "thumb": "/assets/images/places/18-thumb.webp"
+            "thumb": "/assets/images/places/18-thumb.webp",
+            "card": "/assets/images/places/18-card.webp"
         },
         {
             "id": 18,
@@ -600,7 +614,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/minstra-thumb.webp"
+            "thumb": "/assets/images/places/minstra-thumb.webp",
+            "card": "/assets/images/places/minstra-card.webp"
         },
         {
             "id": 19,
@@ -656,7 +671,8 @@
             ],
             "locality": "Dingli",
             "showLabel": false,
-            "thumb": "/assets/images/places/21-thumb.webp"
+            "thumb": "/assets/images/places/21-thumb.webp",
+            "card": "/assets/images/places/21-card.webp"
         },
         {
             "id": 21,
@@ -690,7 +706,8 @@
             ],
             "locality": "St. Paul's Bay",
             "showLabel": false,
-            "thumb": "/assets/images/places/23-thumb.webp"
+            "thumb": "/assets/images/places/23-thumb.webp",
+            "card": "/assets/images/places/23-card.webp"
         },
         {
             "id": 22,
@@ -724,7 +741,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/19-thumb.webp"
+            "thumb": "/assets/images/places/19-thumb.webp",
+            "card": "/assets/images/places/19-card.webp"
         },
         {
             "id": 25,
@@ -758,7 +776,8 @@
             ],
             "locality": "Gozo-Dwejra",
             "showLabel": false,
-            "thumb": "/assets/images/places/fungusrock-thumb.webp"
+            "thumb": "/assets/images/places/fungusrock-thumb.webp",
+            "card": "/assets/images/places/fungusrock-card.webp"
         },
         {
             "id": 26,
@@ -791,7 +810,8 @@
             ],
             "locality": "Three Cities",
             "showLabel": false,
-            "thumb": "/assets/images/places/26-thumb.webp"
+            "thumb": "/assets/images/places/26-thumb.webp",
+            "card": "/assets/images/places/26-card.webp"
         },
         {
             "id": 23,
@@ -825,7 +845,8 @@
             ],
             "locality": "Gozo-Gharb",
             "showLabel": false,
-            "thumb": "/assets/images/places/rock-thumb.webp"
+            "thumb": "/assets/images/places/rock-thumb.webp",
+            "card": "/assets/images/places/rock-card.webp"
         },
         {
             "id": 27,
@@ -858,7 +879,8 @@
             ],
             "locality": "Three Cities",
             "showLabel": false,
-            "thumb": "/assets/images/places/27-thumb.webp"
+            "thumb": "/assets/images/places/27-thumb.webp",
+            "card": "/assets/images/places/27-card.webp"
         },
         {
             "id": 33,
@@ -891,7 +913,8 @@
             ],
             "locality": "Valletta",
             "showLabel": false,
-            "thumb": "/assets/images/places/our_lady_of_mount_carmel-thumb.webp"
+            "thumb": "/assets/images/places/our_lady_of_mount_carmel-thumb.webp",
+            "card": "/assets/images/places/our_lady_of_mount_carmel-card.webp"
         },
         {
             "id": 28,
@@ -924,7 +947,8 @@
             ],
             "locality": "Three Cities",
             "showLabel": false,
-            "thumb": "/assets/images/places/guardiola-thumb.webp"
+            "thumb": "/assets/images/places/guardiola-thumb.webp",
+            "card": "/assets/images/places/guardiola-card.webp"
         },
         {
             "id": 31,
@@ -957,7 +981,8 @@
             ],
             "locality": "Mdina",
             "showLabel": false,
-            "thumb": "/assets/images/places/mdina-thumb.webp"
+            "thumb": "/assets/images/places/mdina-thumb.webp",
+            "card": "/assets/images/places/mdina-card.webp"
         },
         {
             "id": 32,
@@ -991,7 +1016,8 @@
             ],
             "locality": "Naxxar",
             "showLabel": false,
-            "thumb": "/assets/images/places/victoria_lines-thumb.webp"
+            "thumb": "/assets/images/places/victoria_lines-thumb.webp",
+            "card": "/assets/images/places/victoria_lines-card.webp"
         },
         {
             "id": 34,
@@ -1026,7 +1052,8 @@
             ],
             "locality": "Rabat",
             "showLabel": false,
-            "thumb": "/assets/images/places/migra-l-ferha-thumb.webp"
+            "thumb": "/assets/images/places/migra-l-ferha-thumb.webp",
+            "card": "/assets/images/places/migra-l-ferha-card.webp"
         },
         {
             "id": 35,
@@ -1062,7 +1089,8 @@
             ],
             "locality": "Rabat",
             "showLabel": false,
-            "thumb": "/assets/images/places/id-ras-cave-thumb.webp"
+            "thumb": "/assets/images/places/id-ras-cave-thumb.webp",
+            "card": "/assets/images/places/id-ras-cave-card.webp"
         },
         {
             "id": 36,
@@ -1097,7 +1125,8 @@
             ],
             "locality": "Rabat",
             "showLabel": false,
-            "thumb": "/assets/images/places/fomm-thumb.webp"
+            "thumb": "/assets/images/places/fomm-thumb.webp",
+            "card": "/assets/images/places/fomm-card.webp"
         },
         {
             "id": 37,
@@ -1132,7 +1161,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/riviera-thumb.webp"
+            "thumb": "/assets/images/places/riviera-thumb.webp",
+            "card": "/assets/images/places/riviera-card.webp"
         },
         {
             "id": 38,
@@ -1166,7 +1196,8 @@
             ],
             "locality": "Gozo-Dwejra",
             "showLabel": false,
-            "thumb": "/assets/images/places/inland-thumb.webp"
+            "thumb": "/assets/images/places/inland-thumb.webp",
+            "card": "/assets/images/places/inland-card.webp"
         },
         {
             "id": 40,
@@ -1232,7 +1263,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/blata-thumb.webp"
+            "thumb": "/assets/images/places/blata-thumb.webp",
+            "card": "/assets/images/places/blata-card.webp"
         },
         {
             "id": 41,
@@ -1266,7 +1298,8 @@
             ],
             "locality": "Gozo-Xagħra",
             "showLabel": false,
-            "thumb": "/assets/images/places/tal-mixta-thumb.webp"
+            "thumb": "/assets/images/places/tal-mixta-thumb.webp",
+            "card": "/assets/images/places/tal-mixta-card.webp"
         },
         {
             "id": 42,
@@ -1301,7 +1334,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/pullicinos-cove-cave-thumb.webp"
+            "thumb": "/assets/images/places/pullicinos-cove-cave-thumb.webp",
+            "card": "/assets/images/places/pullicinos-cove-cave-card.webp"
         },
         {
             "id": 43,
@@ -1335,7 +1369,8 @@
             ],
             "locality": "Kalkara",
             "showLabel": false,
-            "thumb": "/assets/images/places/lower-kalkara-thumb.webp"
+            "thumb": "/assets/images/places/lower-kalkara-thumb.webp",
+            "card": "/assets/images/places/lower-kalkara-card.webp"
         },
         {
             "id": 44,
@@ -1369,6 +1404,7 @@
             "clusterPriority": true,
             "showLabel": false,
             "thumb": "/assets/images/places/ta-maria-cave/TaMarijaCave-thumb.webp",
+            "card": "/assets/images/places/ta-maria-cave/TaMarijaCave-card.webp",
             "routes": [
                 {
                     "label": "On foot",
@@ -1803,7 +1839,8 @@
             ],
             "locality": "Gozo-Dwejra",
             "showLabel": false,
-            "thumb": "/assets/images/places/fungus-rock-cave-thumb.webp"
+            "thumb": "/assets/images/places/fungus-rock-cave-thumb.webp",
+            "card": "/assets/images/places/fungus-rock-cave-card.webp"
         },
         {
             "id": 47,
@@ -1836,7 +1873,8 @@
             ],
             "locality": "Paola",
             "showLabel": false,
-            "thumb": "/assets/images/places/chinese-garden-thumb.webp"
+            "thumb": "/assets/images/places/chinese-garden-thumb.webp",
+            "card": "/assets/images/places/chinese-garden-card.webp"
         },
         {
             "id": 49,
@@ -1871,7 +1909,8 @@
             ],
             "locality": "Marsaskala",
             "showLabel": false,
-            "thumb": "/assets/images/places/ta-kalanka-sea-cave-thumb.webp"
+            "thumb": "/assets/images/places/ta-kalanka-sea-cave-thumb.webp",
+            "card": "/assets/images/places/ta-kalanka-sea-cave-card.webp"
         },
         {
             "id": 50,
@@ -1905,7 +1944,8 @@
             ],
             "locality": "Gozo-Munxar",
             "showLabel": false,
-            "thumb": "/assets/images/places/Xlendi-thumb.webp"
+            "thumb": "/assets/images/places/Xlendi-thumb.webp",
+            "card": "/assets/images/places/Xlendi-card.webp"
         },
         {
             "id": 16,
@@ -1939,7 +1979,8 @@
             ],
             "locality": "Comino",
             "showLabel": false,
-            "thumb": "/assets/images/places/15-thumb.webp"
+            "thumb": "/assets/images/places/15-thumb.webp",
+            "card": "/assets/images/places/15-card.webp"
         },
         {
             "id": 52,
@@ -1971,6 +2012,7 @@
             "locality": "Qrendi",
             "showLabel": false,
             "thumb": "/assets/images/places/mini-inlandsea/mini-inlandsea-2-thumb.webp",
+            "card": "/assets/images/places/mini-inlandsea/mini-inlandsea-2-card.webp",
             "routes": [
                 {
                     "label": "Route 1",
@@ -2376,7 +2418,8 @@
             ],
             "locality": "Three Cities",
             "showLabel": false,
-            "thumb": "/assets/images/places/st-bastion-thumb.webp"
+            "thumb": "/assets/images/places/st-bastion-thumb.webp",
+            "card": "/assets/images/places/st-bastion-card.webp"
         },
         {
             "id": 54,
@@ -2411,7 +2454,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/L-Ghawseg-thumb.webp"
+            "thumb": "/assets/images/places/L-Ghawseg-thumb.webp",
+            "card": "/assets/images/places/L-Ghawseg-card.webp"
         },
         {
             "id": 55,
@@ -2449,7 +2493,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/paradise-bay/paradise-bay-beach-thumb.webp"
+            "thumb": "/assets/images/places/paradise-bay/paradise-bay-beach-thumb.webp",
+            "card": "/assets/images/places/paradise-bay/paradise-bay-beach-card.webp"
         },
         {
             "id": 57,
@@ -2484,12 +2529,14 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/anchor-bay-popeye-cliffs-thumb.webp"
+            "thumb": "/assets/images/places/anchor-bay-popeye-cliffs-thumb.webp",
+            "card": "/assets/images/places/anchor-bay-popeye-cliffs-card.webp"
         },
         {
             "id": 58,
             "title": "Carolina Grotto",
             "slug": "carolina-grotto",
+            "img": "/assets/images/places/carolina-grotto.webp",
             "description": "Carolina Grotto — also known as Caroline's Cave or Għar ta' Karolina — is a hidden sea grotto tucked into the cliffs of Xlendi Bay, Gozo. You can reach it on foot down a flight of carved cliffside stone stairs from the bay, or by swimming or kayaking around the coast to the grotto, where clear, calm water meets the rock. Beyond its beauty it carries a story: the grotto is linked to Karolina Cauchi and the Augustinian sisters of Gozo, said to have used it as a private bathing place hidden from public view. Visit in the morning or around midday when the water is clearest and the steps easiest to see — and take care, as the stairs and rocks can be uneven and slippery near the water.",
             "images": [
                 "/assets/images/places/carolina-grotto.webp",
@@ -2547,7 +2594,8 @@
             ],
             "locality": "Gozo-Munxar",
             "showLabel": false,
-            "thumb": "/assets/images/places/carolina-grotto-thumb.webp"
+            "thumb": "/assets/images/places/carolina-grotto-thumb.webp",
+            "card": "/assets/images/places/carolina-grotto-card.webp"
         },
         {
             "id": 59,
@@ -2644,7 +2692,8 @@
             ],
             "locality": "Żurrieq",
             "showLabel": false,
-            "thumb": "/assets/images/places/babu/babu-1-thumb.webp"
+            "thumb": "/assets/images/places/babu/babu-1-thumb.webp",
+            "card": "/assets/images/places/babu/babu-1-card.webp"
         },
         {
             "id": 60,
@@ -2679,7 +2728,8 @@
             ],
             "locality": "Birżebbuġa",
             "showLabel": false,
-            "thumb": "/assets/images/places/ghar-hasan-hal-far-thumb.webp"
+            "thumb": "/assets/images/places/ghar-hasan-hal-far-thumb.webp",
+            "card": "/assets/images/places/ghar-hasan-hal-far-card.webp"
         },
         {
             "id": 61,
@@ -2714,7 +2764,8 @@
             ],
             "locality": "Kalkara",
             "showLabel": false,
-            "thumb": "/assets/images/places/hidden-fort-ricasoli-cave-thumb.webp"
+            "thumb": "/assets/images/places/hidden-fort-ricasoli-cave-thumb.webp",
+            "card": "/assets/images/places/hidden-fort-ricasoli-cave-card.webp"
         },
         {
             "id": 24,
@@ -2749,7 +2800,8 @@
             ],
             "locality": "Siġġiewi",
             "showLabel": false,
-            "thumb": "/assets/images/places/Ix-Xaqqa-Valley-thumb.webp"
+            "thumb": "/assets/images/places/Ix-Xaqqa-Valley-thumb.webp",
+            "card": "/assets/images/places/Ix-Xaqqa-Valley-card.webp"
         },
         {
             "id": 62,
@@ -2785,7 +2837,8 @@
             ],
             "locality": "Comino",
             "showLabel": false,
-            "thumb": "/assets/images/places/santa-maria-caves-thumb.webp"
+            "thumb": "/assets/images/places/santa-maria-caves-thumb.webp",
+            "card": "/assets/images/places/santa-maria-caves-card.webp"
         },
         {
             "id": 63,
@@ -2820,7 +2873,8 @@
             ],
             "locality": "Gozo-Gharb",
             "showLabel": false,
-            "thumb": "/assets/images/places/wied-il-ghasri-thumb.webp"
+            "thumb": "/assets/images/places/wied-il-ghasri-thumb.webp",
+            "card": "/assets/images/places/wied-il-ghasri-card.webp"
         },
         {
             "id": 64,
@@ -2854,7 +2908,8 @@
             ],
             "locality": "Gozo-Victoria",
             "showLabel": false,
-            "thumb": "/assets/images/places/cittadella-gozo-thumb.webp"
+            "thumb": "/assets/images/places/cittadella-gozo-thumb.webp",
+            "card": "/assets/images/places/cittadella-gozo-card.webp"
         },
         {
             "id": 65,
@@ -2889,7 +2944,8 @@
             ],
             "locality": "Gozo-Marsalforn",
             "showLabel": false,
-            "thumb": "/assets/images/places/gozo-salt-pans-thumb.webp"
+            "thumb": "/assets/images/places/gozo-salt-pans-thumb.webp",
+            "card": "/assets/images/places/gozo-salt-pans-card.webp"
         },
         {
             "id": 66,
@@ -2922,7 +2978,8 @@
             ],
             "locality": "Gozo-Xagħra",
             "showLabel": false,
-            "thumb": "/assets/images/places/ramla-bay-gozo-thumb.webp"
+            "thumb": "/assets/images/places/ramla-bay-gozo-thumb.webp",
+            "card": "/assets/images/places/ramla-bay-gozo-card.webp"
         },
         {
             "id": 67,
@@ -2955,7 +3012,8 @@
             ],
             "locality": "Valletta",
             "showLabel": false,
-            "thumb": "/assets/images/places/argotti-botanic-gardens-thumb.webp"
+            "thumb": "/assets/images/places/argotti-botanic-gardens-thumb.webp",
+            "card": "/assets/images/places/argotti-botanic-gardens-card.webp"
         },
         {
             "id": 68,
@@ -2988,7 +3046,8 @@
             ],
             "locality": "Gozo-Qala",
             "showLabel": false,
-            "thumb": "/assets/images/places/hondoq-ir-rummien-thumb.webp"
+            "thumb": "/assets/images/places/hondoq-ir-rummien-thumb.webp",
+            "card": "/assets/images/places/hondoq-ir-rummien-card.webp"
         },
         {
             "id": 69,
@@ -3022,7 +3081,8 @@
             ],
             "locality": "Mellieħa",
             "showLabel": false,
-            "thumb": "/assets/images/places/rdum-il-qammieh-thumb.webp"
+            "thumb": "/assets/images/places/rdum-il-qammieh-thumb.webp",
+            "card": "/assets/images/places/rdum-il-qammieh-card.webp"
         },
         {
             "id": 70,
@@ -3183,7 +3243,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/hidden-rocky-beach-gnejna-thumb.webp"
+            "thumb": "/assets/images/places/hidden-rocky-beach-gnejna-thumb.webp",
+            "card": "/assets/images/places/hidden-rocky-beach-gnejna-card.webp"
         },
         {
             "id": 71,
@@ -3394,7 +3455,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/blata/blata-tal-melh-passage-thumb.webp"
+            "thumb": "/assets/images/places/blata/blata-tal-melh-passage-thumb.webp",
+            "card": "/assets/images/places/blata/blata-tal-melh-passage-card.webp"
         },
         {
             "id": 72,
@@ -3430,7 +3492,8 @@
             ],
             "locality": "Mġarr",
             "showLabel": false,
-            "thumb": "/assets/images/places/qarraba-cliffs/qarraba-cliffs-thumb.webp"
+            "thumb": "/assets/images/places/qarraba-cliffs/qarraba-cliffs-thumb.webp",
+            "card": "/assets/images/places/qarraba-cliffs/qarraba-cliffs-card.webp"
         },
         {
             "id": 73,
@@ -3632,7 +3695,8 @@
             ],
             "locality": "Gozo-Munxar",
             "showLabel": false,
-            "thumb": "/assets/images/places/xlendi-tower-coastal-path/xlendi-tower-coastal-path-thumb.webp"
+            "thumb": "/assets/images/places/xlendi-tower-coastal-path/xlendi-tower-coastal-path-thumb.webp",
+            "card": "/assets/images/places/xlendi-tower-coastal-path/xlendi-tower-coastal-path-card.webp"
         },
         {
             "id": 74,
@@ -3640,6 +3704,7 @@
             "slug": "ghar-hanex",
             "img": "/assets/images/places/ghar-hanex/ghar-hanex.webp",
             "thumb": "/assets/images/places/ghar-hanex/ghar-hanex-thumb.webp",
+            "card": "/assets/images/places/ghar-hanex/ghar-hanex-card.webp",
             "images": [
                 "/assets/images/places/ghar-hanex/ghar-hanex.webp",
                 "/assets/images/places/ghar-hanex/ghar-hanex-2.webp",
@@ -4107,6 +4172,7 @@
             "description": "Tucked away on the rugged Delimara peninsula in Malta's south-east, just beyond the better-known <b>St Peter's Pool</b>, Il-Kalanka is a small, untouched bay reached by a short stepped path of around 50 metres. At the bottom you'll find a natural swimming spot framed by low limestone cliffs and crystal-clear, deep turquoise water. It's one of the quietest corners of the south — even at weekends there's usually room for a peaceful swim, a snorkel along the rocky edges, or a cliff jump (the drops here are higher than at St Peter's Pool, so take care). There are no facilities and parking is limited but free, so bring water, food, and a pair of water shoes — the rocks can be sharp.",
             "img": "/assets/images/places/il-kalanka/il-kalanka.webp",
             "thumb": "/assets/images/places/il-kalanka/il-kalanka-thumb.webp",
+            "card": "/assets/images/places/il-kalanka/il-kalanka-card.webp",
             "images": [
                 "/assets/images/places/il-kalanka/il-kalanka.webp",
                 "/assets/images/places/il-kalanka/il-kalanka-2.webp",
@@ -4182,6 +4248,7 @@
             "description": "Hidden away beneath the wild Selmun headland in Malta's far north, <b>Imġiebaħ Bay</b> (also spelt Mġiebaħ or Imgiebah) is one of the island's last truly remote sandy beaches. There's no bus, no kiosk and no road to the water — you leave the car up by Selmun and walk down a path of roughly 700 metres, dropping through open countryside until a crescent of soft reddish-gold sand opens up below you. The reward is a quiet, shallow bay with clear turquoise water that's ideal for a long swim or a snorkel along the rocky sides, and far fewer people than the big northern beaches. There are no facilities of any kind, so bring water, food, shade and everything you'll need — and take it all back out with you. The walk back up is the real workout, so leave a little energy (and time before sunset) for the climb.",
             "img": "/assets/images/places/imgiebah-beach/imgiebah-beach.webp",
             "thumb": "/assets/images/places/imgiebah-beach/imgiebah-beach-thumb.webp",
+            "card": "/assets/images/places/imgiebah-beach/imgiebah-beach-card.webp",
             "images": [
                 "/assets/images/places/imgiebah-beach/imgiebah-beach.webp",
                 "/assets/images/places/imgiebah-beach/imgiebah-beach-2.webp",
@@ -4347,6 +4414,7 @@
             "description": "Tucked into the rugged cliffs west of <b>Xlendi Bay</b>, on Gozo's wild southern coast, <b>L-Għar ta' Santa Katarina</b> — Saint Catherine's Cave — is one of those places you only ever stumble on from the water. There's no path down and no sign pointing the way: you rent a kayak or paddleboard in Xlendi and follow the cliffs for fifteen or twenty minutes until a gargantuan cavern opens up ahead, complete with its own little rock beach hidden inside. The rock here is raw and weathered — nothing like the smooth pale grottoes elsewhere on the island — and the water glows an unreal turquoise beneath the arch. It's a dream spot to swim, snorkel the small reef and canyon along the edges, or scramble up the pitted ledges for a cliff jump into the deep blue. Look closely at the walls and you'll find graffiti carved into the rock a century ago by earlier visitors. Bring everything you need — there are no facilities out here — pick a calm day, and keep an eye on the swell and wind before you set off.",
             "img": "/assets/images/places/l-ghar-ta-santa-katarina/l-ghar-ta-santa-katarina.webp",
             "thumb": "/assets/images/places/l-ghar-ta-santa-katarina/l-ghar-ta-santa-katarina-thumb.webp",
+            "card": "/assets/images/places/l-ghar-ta-santa-katarina/l-ghar-ta-santa-katarina-card.webp",
             "images": [
                 "/assets/images/places/l-ghar-ta-santa-katarina/l-ghar-ta-santa-katarina.webp",
                 "/assets/images/places/l-ghar-ta-santa-katarina/l-ghar-ta-santa-katarina-2.webp",
@@ -4480,6 +4548,7 @@
             "description": "On the wild north-east coast of Gozo, in the limits of <b>Qala</b> just beyond <b>Daħlet Qorrot</b> bay, Tas-Simar is a striking natural arch — a slender bridge of weathered rock the sea has carved clean through the cliff, with clear turquoise water swirling in the inlet below. It's a hidden, unmarked spot: park at Daħlet Qorrot (the little bay lined with boathouses cut into the limestone) and follow the rocky coastline south for roughly a kilometre, picking your way over open rock until the arch appears above a secluded cove. On calm days the sheltered inlet is a gorgeous place for a swim or a snorkel. The rock is rugged and can be slippery near the water, and the arch itself is a real cliff edge with big drops — unbeatable for photos, but take genuine care and don't trust the span in strong wind. No facilities and no shade, so bring water, grippy shoes and everything you'll need.",
             "img": "/assets/images/places/tas-simar-natural-arch/tas-simar-natural-arch.webp",
             "thumb": "/assets/images/places/tas-simar-natural-arch/tas-simar-natural-arch-thumb.webp",
+            "card": "/assets/images/places/tas-simar-natural-arch/tas-simar-natural-arch-card.webp",
             "images": [
                 "/assets/images/places/tas-simar-natural-arch/tas-simar-natural-arch-3.webp",
                 "/assets/images/places/tas-simar-natural-arch/tas-simar-natural-arch.webp",
@@ -4653,6 +4722,7 @@
             "description": "Tucked into the cliffs on the wild eastern tip of Gozo near Qala, this unnamed sea pool is one of those places that barely feels real — a pocket of glassy, electric-turquoise water sitting inside a huge limestone grotto, with a natural rock window letting the light pour straight in. There's no sign and no official name for it, so I just call it the <b>Hidden Pool</b>. Getting to it is the catch: it's easily the hardest spot on this whole list to reach. The rock around the pool drops straight into deep water, so the honest way in is to <b>swim</b> — paddle around the coast, or come by kayak or boat and slip inside. Some people scramble down the rocks with a bit of climbing, but I really wouldn't recommend it unless you know exactly what you're doing; wet limestone is unforgiving. There are no facilities of any kind out here, so bring water, decent shoes and take everything back out with you. Make the effort, though, and you get this quiet, cathedral-like pool almost entirely to yourself.",
             "img": "/assets/images/places/hidden-pool-qala/hidden-pool-qala.webp",
             "thumb": "/assets/images/places/hidden-pool-qala/hidden-pool-qala-thumb.webp",
+            "card": "/assets/images/places/hidden-pool-qala/hidden-pool-qala-card.webp",
             "images": [
                 "/assets/images/places/hidden-pool-qala/hidden-pool-qala.webp",
                 "/assets/images/places/hidden-pool-qala/hidden-pool-qala-2.webp",
