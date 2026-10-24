@@ -43,6 +43,14 @@ body {
   --shadow-panel:         0 -4px 24px rgba(0, 0, 0, 0.12);
   --transition:           0.15s;
 
+  // ── Editorial brand palette (landing page + 30 Places) ──
+  // Warm limestone + charcoal, for public editorial pages rather than app UI.
+  --color-primary-deep:   #d98e12;
+  --color-cream:          #fbf7ef;
+  --color-cream-line:     #e7ddca;
+  --color-charcoal:       #15171c;
+  --color-warm-muted:     #6f675b;
+
   // ── Semantic state colors ────────────────────────────────
   --color-danger:              #dc2626;
   --color-danger-dark:         #991b1b;

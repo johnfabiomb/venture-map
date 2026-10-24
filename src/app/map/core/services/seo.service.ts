@@ -9,6 +9,14 @@ import {
 
 export type { SeoPage } from './seo.config';
 
+/** One entry of the "30 Places" ItemList (structurally matched by the page's TopPlace). */
+export interface TrendListItem {
+  num: number;
+  name: string;
+  slug: string;
+  image: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SeoService {
   private titleService = inject(Title);
@@ -19,9 +27,9 @@ export class SeoService {
     this.apply(PAGE_SEO[page]);
   }
 
-  setTrendPage(revealed: Array<{ num: number; name: string; id: number | null }>): void {
+  setTrendPage(places: TrendListItem[]): void {
     this.apply(TREND_SEO);
-    this.setTrendJsonLd(revealed);
+    this.setTrendJsonLd(places);
   }
 
   updateMetaData(location?: Location): void {
@@ -158,7 +166,7 @@ export class SeoService {
     });
   }
 
-  private setTrendJsonLd(revealed: Array<{ num: number; name: string; id: number | null }>): void {
+  private setTrendJsonLd(places: TrendListItem[]): void {
     const script = this.document.querySelector('script[type="application/ld+json"]');
     if (!script) return;
 
@@ -173,12 +181,14 @@ export class SeoService {
           name: '30 Best Places to Visit in Malta',
           description: TREND_SEO.desc,
           url: TREND_SEO.url,
-          numberOfItems: 30,
-          itemListElement: revealed.map(loc => ({
+          numberOfItems: places.length,
+          // Canonical location URLs: the old `/malta?locationId=` form only redirects.
+          itemListElement: places.map(place => ({
             '@type': 'ListItem',
-            position: loc.num,
-            name: loc.name,
-            url: loc.id !== null ? `${BASE_URL}/malta?locationId=${loc.id}` : TREND_SEO.url,
+            position: place.num,
+            name: place.name,
+            url: `${BASE_URL}/malta/locations/${place.slug}/`,
+            image: `${BASE_URL}${place.image}`,
           })),
         },
       ],

@@ -26,10 +26,10 @@ export const DEFAULT_SEO: SeoConfig = {
 
 export const TREND_SEO: SeoConfig = {
   title: "30 Best Places to Visit in Malta (2026) · Explorer's Guide",
-  desc: "Explore 30 of Malta's most breathtaking hidden gems — sea caves, cliff trails, remote valleys and secret coastlines most tourists never find. A firsthand bucket-list by John Montaño.",
+  desc: "Explore 30 of Malta's most breathtaking places: sea caves, cliff trails, remote valleys and secret coastlines most tourists never find. A firsthand bucket list by John Montaño.",
   url: `${BASE_URL}/malta/30-places-2026/`,
-  image: `${BASE_URL}/assets/images/places/ta-maria-cave/TaMarijaCave.png`,
-  imageAlt: "Ta' Marija Cave — Malta hidden gem",
+  image: `${BASE_URL}/assets/og-30-places-2026.jpg`,
+  imageAlt: '30 places to visit in Malta, 2026 edition, by John Montaño',
   keywords: 'places to visit in Malta, best places Malta 2026, Malta bucket list, Malta hidden gems, Malta travel guide, Malta sea caves, Malta cliff walks, Gozo hidden spots, Malta hiking trails, what to see in Malta, Malta must see, Malta off the beaten path',
 };
 

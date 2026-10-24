@@ -6,6 +6,20 @@ All notable changes to Venture Map are recorded here.
 
 ## [Unreleased]
 
+### Changed
+- **The 30 Places page (`/malta/30-places-2026`) is redesigned** in the landing page's warm editorial palette: a full-bleed photo hero with live stats, a sticky filter row (Malta / Gozo / Comino / Hidden gems / Caves / Beaches / Easy to reach, each with its count) and a photo grid where every card shows the place's own picture, number, area and how hard it is to reach. Cards are real links to the canonical location URLs, so the prerendered page now links all 30 location pages.
+  - Removed: the "N of 30 revealed" progress bar and locked placeholders (the series is complete), the decorative chips that looked like filters but did nothing, and the duplicate "Explore full map" (it was both a hero button and the last CTA card). The deals/events/groups cards moved below the list, so the list is no longer pushed under the fold.
+  - The list stores only `{num, name, id}`; island, area, difficulty, photo and slug come from `locations.json` (`top-places.data.ts`). Names no longer repeat the island the card already shows ("Ramla Bay, Gozo" → "Ramla Bay").
+  - "Back to list" returns to the same filter and scrolls to the card that was opened (`TopPlacesState`), instead of resetting to the top.
+  - Fires `pageView`, `top_places_filter` and `top_place_click`.
+- **The welcome sign-in popup waits on the 30 Places page** and shows on the first map page instead. That page is where the Instagram "30" DM sends people, and a sign-in wall over the list blocked the thing they came for.
+- **`convert-to-webp.js` also makes a 600×750 `-card.webp`** (smart-cropped portrait, ~68 KB) for every cover and writes a `card` field into `locations.json`. Covers were up to 3 MB each and the 120px thumbs too small for a photo list.
+
+### Fixed
+- **The 30 Places share preview had no image.** `og:image` pointed at `TaMarijaCave.png`, deleted when covers became WebP. It now uses a dedicated 1200×630 JPG collage (`assets/og-30-places-2026.jpg`, `scripts/gen-og-top-places.js`); JPG because not every DM preview renders WebP.
+- **The 30 Places structured data linked to redirects** (`/malta?locationId=`); the `ItemList` now uses canonical `/malta/locations/:slug/` URLs plus each place's image.
+- **Carolina Grotto had no `img`** (only a gallery), so it got no cover-derived assets; it now uses its first gallery photo as the cover.
+
 ### Fixed
 - **Dialogs were rendering browser-default buttons and labels.** `.btn`, `.field` and friends live in `booking/platform/admin.shared.scss`, which PAGE components `@use` — so each page gets its own scoped copy and a `ui/` component gets nothing. The class is still in the template, so nothing errors; it just looks broken. It affected **Record a payment, Record a cost, Delivery, Add a document, the work editor, board columns, work settings and the guided tour**.
   - The precise cause is worth knowing: a component with its own `.scss` file can `@use` the shared partial (the confirm dialog does, and was always fine). A component with **inline `styles: []`** cannot — and those are exactly the broken ones.

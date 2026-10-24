@@ -1,76 +1,118 @@
-import { Component, inject } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { Router, RouterModule, Scroll } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter, take } from 'rxjs';
+import { locations } from '@assets/locations.json';
+import { Location } from '@map/core/models';
 import { SeoService } from '@map/core/services/seo.service';
+import { AnalyticsService } from '@map/core/services/analytics.service';
+import { difficultyColor } from '@map/core/utils/location-filter.util';
 import { FEATURES } from '../../feature-flags';
+import {
+  TOP_PLACES_2026, TOP_PLACE_FILTERS, TopPlace, TopPlaceFilterId,
+  matchesTopPlaceFilter, resolveTopPlaces,
+} from './top-places.data';
+import { TopPlacesState } from './top-places.state';
 
-interface TrendLocation {
-  num: number;
-  name: string;
-  id: number | null; // null = not in DB yet
-}
+const PLACES = resolveTopPlaces(TOP_PLACES_2026, locations as Location[]);
 
-const REVEALED: TrendLocation[] = [
-  { num: 1,  name: 'Gozo Salt Pans, Xwejni',           id: 65 },
-  { num: 2,  name: 'Ramla Bay, Gozo',                  id: 66 },
-  { num: 3,  name: 'Argotti Botanic Gardens',           id: 67 },
-  { num: 4,  name: 'Qarraba Cliffs Trail, Mellieħa',   id: 72 },
-  { num: 5,  name: 'Hondoq ir-Rummien',                id: 68 },
-  { num: 6,  name: 'Rdum il-Qammieh Viewpoint',        id: 69 },
-  { num: 7,  name: 'Wied il-Mielaħ Window',            id: 23 },
-  { num: 8,  name: 'Ta\' Kalanka Sea Cave',             id: 49 },
-  { num: 9,  name: 'Fomm ir-Riħ',                      id: 36 },
-  { num: 10, name: 'Ta\' Marija Cave',                  id: 44 },
-  { num: 11, name: 'Tal-Mixta Cave',                    id: 41 },
-  { num: 12, name: 'Wied il-Għasri',                   id: 63 },
-  { num: 13, name: 'Hidden Rocky Beach near Ġnejna',   id: 70 },
-  { num: 14, name: 'Għar ir-Riħ',                      id: 3  },
-  { num: 15, name: 'Blata tal-Melħ Rock Passage',      id: 40 },
-  { num: 16, name: 'Ix-Xaqqa Valley',                  id: 24 },
-  { num: 17, name: 'Babu Valley / Wied Babu',          id: 59 },
-  { num: 18, name: 'L-Għar ta\' Bla Saqaf',           id: 16 },
-  { num: 19, name: 'Xlendi Tower Coastal Path',        id: 73 },
-  { num: 20, name: 'Mini Inland Sea',                  id: 52 },
-  { num: 21, name: 'Għar Ħanex Sea Cave',              id: 74 },
-  { num: 22, name: 'Carolina Grotto, Xlendi',          id: 58 },
-  { num: 23, name: 'Il-Kalanka, Delimara',             id: 75 },
-  { num: 24, name: 'Paradise Bay',                     id: 55 },
-  { num: 25, name: 'Imġiebaħ Beach',                   id: 76 },
-  { num: 26, name: "L-Għar ta' Santa Katarina",        id: 77 },
-  { num: 27, name: 'Tas-Simar Natural Arch',           id: 78 },
-  { num: 28, name: 'Munxar Path',                       id: 8  },
-  { num: 29, name: 'Dingli Cliffs',                     id: 19 },
-  { num: 30, name: 'Hidden Pool, Qala',                 id: 79 },
-];
-
-const TOTAL = 30;
+const DIFFICULTY_LABEL: Record<TopPlace['difficulty'], string> = {
+  easy: 'Easy access',
+  moderate: 'Some walking',
+  hard: 'Hard to reach',
+};
 
 @Component({
   selector: 'app-top-places',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RouterModule],
   templateUrl: './top-places.component.html',
   styleUrl: './top-places.component.scss',
 })
 export class TopPlacesComponent {
-  readonly revealed  = REVEALED;
-  readonly locked    = Array.from({ length: TOTAL - REVEALED.length }, (_, i) => REVEALED.length + i + 1);
-  readonly total     = TOTAL;
-  readonly features  = FEATURES;
-
   private readonly router = inject(Router);
   private readonly seo = inject(SeoService);
+  private readonly analytics = inject(AnalyticsService);
+  private readonly state = inject(TopPlacesState);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  readonly features = FEATURES;
+  readonly places = PLACES;
+  readonly filter = this.state.filter;
+
+  readonly filters = TOP_PLACE_FILTERS
+    .map(f => ({ ...f, count: PLACES.filter(p => matchesTopPlaceFilter(p, f.id)).length }))
+    .filter(f => f.count > 0);
+
+  readonly visible = computed(() => PLACES.filter(p => matchesTopPlaceFilter(p, this.filter())));
+
+  readonly stats = {
+    places: PLACES.length,
+    hidden: PLACES.filter(p => p.hidden).length,
+    islands: new Set(PLACES.map(p => p.island)).size,
+  };
 
   constructor() {
-    this.seo.setTrendPage(REVEALED);
+    this.seo.setTrendPage(PLACES);
+    if (this.isBrowser) {
+      this.analytics.pageView(window.location.href, '30 Places to Visit in Malta');
+      this.restoreScrollAfterNavigation();
+    }
   }
 
-  open(loc: TrendLocation): void {
-    if (loc.id !== null) {
-      // Navigate by numeric id — LocationPageComponent redirects to the canonical slug URL
-      this.router.navigate(['/malta/locations', loc.id], { queryParams: { backTo: '30-places-2026' } });
-    } else {
-      this.router.navigate(['/malta'], { queryParams: { backTo: '30-places-2026' } });
+  difficultyLabel(place: TopPlace): string {
+    return DIFFICULTY_LABEL[place.difficulty];
+  }
+
+  difficultyColor(place: TopPlace): string {
+    return difficultyColor(place.difficulty);
+  }
+
+  selectFilter(id: TopPlaceFilterId): void {
+    if (id === this.filter()) return;
+    this.state.setFilter(id);
+    this.analytics.event('top_places_filter', { filter: id });
+
+    // Once the visitor has scrolled into the list, a filter change would leave them
+    // looking at a random spot mid-list; bring the first result back into view.
+    const list = this.document.getElementById('places');
+    if (list && list.getBoundingClientRect().top < 0) {
+      list.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  }
+
+  scrollToList(): void {
+    this.document.getElementById('places')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  onOpen(place: TopPlace): void {
+    this.state.rememberOpened(place.slug);
+    this.analytics.event('top_place_click', {
+      position: place.num,
+      location_title: place.location.title,
+      location_id: place.location.id,
+    });
+  }
+
+  /**
+   * The router scrolls to the top on every forward navigation (in-memory scrolling).
+   * Waiting for its `Scroll` event and then bringing the last opened card into view
+   * is what makes "Back to list" land where the visitor left. Browser back/forward
+   * carries its own saved position, which the router restores, so leave that alone.
+   */
+  private restoreScrollAfterNavigation(): void {
+    this.router.events.pipe(
+      filter((e): e is Scroll => e instanceof Scroll),
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(e => {
+      const slug = this.state.takeLastOpened();
+      if (!slug || e.position) return;
+      requestAnimationFrame(() =>
+        this.document.getElementById(`place-${slug}`)?.scrollIntoView({ block: 'center' }));
+    });
   }
 }

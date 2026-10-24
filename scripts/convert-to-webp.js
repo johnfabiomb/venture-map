@@ -4,6 +4,8 @@
  *    updates all source file references.
  * 2. Generates 120x120 thumbnails for every location cover image,
  *    saves as [name]-thumb.webp, and writes a `thumb` field into locations.json.
+ * 3. Generates 600x750 card images (smart-cropped portrait) for every cover,
+ *    saves as [name]-card.webp, and writes a `card` field into locations.json.
  *
  * Usage: node scripts/convert-to-webp.js
  */
@@ -16,6 +18,8 @@ const IMAGES_DIR    = path.join(__dirname, '../src/assets/images');
 const LOCATIONS_JSON = path.join(__dirname, '../src/assets/locations.json');
 const QUALITY       = 85;
 const THUMB_SIZE    = 120; // px — pin canvas is 80px, 120 covers 1.5× retina
+const CARD_WIDTH    = 600; // px: 4:5 portrait, ~300px wide cards at 2× retina
+const CARD_HEIGHT   = 750;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -155,6 +159,77 @@ async function generateThumbs() {
   }
 }
 
+// ── Step 3: Generate card images ──────────────────────────────────────────────
+// Mid-size portrait crops for photo lists (e.g. the 30 Places page). The cover
+// is far too heavy for a grid of 30 and the 120px thumb is too small to show.
+
+async function generateCards() {
+  const locations = JSON.parse(fs.readFileSync(LOCATIONS_JSON, 'utf8')).locations;
+
+  let generated = 0;
+  let skipped = 0;
+  let totalSize = 0;
+  const cardUpdates = []; // [{ thumb, oldCard, newCard }]
+
+  for (const loc of locations) {
+    if (!loc.img) continue;
+
+    const srcPath  = path.join(__dirname, '../src', loc.img);
+    const cardPath = srcPath.replace(/\.webp$/, '-card.webp');
+    const cardUrl  = loc.img.replace(/\.webp$/, '-card.webp');
+
+    if (fs.existsSync(cardPath) && loc.card === cardUrl) {
+      skipped++;
+      continue;
+    }
+
+    if (!fs.existsSync(srcPath)) {
+      console.warn(`  WARNING: cover image not found: ${srcPath}`);
+      continue;
+    }
+
+    if (!fs.existsSync(cardPath)) {
+      // `attention` keeps the most striking region in frame when a landscape
+      // cover is cropped to portrait, instead of blindly taking the centre.
+      await sharp(srcPath)
+        .resize(CARD_WIDTH, CARD_HEIGHT, { fit: 'cover', position: sharp.strategy.attention })
+        .webp({ quality: 78 })
+        .toFile(cardPath);
+    }
+
+    const size = fs.statSync(cardPath).size;
+    totalSize += size;
+    cardUpdates.push({ thumb: loc.thumb, oldCard: loc.card, newCard: cardUrl });
+    generated++;
+    console.log(`  ${(size / 1024).toFixed(0).padStart(4)}KB  ${path.basename(cardPath)}`);
+  }
+
+  // Same surgical-edit approach as thumbs; a new `card` field goes after `thumb`.
+  if (cardUpdates.length > 0) {
+    let content = fs.readFileSync(LOCATIONS_JSON, 'utf8');
+    for (const { thumb, oldCard, newCard } of cardUpdates) {
+      if (oldCard != null) {
+        content = content.replace(`"card": "${oldCard}"`, `"card": "${newCard}"`);
+      } else if (thumb) {
+        content = content.replace(
+          `"thumb": "${thumb}"`,
+          `"thumb": "${thumb}",\n            "card": "${newCard}"`
+        );
+      } else {
+        console.warn(`  WARNING: no thumb to anchor the card field after: ${newCard}`);
+      }
+    }
+    fs.writeFileSync(LOCATIONS_JSON, content, 'utf8');
+  }
+
+  if (generated > 0) {
+    console.log(`\n  Generated ${generated} card images, total ${(totalSize / 1024).toFixed(0)}KB`);
+  }
+  if (skipped > 0) {
+    console.log(`  Skipped ${skipped} (already up to date)`);
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -186,6 +261,10 @@ async function main() {
   // Step 2 — generate thumbnails for map pins
   console.log(`Generating ${THUMB_SIZE}×${THUMB_SIZE} thumbnails for map pins...`);
   await generateThumbs();
+
+  // Step 3: generate card images for photo lists
+  console.log(`\nGenerating ${CARD_WIDTH}×${CARD_HEIGHT} card images...`);
+  await generateCards();
 
   console.log('\nDone.');
 }

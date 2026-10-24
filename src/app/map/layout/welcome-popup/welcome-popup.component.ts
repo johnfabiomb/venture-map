@@ -1,5 +1,8 @@
-import { Component, OnInit, PLATFORM_ID, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { NavigationEnd, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, filter, map, merge, of, take } from 'rxjs';
 import { AuthService } from '@map/core/services/auth.service';
 import { SignInFormComponent, FormState } from '@map/ui/sign-in-form/sign-in-form.component';
 import { InAppBrowserService } from '@map/core/services/in-app-browser.service';
@@ -144,6 +147,14 @@ export class WelcomePopupComponent implements OnInit {
   readonly formState = signal<FormState>('default');
   private readonly STORAGE_KEY = 'vm_welcome_shown';
 
+  // Pages people arrive at to READ (the 30 Places list is what the Instagram "30"
+  // DM links to). A sign-in wall there blocks the very thing they came for, so the
+  // popup waits for the first map page instead.
+  private static readonly QUIET_PATHS = ['/malta/30-places-2026'];
+
+  private readonly router     = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
     // Initialize correct IAB state before first render so header/benefits stay visible
     if (isPlatformBrowser(this.platformId) && this.iab.isInAppBrowser()) {
@@ -163,6 +174,22 @@ export class WelcomePopupComponent implements OnInit {
     if (this.auth.isLoggedIn()) return;
     if (localStorage.getItem(this.STORAGE_KEY)) return;
 
+    // By the time this runs the landing navigation has usually already ended, so
+    // start from the current URL; if one is still in flight, wait for it instead.
+    const current$ = this.router.getCurrentNavigation() ? EMPTY : of(this.router.url);
+    const ended$ = this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(e => e.urlAfterRedirects),
+    );
+    merge(current$, ended$).pipe(
+      map(url => url.split(/[?#]/)[0].replace(/\/$/, '')),
+      filter(path => !WelcomePopupComponent.QUIET_PATHS.includes(path)),
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => this.showAfterDelay());
+  }
+
+  private showAfterDelay(): void {
     setTimeout(() => {
       if (!this.auth.isLoggedIn()) {
         this.visible.set(true);
