@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as _cors } from '../_shared/cors.ts';
-import { listEvents, createCalendarEvent } from '../_shared/google-calendar.ts';
+import { listEvents, createCalendarEvent, stableEventId } from '../_shared/google-calendar.ts';
 
 const corsHeaders = { ..._cors, 'Content-Type': 'application/json' };
 
@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
           startAt: booking.start_at,
           endAt: booking.end_at,
           bookingRef: booking.booking_ref,
+          // The same id ensureBookingEvent would use for a booking with no slot rows, so
+          // the two paths converge on ONE event instead of each making its own.
+          eventId: stableEventId('jm', booking.id),
         });
         await supabase.from('bookings').update({ google_event_id: eventId }).eq('id', booking.id);
         pushed++;

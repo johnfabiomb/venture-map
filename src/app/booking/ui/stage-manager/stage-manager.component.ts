@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, input, model, outpu
 import { FormsModule } from '@angular/forms';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
-import { BookingAdminService, WorkStage, GCAL_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, WorkStage, PICKABLE_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -105,12 +105,12 @@ export class StageManagerComponent {
   readonly stages = input<WorkStage[]>([]);
   readonly changed = output<void>();
 
-  readonly colors = GCAL_COLORS;
+  readonly colors = PICKABLE_COLORS;
   /** The dot shows the colour itself — a name alone tells you nothing about what the
    *  calendar will look like. */
   readonly colorOptions: SelectOption[] = [
     { value: '', label: 'Default' },
-    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+    ...PICKABLE_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
   ];
   readonly busy = signal(false);
   readonly rows = signal<WorkStage[]>([]);

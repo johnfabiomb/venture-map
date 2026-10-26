@@ -1,4 +1,4 @@
-import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, CalendarTarget } from './google-calendar.ts';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, stableEventId, CalendarTarget } from './google-calendar.ts';
 import { bookingCalendars, noteWorkerCalendarError } from './google-targets.ts';
 
 // Single source of truth for the Google Calendar event of a booking.
@@ -18,6 +18,19 @@ const PROGRESS_LABEL: Record<string, string> = {
 };
 
 const BLOCKING_STATUSES = ['booked', 'in_progress', 'done'];
+
+// A booking whose time is HELD but which nobody has confirmed yet. Deliberately the
+// same rule as `slot_set_blocking` in the schema: that one decides whether the slot is
+// reserved in the database, this one decides whether the diary admits it, and they must
+// agree or the calendar lies. A client's own un-approved request is not here — it doesn't
+// block either, so it stays off the calendar until it's approved.
+const heldUnconfirmed = (status: string, createdBy: string | null): boolean =>
+  status === 'hold' || (status === 'pending' && createdBy === 'admin');
+
+/** Reserved for exactly that state and removed from every colour picker, because a status
+ *  colour that can also be chosen by hand stops telling you anything. Graphite: provisional
+ *  rather than alarming, and distinct from the blue of a shoot and the yellow of editing. */
+const PENDING_COLOR_ID = '8';
 
 function pickName(v: unknown): string | null {
   const o = Array.isArray(v) ? v[0] : v;
@@ -52,13 +65,19 @@ interface BookingRow {
   notes: string | null;
   /** 'full' | 'minimal' — how much this event's description may disclose. */
   calendar_detail: string | null;
+  /** 'admin' | 'client' — WHO raised it, which decides whether a pending one holds the slot. */
+  created_by: string | null;
   client: unknown;
   service: unknown;
   payments: Array<{ amount: number; status: string; method: string; deleted_at: string | null }> | null;
   slots: SlotRow[] | null;
 }
 
-function composeDescription(b: BookingRow): string {
+function composeDescription(b: BookingRow, pending: boolean): string {
+  // Said in words, not only in colour: a grey event in an agenda list, in a phone
+  // notification or in anyone else's copy of the invite carries no colour at all.
+  const head = pending ? ['To confirm: not agreed yet.', ''] : [];
+
   // ── 'minimal' — safe to have other people in the event ────────────────────
   // A Google Calendar event has ONE description, and every attendee reads it. So the moment
   // a second shooter or the client is invited, whatever is here is theirs: the total, how
@@ -66,7 +85,7 @@ function composeDescription(b: BookingRow): string {
   // 'minimal' keeps what a collaborator actually needs to turn up and do the job, and drops
   // everything commercial. The booking ref stays LAST, exactly where it is at 'full'.
   if (b.calendar_detail === 'minimal') {
-    const lines: string[] = [];
+    const lines: string[] = [...head];
     if (b.description?.trim()) lines.push(b.description.trim(), '');
     const who = pickName(b.client);
     const svc = pickName(b.service);
@@ -94,7 +113,7 @@ function composeDescription(b: BookingRow): string {
     payment = 'Awaiting payment';
   }
 
-  const lines: string[] = [];
+  const lines: string[] = [...head];
   // The admin's free-text work description leads; the auto summary follows.
   if (b.description?.trim()) lines.push(b.description.trim(), '');
   const client = pickName(b.client);
@@ -116,7 +135,7 @@ function composeDescription(b: BookingRow): string {
  */
 export async function ensureBookingEvent(service: SupabaseClient, bookingId: string): Promise<string | null> {
   const { data } = await service.from('bookings')
-    .select('id, org_id, staff_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, calendar_color_id, client:client_id(name), service:service_id(name), staffRow:staff_id(calendar_color_id), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id)')
+    .select('id, org_id, staff_id, booking_ref, title, description, location, start_at, end_at, price_total, status, production_status, google_event_id, notes, calendar_detail, calendar_color_id, created_by, client:client_id(name), service:service_id(name), staffRow:staff_id(calendar_color_id), payments(amount, status, method, deleted_at), slots:booking_slots(id, start_at, end_at, label, google_event_id, org_event_id)')
     .eq('id', bookingId)
     .single();
   if (!data) return null;
@@ -135,8 +154,12 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
   // The worker's own colour on the shared calendar, so an overview of five people is
   // readable at a glance. Not applied to their personal calendar: that is their diary and
   // their colour scheme, not ours.
+  // Unconfirmed outranks everything else a colour could say here. On the shared overview
+  // that means status beats identity: "this might not happen" is more useful to read at a
+  // glance than "whose job it is", and the worker's colour comes back on confirmation.
+  const pending = heldUnconfirmed(b.status, b.created_by);
   const sr = Array.isArray(b.staffRow) ? b.staffRow[0] : b.staffRow;
-  const mirrorColor = sr?.calendar_color_id ?? null;
+  const mirrorColor = pending ? PENDING_COLOR_ID : (sr?.calendar_color_id ?? null);
 
   // A shoot's colour (§32). Was never set at all, so Google used the calendar's own
   // default and every booking came out the same blue as everything else — which, now that
@@ -146,12 +169,17 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
     .select('booking_params').eq('id', b.org_id).maybeSingle();
   const orgColor = (orgRow as { booking_params?: Record<string, string> } | null)
     ?.booking_params?.['booking_color_id'];
-  const bookingColor = b.calendar_color_id ?? orgColor ?? '9';
+  const bookingColor = pending ? PENDING_COLOR_ID : (b.calendar_color_id ?? orgColor ?? '9');
 
-  // Only confirmed bookings live on the calendar. (Cancellation handles deletion.)
-  if (!BLOCKING_STATUSES.includes(b.status)) return b.google_event_id ?? null;
+  // What the database is HOLDING is what the calendar shows. An unconfirmed booking the
+  // owner raised already reserves the slot, so keeping it off the diary made the diary lie:
+  // the time was gone and nothing said so, and a free-looking Tuesday could already be
+  // promised. It goes on in the reserved colour, marked "to confirm", and both the colour
+  // and the mark revert by themselves the moment it is paid or approved.
+  // (Cancellation deletes the event; see cancel-booking.)
+  if (!BLOCKING_STATUSES.includes(b.status) && !pending) return b.google_event_id ?? null;
 
-  const description = composeDescription(b);
+  const description = composeDescription(b, pending);
 
   // A booking is one or more time blocks (booking_slots) → one calendar event per block,
   // so a split day (e.g. 13:00–14:00 + 16:00–18:00) shows two events, not one long one.
@@ -172,24 +200,32 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
     const part = label
       ? ` — ${label}`
       : (slots.length > 1 ? ` (${i + 1}/${slots.length})` : '');
-    const summary = `${b.title}${part} [${b.booking_ref}]`;
+    const mark = pending ? ' (to confirm)' : '';
+    const summary = `${b.title}${part}${mark} [${b.booking_ref}]`;
 
     // The worker's own (or legacy) calendar — the one that matters, so a failure here is
     // thrown to the caller.
+    // Derived from the row, so two syncs racing each other land on the SAME event
+    // instead of making two. See stableEventId.
+    const wantId = stableEventId('jm', slot.id === 'envelope' ? b.id : slot.id);
     try {
+      let live = false;
       if (slot.google_event_id) {
-        await updateCalendarEvent(slot.google_event_id, {
+        live = await updateCalendarEvent(slot.google_event_id, {
           summary, description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
           colorId: bookingColor,
         }, cals.primary);
-        eventIds.push(slot.google_event_id);
-      } else {
+        if (live) eventIds.push(slot.google_event_id);
+      }
+      if (!live) {
+        // Either there was no event, or the one we had has been deleted in Google.
         const eventId = await createCalendarEvent({
           // No ref here — createCalendarEvent appends it from `bookingRef`, which is what
           // keeps it last in the title on the create path too.
-          title: `${b.title}${part}`,
+          title: `${b.title}${part}${mark}`,
           description, location: b.location, startAt: slot.start_at, endAt: slot.end_at,
           bookingRef: b.booking_ref, colorId: bookingColor, target: cals.primary,
+          eventId: wantId,
         });
         eventIds.push(eventId);
         if (slot.id !== 'envelope') {
@@ -208,16 +244,21 @@ export async function ensureBookingEvent(service: SupabaseClient, bookingId: str
     // overview MORE important than the worker's own diary, which is backwards.
     if (cals.mirror && slot.id !== 'envelope') {
       try {
+        let mirrorLive = false;
         if (slot.org_event_id) {
-          await updateCalendarEvent(slot.org_event_id, {
+          mirrorLive = await updateCalendarEvent(slot.org_event_id, {
             summary, description, location: b.location,
             startAt: slot.start_at, endAt: slot.end_at, colorId: mirrorColor,
           }, cals.mirror);
-        } else {
+        }
+        if (!mirrorLive) {
           const orgEventId = await createCalendarEvent({
-            title: `${b.title}${part}`, description, location: b.location,
+            title: `${b.title}${part}${mark}`, description, location: b.location,
             startAt: slot.start_at, endAt: slot.end_at, bookingRef: b.booking_ref,
             colorId: mirrorColor, target: cals.mirror,
+            // A different prefix: the overview may be the same calendar as the worker's,
+            // and one id can exist only once per calendar.
+            eventId: stableEventId('mm', slot.id),
           });
           await service.from('booking_slots').update({ org_event_id: orgEventId }).eq('id', slot.id);
         }
@@ -329,18 +370,21 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     const part = label ? ` — ${label}` : (slots.length > 1 ? ` (${i + 1}/${slots.length})` : '');
     const summary = `${w.title}${part}`;
     try {
+      let live = false;
       if (s.google_event_id) {
-        await updateCalendarEvent(s.google_event_id, {
+        live = await updateCalendarEvent(s.google_event_id, {
           summary, description, location: null, startAt: s.start_at, endAt: s.end_at, colorId,
         }, cals.primary);
-        ids.push(s.google_event_id);
-      } else {
+        if (live) ids.push(s.google_event_id);
+      }
+      if (!live) {
         const eventId = await createCalendarEvent({
           title: `${w.title}${part}`, description, location: null, colorId,
           startAt: s.start_at, endAt: s.end_at,
           // Work has no booking ref; the helper appends this in brackets, and a blank one
           // would leave a stray "[]" on every event title.
           bookingRef: '', target: cals.primary,
+          eventId: stableEventId('jm', s.id),
         });
         ids.push(eventId);
         await service.from('booking_slots').update({ google_event_id: eventId }).eq('id', s.id);
@@ -353,15 +397,18 @@ export async function ensureWorkEvent(service: SupabaseClient, workItemId: strin
     // Shared overview, best-effort — same reasoning as a booking's.
     if (cals.mirror) {
       try {
+        let mirrorLive = false;
         if (s.org_event_id) {
-          await updateCalendarEvent(s.org_event_id, {
+          mirrorLive = await updateCalendarEvent(s.org_event_id, {
             summary, description, location: null,
             startAt: s.start_at, endAt: s.end_at, colorId: mirrorColor,
           }, cals.mirror);
-        } else {
+        }
+        if (!mirrorLive) {
           const orgEventId = await createCalendarEvent({
             title: `${w.title}${part}`, description, location: null, colorId: mirrorColor,
             startAt: s.start_at, endAt: s.end_at, bookingRef: '', target: cals.mirror,
+            eventId: stableEventId('mm', s.id),
           });
           await service.from('booking_slots').update({ org_event_id: orgEventId }).eq('id', s.id);
         }

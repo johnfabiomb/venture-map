@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow, MemberLogin, StaffCalendar, GCAL_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, StaffServiceRow, MemberLogin, StaffCalendar, PICKABLE_COLORS, colorHex } from '@booking/core/services/booking-admin.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
@@ -42,7 +42,7 @@ export class StaffAdminComponent implements OnInit {
   readonly calendarBusy = signal('');
   readonly colorOptions: SelectOption[] = [
     { value: '', label: 'No colour' },
-    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+    ...PICKABLE_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
   ];
   calendarFor(staffId: string): StaffCalendar | undefined {
     return this.calendars().find(c => c.staff_id === staffId);

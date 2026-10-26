@@ -2910,6 +2910,12 @@ CREATE INDEX IF NOT EXISTS booking_slots_work_idx
 -- A work block always reserves the worker. John's decision, and the point of the
 -- feature: the hours are already committed, so they are unavailable to clients and
 -- warned about for him, exactly like a shoot.
+--
+-- ⚠ This predicate is mirrored in `supabase/functions/_shared/booking-event.ts`
+-- (BLOCKING_STATUSES + heldUnconfirmed), which decides whether the booking appears in
+-- Google Calendar. The two must agree: whatever reserves a slot here has to be visible in
+-- the diary, or the owner sees a free day that is already promised. If you change the
+-- statuses below, change them there too.
 CREATE OR REPLACE FUNCTION public.slot_set_blocking() RETURNS TRIGGER
 LANGUAGE plpgsql AS $f$
 BEGIN

@@ -32,6 +32,12 @@
             <a class="menu__item" cdkMenuItem [routerLink]="['/bookings/invoice-edit', id]" [queryParams]="{ from: 'booking' }">Edit invoice</a>
             <button class="menu__item" cdkMenuItem (click)="openCostDialog()">Add a cost…</button>
             <a class="menu__item" cdkMenuItem routerLink="/bookings/new" [queryParams]="{ from: id }">Duplicate booking</a>
+            <!-- For when a calendar entry was deleted or edited by hand. Safe to press
+                 repeatedly: the event id is derived from the booking, so a re-sync always
+                 lands on the same event rather than making another. -->
+            <button class="menu__item" cdkMenuItem [disabled]="resyncing()" (click)="resyncCalendar()">
+              {{ resyncing() ? 'Syncing…' : 'Re-sync calendar' }}
+            </button>
           </div>
         </ng-template>
       </div>

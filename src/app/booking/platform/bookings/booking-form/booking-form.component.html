@@ -270,8 +270,13 @@
             <app-info-hint label="Already confirmed">
               Leave it off to send this as a <strong>request</strong>: the slot is held, the
               client sees their invoice and can pay or ask to pay later, and it lands in your
-              <strong>To confirm</strong> list. Turn it on if it is already agreed — it goes
-              into Google Calendar now and the client just gets the invoice.
+              <strong>To confirm</strong> list. Turn it on if it is already agreed and the
+              client just gets the invoice.
+              <br /><br />
+              Either way it goes into Google Calendar, because either way the time is yours:
+              one waiting to be confirmed shows in <strong>grey</strong>, marked
+              <em>to confirm</em>, and turns the normal colour by itself as soon as it is
+              paid or you confirm it.
             </app-info-hint>
           </div>
           }
@@ -351,9 +356,13 @@
               <label>Colour on your calendar</label>
               <app-info-hint label="Calendar colour">
                 Google has eleven fixed event colours, so this offers exactly what it will
-                actually show. Post-production has its own colour per board stage — yellow
-                to start with — so editing time is distinguishable from a shoot without
-                reading the titles.
+                actually show. Post-production has its own colour per board stage (yellow to
+                start with), so editing time is distinguishable from a shoot without reading
+                the titles.
+                <br /><br />
+                Grey is missing on purpose: it is reserved for bookings waiting to be
+                confirmed, so grey on your calendar always means the same thing. A booking
+                takes the colour you pick here as soon as it is confirmed.
               </app-info-hint>
             </div>
             <app-select [value]="calendarColorId" (changed)="calendarColorId = $event"

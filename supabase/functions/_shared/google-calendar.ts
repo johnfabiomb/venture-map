@@ -72,6 +72,25 @@ export async function checkSlotAvailability(
   return blocking.length === 0;
 }
 
+/**
+ * A STABLE Google event id derived from the row that owns the event.
+ *
+ * This is what makes a duplicate impossible rather than merely unlikely. Two things sync
+ * a paid booking within a second of each other — Stripe's webhook and the client's own
+ * success page, both through recordSucceededIntent — and each read `google_event_id` as
+ * null, each created an event, and only one id was written back. The other event stayed
+ * on the calendar for ever, referenced by nothing. (Live: BK-2026-150 appeared twice.)
+ * The payment INSERT was already idempotent; the calendar sync beside it was not.
+ *
+ * Google accepts a client-supplied id in base32hex — lowercase a-v and 0-9, 5 to 1024
+ * characters. A UUID's hex digits are a subset of that, so the row's own id becomes the
+ * event id, and a second create with the same id is refused by Google with 409 instead of
+ * making a second event.
+ */
+export function stableEventId(prefix: string, rowId: string): string {
+  return prefix + rowId.replace(/-/g, '').toLowerCase();
+}
+
 export async function createCalendarEvent(params: {
   title: string;
   description?: string | null;
@@ -86,10 +105,14 @@ export async function createCalendarEvent(params: {
   colorId?: string | null;
   /** Which calendar to create it on. Omitted = the legacy shared calendar. */
   target?: CalendarTarget;
+  /** A deterministic id (see stableEventId). With one, a repeat create is refused by
+   *  Google rather than duplicating the event. */
+  eventId?: string;
 }): Promise<string> {
   const { token, calId } = await resolve(params.target);
 
   const body = {
+    ...(params.eventId ? { id: params.eventId } : {}),
     summary: params.bookingRef ? `${params.title} [${params.bookingRef}]` : params.title,
     description: params.description ?? undefined,
     location: params.location ?? undefined,
@@ -104,6 +127,10 @@ export async function createCalendarEvent(params: {
     body: JSON.stringify(body),
   });
 
+  // 409 = this id already exists on the calendar, which is the race arriving second. The
+  // event the caller wanted IS there, so this is success, not a failure.
+  if (res.status === 409 && params.eventId) return params.eventId;
+
   const data = await res.json();
   if (!data.id) throw new Error(`GCal event creation failed: ${JSON.stringify(data)}`);
   return data.id;
@@ -113,7 +140,7 @@ export async function updateCalendarEvent(
   eventId: string,
   fields: { summary?: string; description?: string; location?: string | null; startAt?: string; endAt?: string; colorId?: string | null },
   target?: CalendarTarget,
-): Promise<void> {
+): Promise<boolean> {
   const { token, calId } = await resolve(target);
   // PATCH only the keys provided; nest start/end as Google expects.
   const body: Record<string, unknown> = {};
@@ -128,7 +155,12 @@ export async function updateCalendarEvent(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  // The event was deleted in Google (by hand, or by someone tidying a duplicate). Report
+  // it rather than throwing, so the caller can simply make it again — otherwise a booking
+  // whose event somebody removed would fail to sync for ever.
+  if (res.status === 404 || res.status === 410) return false;
   if (!res.ok) throw new Error(`GCal update failed (${res.status}): ${await res.text()}`);
+  return true;
 }
 
 export async function deleteCalendarEvent(eventId: string, target?: CalendarTarget): Promise<void> {

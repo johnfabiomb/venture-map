@@ -3,7 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
-import { BookingAdminService, AdminService, AdminStaff, WorkType, GCAL_COLORS } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, AdminService, AdminStaff, WorkType, GCAL_COLORS, PICKABLE_COLORS } from '@booking/core/services/booking-admin.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { LineItem } from '@booking/core/interfaces/invoice.interface';
@@ -82,7 +82,7 @@ export class BookingFormComponent implements OnInit {
   calendarColorId = '';
   readonly colorOptions = computed<SelectOption[]>(() => [
     { value: '', label: this.defaultColorLabel(), hint: 'your usual colour for shoots' },
-    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+    ...PICKABLE_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
   ]);
   /** The org default, named — "Default" alone tells you nothing about what you will see. */
   private orgColorId = '9';
@@ -463,9 +463,11 @@ export class BookingFormComponent implements OnInit {
       if (res.error || !res.id) { this.errorMsg.set(this.errorText(res.error)); return; }
       // Persist the line-item breakdown as the invoice (source of truth).
       await this.data.saveInvoice(org, res.id, { lineItems: items, notes: null, issueDate: null });
-      // Confirmed → push to Google Calendar now. Tentative bookings are pushed only once
-      // confirmed (by you, or when the client pays by card).
-      if (this.confirmed) await this.data.confirmToCalendar(res.id);
+      // Onto the calendar either way. A tentative booking already HOLDS the slot, so
+      // keeping it out of the diary hid time that was genuinely gone — the day looked free
+      // and was not. It goes on in the reserved grey, marked "to confirm", and becomes a
+      // normal shoot by itself once the client pays or it is confirmed by hand.
+      await this.data.pushToCalendar(res.id);
       // The ticket's reserved time needs its OWN calendar event, and nothing was pushing
       // it: create_booking makes the work item and its blocks in the database, but only
       // sync-work-event writes the calendar. So a booking created with a post-production

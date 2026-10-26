@@ -115,6 +115,23 @@ export class BookingDetailComponent implements OnInit {
 
   expiry(d: OrgDocument): 'none' | 'ok' | 'soon' | 'expired' { return this.docs.expiryState(d); }
 
+  readonly resyncing = signal(false);
+
+  /**
+   * Push this booking to Google again. For when an event was deleted or edited by hand —
+   * and safe to press as often as you like, because the event id is derived from the
+   * booking's own rows, so a re-sync lands on the SAME event instead of adding another.
+   */
+  async resyncCalendar(): Promise<void> {
+    if (this.resyncing()) return;
+    this.resyncing.set(true);
+    try {
+      const ok = await this.data.pushToCalendar(this.id);
+      if (ok) this.toast.success('Calendar updated');
+      else this.toast.error('Could not reach Google Calendar.');
+    } finally { this.resyncing.set(false); }
+  }
+
   readonly workEditorOpen = signal(false);
   /** The editor needs the roster for its "Who" field. Loaded only once a card exists —
    *  there is nothing to assign otherwise. */

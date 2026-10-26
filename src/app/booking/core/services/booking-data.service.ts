@@ -498,9 +498,20 @@ export class BookingDataService implements OnDestroy {
   }
 
   /** Decline a pending cash request (frees nothing — it wasn't blocking the slot). */
-  async declineRequest(bookingId: string): Promise<void> {
-    await bookingsDb.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+  async declineRequest(bookingId: string): Promise<{ calendarCleared: boolean }> {
+    // `refund: false` is not a judgement call: a card payment moves a booking to 'booked',
+    // so anything still declinable has nothing to refund.
+    const { data, error } = await bookingsDb.functions.invoke('cancel-booking', { body: { bookingId, refund: false } });
+    // The function is the only thing that can reach Google. If it could not be called at
+    // all, fall back to cancelling in the database — freeing the slot matters more than the
+    // calendar being tidy — and report that the event is still out there.
+    if (error) {
+      await bookingsDb.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+      await this.fetchBookings();
+      return { calendarCleared: false };
+    }
     await this.fetchBookings();
+    return { calendarCleared: (data as { calendar_cleared?: boolean } | null)?.calendar_cleared !== false };
   }
 
   /** All payments recorded against a booking, newest first. */
@@ -907,9 +918,12 @@ export class BookingDataService implements OnDestroy {
 
   /** Admin "confirm now": create/refresh this booking's Google Calendar event immediately
    *  (instead of waiting for the client to pay/confirm). Awaited so the caller knows it ran. */
-  async confirmToCalendar(bookingId: string): Promise<void> {
+  /** Returns whether Google was actually reached, so a caller that tells the owner
+   *  "Calendar updated" is not just guessing. */
+  async pushToCalendar(bookingId: string): Promise<boolean> {
     const { error } = await bookingsDb.functions.invoke('sync-booking-event', { body: { bookingId } });
-    if (error) console.warn('[BookingData] confirmToCalendar:', error.message);
+    if (error) { console.warn('[BookingData] pushToCalendar:', error.message); return false; }
+    return true;
   }
 
   /** Fire-and-forget: re-sync the booking's calendar event(s) to its current slots/title.

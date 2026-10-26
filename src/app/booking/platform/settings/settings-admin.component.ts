@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BookingAdminService, ConnectStatus, OrgMember, OrgInvite, InvoiceDetails, InvoiceSettings, GCAL_COLORS } from '@booking/core/services/booking-admin.service';
+import { BookingAdminService, ConnectStatus, OrgMember, OrgInvite, InvoiceDetails, InvoiceSettings, PICKABLE_COLORS } from '@booking/core/services/booking-admin.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
 import { DocumentDialogComponent } from '@booking/ui/document-dialog/document-dialog.component';
@@ -102,7 +102,7 @@ export class SettingsAdminComponent implements OnInit {
   newMemberColor = '';
   readonly colorOptions: SelectOption[] = [
     { value: '', label: 'No colour' },
-    ...GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
+    ...PICKABLE_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex })),
   ];
   /** The default colour a SHOOT gets on the calendar (§32). Post-production takes its
    *  colour from its board stage instead, set in the Work board's cog. */
@@ -111,7 +111,7 @@ export class SettingsAdminComponent implements OnInit {
    *  written by another screen. */
   private loadedBookingParams: Record<string, unknown> = {};
   readonly bookingColorOptions: SelectOption[] =
-    GCAL_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex }));
+    PICKABLE_COLORS.map(c => ({ value: c.id, label: c.name, color: c.hex }));
   newMemberEmail = '';
   newMemberRole = 'admin';
   readonly addingMember = signal(false);

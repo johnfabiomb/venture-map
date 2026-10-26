@@ -59,6 +59,18 @@ export const GCAL_COLORS: { id: string; name: string; hex: string }[] = [
   { id: '10', name: 'Basil',    hex: '#0b8043' },
   { id: '11', name: 'Tomato',   hex: '#d50000' },
 ];
+/** Graphite, reserved for bookings waiting to be confirmed, and never offered in a
+ *  picker. A status colour only means something if it cannot also be chosen by hand: if
+ *  grey could be somebody's favourite for a confirmed shoot, seeing grey would stop
+ *  telling you anything. Mirrored as PENDING_COLOR_ID in _shared/booking-event.ts, which
+ *  is what actually writes it (an Edge Function can't import from src/). */
+export const PENDING_COLOR_ID = '8';
+
+/** What a picker may offer: everything except the reserved one. */
+export const PICKABLE_COLORS = GCAL_COLORS.filter(c => c.id !== PENDING_COLOR_ID);
+
+/** Resolved against the FULL palette on purpose, so a value saved before the colour was
+ *  reserved still renders as itself instead of falling back to grey-blue. */
 export const colorHex = (id: string | null): string =>
   GCAL_COLORS.find(c => c.id === id)?.hex ?? '#94a3b8';
 

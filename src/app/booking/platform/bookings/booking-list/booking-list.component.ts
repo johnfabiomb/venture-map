@@ -303,8 +303,9 @@ export class BookingListComponent {
     if (!(await this.confirm.ask({ title: 'Decline request', message: `Decline ${b.booking_ref}?`, confirmLabel: 'Decline', danger: true }))) return;
     this.busyId.set(b.id);
     try {
-      await this.data.declineRequest(b.id);
-      this.toast.info(`${b.booking_ref} declined`);
+      const res = await this.data.declineRequest(b.id);
+      if (res.calendarCleared) this.toast.info(`${b.booking_ref} declined`);
+      else this.toast.error(`${b.booking_ref} declined, but its Google Calendar event could NOT be removed: check the calendar connection.`);
       await this.refresh();
     } catch {
       this.toast.error(`Could not decline ${b.booking_ref}.`);
@@ -389,7 +390,7 @@ export class BookingListComponent {
       // Only claim "removed from Google Calendar" when Google actually accepted it — a
       // failed removal (e.g. expired calendar connection) must not read as success.
       if (remove && res.calendarCleared === false) {
-        this.toast.error(`${b.booking_ref} deleted, but its Google Calendar event could NOT be removed — check the calendar connection.`);
+        this.toast.error(`${b.booking_ref} deleted, but its Google Calendar event could NOT be removed: check the calendar connection.`);
       } else {
         this.toast.success(`${b.booking_ref} deleted${remove ? ' · removed from Google Calendar' : ''}`);
       }
