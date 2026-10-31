@@ -12,7 +12,8 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 };
 
 /**
- * Recording a payment, as a modal.
+ * Recording a payment, as a modal: against a booking (the booking page) or an invoice
+ * (the Invoices page, which is the only way to settle an invoice that has no booking).
  *
  * It was an always-open card sitting between the ledger and the costs, so the page
  * carried a form that is used once or twice in a booking's life and read as clutter the
@@ -101,9 +102,11 @@ export class PaymentDialogComponent {
   private readonly toast = inject(ToastService);
 
   readonly open = model(false);
-  readonly bookingId = input.required<string>();
+  readonly bookingId = input<string | null>(null);
+  readonly invoiceId = input<string | null>(null);
   readonly balance = input<number>(0);
-  readonly bookingRef = input<string>('');
+  /** What the toast names: the booking ref, or the invoice number. */
+  readonly reference = input<string>('');
   readonly saved = output<void>();
 
   readonly methods: PaymentMethod[] = ['cash', 'revolut', 'bank', 'card', 'other'];
@@ -143,11 +146,11 @@ export class PaymentDialogComponent {
     try {
       const amount = Number(this.amount());
       const paidAt = this.paidOn() ? new Date(`${this.paidOn()}T12:00:00`).toISOString() : null;
-      const res = await this.data.addPayment(this.bookingId(), {
+      const res = await this.data.addPayment({ bookingId: this.bookingId(), invoiceId: this.invoiceId() }, {
         amount, method: this.method(), note: this.note().trim() || null, paidAt,
       });
       if (res.error) { this.toast.error('Could not record the payment.'); return; }
-      const ref = this.bookingRef();
+      const ref = this.reference();
       this.toast.success(`€${amount.toFixed(2)} payment recorded${ref ? ` for ${ref}` : ''}`);
       this.open.set(false);
       this.saved.emit();

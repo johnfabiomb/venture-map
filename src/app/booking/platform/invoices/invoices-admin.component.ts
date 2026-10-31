@@ -10,6 +10,7 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
+import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
@@ -17,7 +18,7 @@ import { paginate } from '@booking/core/utils/pagination.util';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
 /** What a row's money actually is. */
-type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
 /** `overdue` is a CROSS-CUTTING tab, not a payment status — an overdue invoice is also
  *  unpaid or partial. Kept out of PaymentStatus so the two can never be conflated. */
 /** `deleted` is a different KIND of tab again: its rows come from an RPC (the hide_deleted
@@ -26,7 +27,7 @@ type InvoiceTab = 'all' | PaymentStatus | 'overdue' | 'deleted';
 // Keyed on PaymentStatus, NOT on the tab union: statusLabel() renders a row's payment
 // status, and no row's payment status is ever "overdue".
 const STATUS_LABEL: Record<PaymentStatus, string> = {
-  unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid',
+  unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', void: 'Void',
 };
 
 // The accounting view, read from the `invoice_list` view — the invoice IS the money
@@ -39,7 +40,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent, PaymentDialogComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -95,6 +96,15 @@ export class InvoicesAdminComponent implements OnInit {
     this.costOpen.set(true);
   }
 
+  // ── Record a payment against this invoice ───────────────────────────────
+  readonly payOpen = signal(false);
+  readonly payRow = signal<InvoiceListRow | null>(null);
+
+  openPay(r: InvoiceListRow): void {
+    this.payRow.set(r);
+    this.payOpen.set(true);
+  }
+
   openSend(r: InvoiceListRow, kind: InvoiceEmailKind): void {
     this.sendId.set(r.id);
     this.sendKind.set(kind);
@@ -129,13 +139,14 @@ export class InvoicesAdminComponent implements OnInit {
     { key: 'overdue', label: 'Overdue' },
     { key: 'partial', label: 'Partially paid' },
     { key: 'paid',    label: 'Paid' },
+    { key: 'void',    label: 'Void' },
     { key: 'deleted', label: 'Deleted' },
   ];
   readonly tab = signal<InvoiceTab>('all');
 
   readonly counts = computed<Record<InvoiceTab, number>>(() => {
     const c: Record<InvoiceTab, number> = {
-      all: 0, unpaid: 0, partial: 0, paid: 0, overdue: 0,
+      all: 0, unpaid: 0, partial: 0, paid: 0, void: 0, overdue: 0,
       // Counted from its own list, not from yearScoped — deleted rows never appear there.
       deleted: this.deleted().length,
     };

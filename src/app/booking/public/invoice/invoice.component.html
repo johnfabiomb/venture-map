@@ -55,6 +55,11 @@
         <p class="toolbar-error no-print">{{ payError() }}</p>
       }
 
+      @if (d.invoice.status === 'void') {
+        <!-- Printed too: a void invoice must never pass for one that is owed. -->
+        <p class="void-banner">This invoice has been cancelled. Nothing is owed on it.</p>
+      }
+
       <!-- A4 sheet — extracted into its own reusable component (ui/invoice-sheet) so it can
            also be rendered offscreen elsewhere to produce PDF bytes (e.g. an email-send
            dialog), not just on this page. -->

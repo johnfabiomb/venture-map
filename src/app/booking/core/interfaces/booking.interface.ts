@@ -8,6 +8,15 @@ export type PaymentMethod = 'card' | 'cash' | 'revolut' | 'bank' | 'other';
 export type BookingTab = 'upcoming' | 'pending' | 'unpaid' | 'paid' | 'past' | 'external' | 'cancelled' | 'all' | 'deleted';
 
 /** One payment against a booking. A booking can have many (deposit + partials + final). */
+/**
+ * What a manual payment settles: a booking, an invoice, or an invoice of a booking.
+ * A standalone invoice has no booking, so it can only be named by its invoice id.
+ */
+export interface PaymentTarget {
+  bookingId?: string | null;
+  invoiceId?: string | null;
+}
+
 export interface Payment {
   id: string;
   amount: number;
@@ -17,6 +26,8 @@ export interface Payment {
   paid_at: string | null;
   created_at: string;
   stripe_payment_intent_id: string | null;
+  /** Present when read by invoice (getInvoicePayments): what to resync after a removal. */
+  booking_id?: string | null;
 }
 
 export interface BookingSummary {

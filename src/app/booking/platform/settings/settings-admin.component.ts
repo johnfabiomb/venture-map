@@ -134,7 +134,7 @@ export class SettingsAdminComponent implements OnInit {
   emailFrom = '';
   emailFromName = '';
   emailReplyTo = '';
-  emailBccSelf = true;
+  emailBccSelf = false;
   invoiceSubject = '';
   invoiceBody = '';
   reminderSubject = '';
@@ -233,7 +233,12 @@ export class SettingsAdminComponent implements OnInit {
         this.emailFrom = es.email_from ?? '';
         this.emailFromName = es.email_from_name ?? '';
         this.emailReplyTo = es.email_reply_to ?? '';
-        this.emailBccSelf = es.email_bcc_self ?? true;
+        // Off when the key was never saved, which is also how the sender reads it
+        // (`send-invoice-email` only BCCs when the flag is truthy). The two defaults
+        // disagreeing is what switched this on for an org that never asked for it, and
+        // the copy is a duplicate anyway: invoices go out through the owner's own Gmail,
+        // so every one is already in their Sent folder.
+        this.emailBccSelf = es.email_bcc_self ?? false;
         // Seeded from the shipped defaults so the boxes are never blank — an empty
         // template would otherwise send an empty email.
         this.invoiceSubject  = es.templates?.invoice?.subject  ?? DEFAULT_INVOICE_EMAIL.subject;

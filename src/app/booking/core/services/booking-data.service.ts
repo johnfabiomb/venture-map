@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { onScopeChange } from '@booking/core/utils/scope-reload.util';
-import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, WorkerBusy } from '@booking/core/interfaces/booking.interface';
+import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, PaymentTarget, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
 import { Expense, ExpenseInput, ExpenseRow, BillOutcome } from '@booking/core/interfaces/expense.interface';
@@ -370,6 +370,29 @@ export class BookingDataService implements OnDestroy {
     return (data ?? { restored: false }) as RestoreResult;
   }
 
+  /**
+   * Void an issued invoice (or, with `isVoid` false, bring a void one back). The rules live
+   * in `set_invoice_void` (§33): nothing paid on it, and its booking, if any, cancelled.
+   * Returns the refusal as a sentence the owner can act on.
+   */
+  async setInvoiceVoid(invoiceId: string, isVoid: boolean): Promise<{ ok?: boolean; error?: string }> {
+    const { error } = await bookingsDb.rpc('set_invoice_void', { p_invoice: invoiceId, p_void: isVoid });
+    if (!error) return { ok: true };
+    const why: Record<string, string> = {
+      has_payments: 'It has payments on it: remove or refund them first.',
+      booking_active: 'Its booking is still on: cancel the booking, or edit the invoice instead.',
+      not_issued: 'Only an issued invoice can be voided; a draft is deleted instead.',
+    };
+    const key = Object.keys(why).find(k => error.message.includes(k));
+    return { error: key ? why[key] : error.message };
+  }
+
+  /** Delete a DRAFT invoice (never issued, so no number goes missing). Restorable from Invoices → Deleted. */
+  async deleteDraftInvoice(invoiceId: string): Promise<{ ok?: boolean; error?: string }> {
+    const { error } = await bookingsDb.rpc('soft_delete', { p_table: 'invoices', p_id: invoiceId });
+    return error ? { error: error.message } : { ok: true };
+  }
+
   async restoreInvoice(invoiceId: string): Promise<RestoreResult & { error?: string }> {
     const { data, error } = await bookingsDb.rpc('restore_invoice', { p_invoice: invoiceId });
     if (error) return { restored: false, error: error.message };
@@ -525,30 +548,67 @@ export class BookingDataService implements OnDestroy {
     return (data ?? []) as Payment[];
   }
 
-  /** Record a manual payment (cash / Revolut / bank / other) of any amount. */
-  async addPayment(bookingId: string, input: {
+  /**
+   * Record a manual payment (cash / Revolut / bank / other) of any amount, against a
+   * booking, an invoice, or an invoice of a booking.
+   *
+   * Taking an invoice is what lets a STANDALONE invoice be marked paid at all: it has no
+   * booking, and this used to accept only a booking. Naming the invoice pins the payment
+   * to that document (`set_payment_invoice` only routes payments that name none, to the
+   * booking's oldest unsettled invoice); its booking, when it has one, is written too so
+   * the booking's paid total and its calendar event follow.
+   */
+  async addPayment(target: PaymentTarget, input: {
     amount: number; method: PaymentMethod; note?: string | null; paidAt?: string | null;
   }): Promise<{ ok?: boolean; error?: string }> {
-    const { data: bk } = await bookingsDb.from('bookings').select('org_id').eq('id', bookingId).single();
-    const orgId = (bk as { org_id: string } | null)?.org_id;
+    const invoiceId = target.invoiceId ?? null;
+    let bookingId = target.bookingId ?? null;
+    let orgId: string | undefined;
+    if (invoiceId) {
+      const { data: inv } = await bookingsDb.from('invoices').select('org_id, booking_id').eq('id', invoiceId).single();
+      const row = inv as { org_id: string; booking_id: string | null } | null;
+      orgId = row?.org_id;
+      bookingId = bookingId ?? row?.booking_id ?? null;
+    } else if (bookingId) {
+      const { data: bk } = await bookingsDb.from('bookings').select('org_id').eq('id', bookingId).single();
+      orgId = (bk as { org_id: string } | null)?.org_id;
+    }
     if (!orgId) return { error: 'not_found' };
     const { error } = await bookingsDb.from('payments').insert({
-      org_id: orgId, booking_id: bookingId, amount: input.amount,
+      org_id: orgId, booking_id: bookingId, invoice_id: invoiceId, amount: input.amount,
       type: 'full', status: 'completed', method: input.method,
       note: input.note ?? null,
       paid_at: input.paidAt ?? new Date().toISOString(),
     });
     if (error) return { error: error.message };
-    this.syncBookingEvent(bookingId);
+    if (bookingId) this.syncBookingEvent(bookingId);
     await this.fetchBookings();
     return { ok: true };
   }
 
-  /** Remove a payment (e.g. recorded by mistake). Soft delete via RPC — the row is kept for audit. */
-  async deletePayment(paymentId: string, bookingId: string): Promise<void> {
+  /** Remove a payment (e.g. recorded by mistake). Soft delete via RPC — the row is kept for audit.
+   *  `bookingId` is null for a payment on a standalone invoice: there is no calendar to resync. */
+  async deletePayment(paymentId: string, bookingId: string | null): Promise<void> {
     await bookingsDb.rpc('soft_delete', { p_table: 'payments', p_id: paymentId });
-    this.syncBookingEvent(bookingId);
+    if (bookingId) this.syncBookingEvent(bookingId);
     await this.fetchBookings();
+  }
+
+  /**
+   * An invoice's own payments, oldest first: what settled THIS document, whether or not it
+   * has a booking. The booking page lists a booking's payments; a standalone invoice had
+   * no ledger anywhere, so a payment on it (a card payment from its share link, or one
+   * recorded by hand) could be neither seen nor undone.
+   */
+  async getInvoicePayments(invoiceId: string): Promise<Payment[]> {
+    const { data, error } = await bookingsDb
+      .from('payments')
+      .select('id, amount, method, note, status, paid_at, created_at, stripe_payment_intent_id, booking_id')
+      .eq('invoice_id', invoiceId)
+      .order('paid_at', { ascending: true, nullsFirst: true })
+      .order('created_at', { ascending: true });
+    if (error) console.error('[BookingData] getInvoicePayments:', error.message);
+    return (data ?? []) as Payment[];
   }
 
   // ── Expenses ────────────────────────────────────────────────────────────
@@ -685,7 +745,7 @@ export class BookingDataService implements OnDestroy {
 
   /** Shortcut: record the full outstanding balance as a cash payment. */
   async recordCashPayment(bookingId: string, amount: number): Promise<void> {
-    await this.addPayment(bookingId, { amount, method: 'cash', note: 'Marked as paid' });
+    await this.addPayment({ bookingId }, { amount, method: 'cash', note: 'Marked as paid' });
   }
 
   /** Override the agreed price for a booking. */
@@ -995,12 +1055,38 @@ export class BookingDataService implements OnDestroy {
 
   private async fetchBookings(): Promise<void> {
     const org = this.auth.orgId();
-    if (!org) { this.bookings.set([]); return; }
+    if (!org) { this.bookings.set([]); this.hiddenByScope.set(0); return; }
     const query = this.scoped(
       bookingsDb.from('booking_summary').select('*').eq('org_id', org));
     const { data, error } = await query.order('next_start_at', { ascending: false });
     if (error) console.error('[BookingData] fetchBookings:', error);
     this.bookings.set((data ?? []) as BookingSummary[]);
+    void this.countHiddenByScope(org);
+  }
+
+  /**
+   * How many live bookings the worker scope is currently hiding.
+   *
+   * Exists because the scope now survives a reload, and a filter you cannot see is
+   * indistinguishable from data loss: a job assigned to the other worker simply was not
+   * there, tab after tab, with nothing on screen explaining why. Counted on the server
+   * rather than inferred from the rows on screen, which are already filtered.
+   */
+  readonly hiddenByScope = signal(0);
+
+  private async countHiddenByScope(org: string): Promise<void> {
+    const staff = this.auth.staffId();
+    if (!staff) { this.hiddenByScope.set(0); return; }
+    // `neq` alone would miss unassigned jobs: SQL says NULL <> x is unknown, not true, so
+    // they would be hidden by the scope and absent from the count that reports it.
+    const { count, error } = await bookingsDb.from('booking_summary')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', org)
+      .or(`staff_id.neq.${staff},staff_id.is.null`);
+    // Zero rather than left alone on failure: the banner still appears and still says the
+    // view is filtered, it just drops the number. A stale count is worse than no count.
+    if (error) { console.warn('[BookingData] countHiddenByScope:', error.message); this.hiddenByScope.set(0); return; }
+    this.hiddenByScope.set(count ?? 0);
   }
 
   // ── Tabbed list: each tab is a fresh server-side query (no local filtering) ──

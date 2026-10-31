@@ -95,8 +95,10 @@
       <section class="sec">
         <h2 class="sec__title">{{ isWorkOnly ? 'The work' : 'Job' }}</h2>
 
-        @if (scopedWorkerName(); as w) {
-          <p class="note">For <strong>{{ w }}</strong> — change the worker from the sidebar.</p>
+        <!-- Only while the scope really has supplied the worker. Saying "For John" above an
+             empty Worker select is the contradiction that made this confusing to start with. -->
+        @if (!needsWorkerField() && scopedWorkerName(); as w) {
+          <p class="note">For <strong>{{ w }}</strong>, change the worker from the sidebar.</p>
         }
 
         <div class="field">
@@ -142,8 +144,10 @@
         }
 
         <!-- Hidden when the worker scope already says who: asking again is asking the
-             same question twice, and the answer is already on screen in the sidebar. -->
-        @if (!scopedWorkerName()) {
+             same question twice, and the answer is already on screen in the sidebar.
+             `needsWorkerField` brings it back if the scope did not actually supply one,
+             so the form can never demand a worker it gives you no way to choose. -->
+        @if (!scopedWorkerName() || needsWorkerField()) {
           <div class="field">
             <div class="field__top"><label>Worker</label></div>
             <app-select [value]="staffId" (changed)="staffId = $event"

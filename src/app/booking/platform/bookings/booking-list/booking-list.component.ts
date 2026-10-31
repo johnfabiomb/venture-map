@@ -67,7 +67,7 @@ const EMPTY_TEXT: Record<BookingTab, string> = {
 })
 export class BookingListComponent {
   readonly data = inject(BookingDataService);
-  private readonly auth = inject(BookingsAuthService);
+  readonly auth = inject(BookingsAuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
@@ -145,6 +145,12 @@ export class BookingListComponent {
       void this.refreshCounts();
       void this.loadDeleted();
     });
+  }
+
+  /** Drop the worker filter and show the whole organisation. The effect watching
+   *  `auth.staffId()` reloads the rows, counts and Deleted tab by itself. */
+  showEveryone(): void {
+    this.auth.setActiveStaff(null);
   }
 
   /** Navigate to a tab — pushes ?tab=… so it's a real, linkable URL, and remembers it. */

@@ -112,7 +112,8 @@ export interface InvoiceListRow {
   amount_expenses: number;
   amount_paid: number;
   balance_due: number;
-  payment_status: 'unpaid' | 'partial' | 'paid';
+  /** 'void': withdrawn (§33). It owes nothing, is never overdue and is not earnings. */
+  payment_status: 'unpaid' | 'partial' | 'paid' | 'void';
   /** When payment is expected. Null on a draft — nothing has been issued to anyone yet. */
   due_date: string | null;
   /** The client's stored address, for prefilling the send dialog. Null for a walk-in. */

@@ -1407,9 +1407,12 @@ SELECT
   i.amount_expenses,
   paid.amount_paid,
   -- Floored at zero PER INVOICE: one client's overpayment must never cancel out
-  -- another client's debt.
-  GREATEST(0, gross.amount_gross - paid.amount_paid)     AS balance_due,
+  -- another client's debt. A VOID invoice owes nothing (§33): it was withdrawn, so it
+  -- must not count as outstanding anywhere, nor be chased.
+  CASE WHEN i.status = 'void' THEN 0
+       ELSE GREATEST(0, gross.amount_gross - paid.amount_paid) END AS balance_due,
   CASE
+    WHEN i.status = 'void'                              THEN 'void'
     WHEN gross.amount_gross > 0
      AND paid.amount_paid >= gross.amount_gross - 0.005 THEN 'paid'
     WHEN paid.amount_paid > 0                           THEN 'partial'
@@ -4272,3 +4275,79 @@ UPDATE public.organizations
    SET booking_params = COALESCE(booking_params, '{}'::jsonb)
                         || jsonb_build_object('booking_color_id', '9')
  WHERE booking_params->>'booking_color_id' IS NULL;
+
+
+-- ── 33. VOID INVOICES ──────────────────────────────────────────────────────
+-- An issued invoice is a document the client holds, so it is never deleted: an invoice
+-- for a job that fell through is VOIDED, which keeps its number in the series (the
+-- accounts need the gap explained, not hidden). `status = 'void'` was allowed by the §15
+-- CHECK from the start, but nothing ever set it, so an invoice whose booking was
+-- cancelled counted as owed and overdue for ever (live: JFMB-2026-133).
+--
+-- A void invoice: owes nothing (invoice_list.balance_due = 0, payment_status 'void'), is
+-- never overdue (is_overdue already requires 'issued'), is not earnings (get_earnings
+-- counts 'issued' only), and cannot be paid (create-invoice-payment-intent and the public
+-- page both require 'issued').
+
+-- (a) The one writer. Voiding is refused once money has moved (completed, or a card
+--     payment still processing): a paid invoice is settled by editing or refunding, never
+--     by making the money it carries disappear from the books. It is also refused while
+--     the invoice's booking is still on: that booking's total and its client page come
+--     from the invoice, so the job is cancelled (which voids it, see (b)) or edited instead.
+CREATE OR REPLACE FUNCTION public.set_invoice_void(p_invoice uuid, p_void boolean)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+DECLARE
+  v        public.invoices%ROWTYPE;
+  v_bstat  text;
+BEGIN
+  SELECT * INTO v FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF NOT FOUND THEN RAISE EXCEPTION 'invoice_not_found' USING errcode = 'P0002'; END IF;
+  IF NOT is_org_admin(v.org_id) THEN RAISE EXCEPTION 'not_allowed' USING errcode = '42501'; END IF;
+
+  IF NOT p_void THEN
+    IF v.status = 'void' THEN UPDATE invoices SET status = 'issued' WHERE id = v.id; END IF;
+    RETURN;
+  END IF;
+
+  IF v.status = 'void' THEN RETURN; END IF;
+  -- A draft was never issued to anyone and has no number: it is deleted, not voided.
+  IF v.status IS DISTINCT FROM 'issued' THEN RAISE EXCEPTION 'not_issued' USING errcode = '22023'; END IF;
+  IF EXISTS (SELECT 1 FROM payments p
+              WHERE p.invoice_id = v.id AND p.deleted_at IS NULL
+                AND p.status IN ('completed','processing')) THEN
+    RAISE EXCEPTION 'has_payments' USING errcode = '22023';
+  END IF;
+  IF v.booking_id IS NOT NULL THEN
+    SELECT b.status::text INTO v_bstat FROM bookings b WHERE b.id = v.booking_id AND b.deleted_at IS NULL;
+    IF v_bstat IS NOT NULL AND v_bstat NOT IN ('cancelled','expired') THEN
+      RAISE EXCEPTION 'booking_active' USING errcode = '22023';
+    END IF;
+  END IF;
+  UPDATE invoices SET status = 'void' WHERE id = v.id;
+END $f$;
+REVOKE ALL ON FUNCTION public.set_invoice_void(uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.set_invoice_void(uuid, boolean) TO authenticated;
+
+-- (b) A job that is cancelled or expires voids its UNPAID invoices by itself, whatever
+--     cancelled it: the owner, a declined request, a lapsed card hold, any Edge Function.
+--     Doing it in the database rather than in one button is the point: an invoice left
+--     owed by the path nobody thought of is exactly the bug this section fixes.
+--     An invoice with money on it is left alone (a kept deposit stays on the books).
+--     cancel-booking refunds BEFORE it sets the status, so a refunded payment no longer
+--     counts as money on the invoice by the time this runs. Bringing a booking back does
+--     not un-void: which invoices it voided cannot be told apart from ones voided by hand.
+CREATE OR REPLACE FUNCTION public.void_unpaid_invoices_on_cancel() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+BEGIN
+  UPDATE invoices i SET status = 'void'
+   WHERE i.booking_id = NEW.id AND i.status = 'issued' AND i.deleted_at IS NULL
+     AND NOT EXISTS (SELECT 1 FROM payments p
+                      WHERE p.invoice_id = i.id AND p.deleted_at IS NULL
+                        AND p.status IN ('completed','processing'));
+  RETURN NULL;
+END $f$;
+DROP TRIGGER IF EXISTS bookings_void_unpaid_invoices ON public.bookings;
+CREATE TRIGGER bookings_void_unpaid_invoices AFTER UPDATE OF status ON public.bookings
+  FOR EACH ROW WHEN (NEW.status IN ('cancelled','expired') AND OLD.status IS DISTINCT FROM NEW.status)
+  EXECUTE FUNCTION public.void_unpaid_invoices_on_cancel();
+

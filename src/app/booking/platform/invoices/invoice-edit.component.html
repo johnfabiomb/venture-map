@@ -23,6 +23,14 @@
       }
     </div>
 
+    @if (status === 'void') {
+      <!-- A void invoice owes nothing and cannot be paid; say so before anyone edits it. -->
+      <div class="void-note">
+        <span><b>This invoice is void.</b> It owes nothing, is not counted as earnings, and the client cannot pay it.</span>
+        <button type="button" class="btn btn--ghost" (click)="unvoid()">Un-void</button>
+      </div>
+    }
+
     <div class="card form">
       <!-- ══ What it is ═══════════════════════════════════════════════ -->
       <section class="sec">
@@ -168,6 +176,39 @@
       }
       <button type="button" class="btn btn--ghost" (click)="leave()">Cancel</button>
     </div>
+
+    <!-- ══ Payments ═══════════════════════════════════════════════════
+         Its own card, outside the form: recording or removing a payment happens at once
+         and is not part of Save. The only ledger a standalone invoice has. -->
+    @if (!isNew() && invoiceId) {
+      <div class="card pays">
+        <div class="pays__head">
+          <h2 class="sec__title">Payments</h2>
+          @if (status === 'issued' && balance > 0) {
+            <button type="button" class="btn btn--ghost" (click)="payOpen.set(true)">Record a payment</button>
+          }
+        </div>
+        @if (payments().length) {
+          <ul class="pays__list">
+            @for (p of payments(); track p.id) {
+              <li class="pays__row" [class.pays__row--off]="p.status !== 'completed'">
+                <span class="pays__date">{{ (p.paid_at ?? p.created_at) | date:'d MMM y' }}</span>
+                <span class="pays__how">{{ methodLabel(p.method) }}@if (p.note) { · {{ p.note }} }@if (p.status !== 'completed') { · {{ p.status }} }</span>
+                <span class="pays__amt">{{ p.amount | currency:currency:'symbol':'1.2-2' }}</span>
+                @if (!p.stripe_payment_intent_id) {
+                  <button type="button" class="pays__del" title="Remove payment" (click)="removePayment(p)">✕</button>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="muted">Nothing paid yet.</p>
+        }
+        <p class="pays__sum">Paid {{ paid() | currency:currency:'symbol':'1.2-2' }} of {{ total | currency:currency:'symbol':'1.2-2' }}@if (balance > 0) { · {{ balance | currency:currency:'symbol':'1.2-2' }} due }</p>
+      </div>
+      <app-payment-dialog [(open)]="payOpen" [invoiceId]="invoiceId" [balance]="balance"
+                          [reference]="invoiceNumber" (saved)="refreshPayments()" />
+    }
 
     <app-client-editor [(open)]="clientEditorOpen" (saved)="onClientCreated($event)" />
   }

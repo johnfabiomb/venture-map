@@ -1,6 +1,7 @@
 import Stripe from 'https://esm.sh/stripe@17?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { recordSucceededIntent } from '../_shared/record-payment.ts';
+import { recordRefund } from '../_shared/record-refund.ts';
 
 Deno.serve(async (req) => {
   const signature = req.headers.get('stripe-signature');
@@ -52,6 +53,25 @@ Deno.serve(async (req) => {
       // Stripe with nothing in the ledger and no second chance to record it.
       console.error('stripe-webhook: recording failed, asking Stripe to retry:', (err as Error).message);
       return new Response(JSON.stringify({ error: 'record failed' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // A refund made in Stripe (its dashboard, a dispute): the ledger follows, so the invoice
+  // stops reading as paid. Needs `charge.refunded` enabled on BOTH webhook destinations.
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge;
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    try {
+      const result = await recordRefund(supabase, charge);
+      if (!result.updated) console.warn(`stripe-webhook: refund not recorded (${result.reason}) charge=${charge.id}`);
+    } catch (err) {
+      console.error('stripe-webhook: refund recording failed, asking Stripe to retry:', (err as Error).message);
+      return new Response(JSON.stringify({ error: 'refund record failed' }), {
         status: 500, headers: { 'Content-Type': 'application/json' },
       });
     }

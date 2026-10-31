@@ -55,6 +55,8 @@
   &--paid    { background: #dcfce7; color: #16a34a; }
   &--partial { background: #fef9c3; color: #a16207; }
   &--unpaid  { background: #fee2e2; color: #dc2626; }
+  // Withdrawn: owes nothing, so it must read as neither a debt nor money in.
+  &--void    { background: var(--color-bg-muted); color: var(--color-text-muted); text-decoration: line-through; }
   // Sits NEXT TO the payment badge rather than replacing it, so a third pale pill would
   // just blur into the other two. Solid fill, in the same amber as the overdue Due cell.
   &--overdue { background: #b45309; color: #fff; margin-left: 6px; }
@@ -119,6 +121,14 @@ th.num { text-align: right; }
   }
 }
 .mono { font-variant-numeric: tabular-nums; font-weight: 600; color: $text; }
+// The job an invoice bills, under its number: a link to the booking, or a quiet note that
+// there is none (a standalone invoice), so a missing booking is never hunted for.
+.inv-job {
+  display: block; margin-top: 2px; font-size: 11px; font-weight: 500;
+  color: var(--color-text-muted); text-decoration: none;
+  &:hover { color: var(--color-text-base); text-decoration: underline; }
+}
+.inv-job--none { font-style: italic; &:hover { text-decoration: none; color: var(--color-text-muted); } }
 // max-width is what makes the ellipsis actually work. A table in the default `auto` layout
 // sizes every column to its content, so overflow/text-overflow alone never trigger — the
 // cell just grows and drags the whole table wider. A long client or service name could

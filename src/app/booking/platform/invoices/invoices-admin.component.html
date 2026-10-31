@@ -97,7 +97,17 @@
           <tbody>
             @for (r of paged.items(); track r.id) {
               <tr class="row" (click)="open(r)">
-                <td class="mono" data-label="Invoice">{{ r.invoice_number ?? '—' }}</td>
+                <td class="mono" data-label="Invoice">
+                  {{ r.invoice_number ?? '—' }}
+                  <!-- Which job it bills, one click away; a standalone invoice says so, so its
+                       missing booking is never something to go looking for. -->
+                  @if (r.has_booking && r.booking_id) {
+                    <a class="inv-job" [routerLink]="['/bookings', r.booking_id]" (click)="$event.stopPropagation()"
+                       title="Open the booking">{{ r.booking_ref }}</a>
+                  } @else {
+                    <span class="inv-job inv-job--none">No booking</span>
+                  }
+                </td>
                 <td data-label="Date">{{ r.service_date ? (r.service_date | date:'d MMM y') : '—' }}</td>
                 <!-- data-label is required on EVERY td: the _table-cards mixin turns each
                      one into a labelled row below 760px, and an unlabelled cell renders bare. -->
@@ -115,7 +125,8 @@
                   <span class="badge"
                         [class.badge--paid]="r.payment_status === 'paid'"
                         [class.badge--partial]="r.payment_status === 'partial'"
-                        [class.badge--unpaid]="r.payment_status === 'unpaid'">{{ statusLabel(r) }}</span>
+                        [class.badge--unpaid]="r.payment_status === 'unpaid'"
+                        [class.badge--void]="r.payment_status === 'void'">{{ statusLabel(r) }}</span>
                   <!-- Shown ALONGSIDE the payment status, not instead of it: overdue cuts
                        across unpaid/partial rather than replacing either. -->
                   @if (r.is_overdue) {
@@ -124,7 +135,7 @@
                 </td>
                 <td class="actions" data-label="">
                   <app-invoice-actions [invoice]="r"
-                                       (send)="openSend(r, $event)" (addCost)="openCost(r)" />
+                                       (send)="openSend(r, $event)" (addCost)="openCost(r)" (recordPayment)="openPay(r)" (changed)="reload()" />
                 </td>
               </tr>
             }
@@ -143,3 +154,6 @@
 <!-- One dialog for the whole page: it loads its own data from the invoice id, so hosting
      one per row would mean an idle component behind every line of the table. -->
 <app-invoice-send [(open)]="sendOpen" [invoiceId]="sendId()" [(kind)]="sendKind" (sent)="reload()" />
+<!-- Settles the invoice itself: the only way to mark a standalone invoice paid. -->
+<app-payment-dialog [(open)]="payOpen" [invoiceId]="payRow()?.id ?? null" [balance]="payRow()?.balance_due ?? 0"
+                    [reference]="payRow()?.invoice_number ?? ''" (saved)="reload()" />

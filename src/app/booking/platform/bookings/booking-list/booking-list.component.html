@@ -14,6 +14,25 @@
     </div>
   </div>
 
+  <!-- Which worker's jobs these are. Only shown when a scope is actually narrowing the
+       page, because a banner that is always there stops being read. It reports the number
+       hidden on purpose: "showing John" is easy to skim past, "3 hidden" is not. -->
+  @if (!auth.isOrgScope()) {
+    <div class="scope-bar" role="status">
+      <svg class="scope-bar__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M2 3h12l-4.5 5v4L6.5 13.5V8L2 3z"/>
+      </svg>
+      <span class="scope-bar__text">
+        Showing only <strong>{{ auth.activeStaff()?.name }}</strong>'s jobs.
+        @if (data.hiddenByScope() > 0) {
+          <strong>{{ data.hiddenByScope() }}</strong>
+          {{ data.hiddenByScope() === 1 ? 'booking is' : 'bookings are' }} hidden.
+        }
+      </span>
+      <button type="button" class="btn btn--sm" (click)="showEveryone()">Show everyone</button>
+    </div>
+  }
+
   <!-- Stats -->
   <div class="stats">
     <div class="stat">

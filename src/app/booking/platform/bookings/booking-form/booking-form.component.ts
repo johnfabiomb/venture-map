@@ -147,6 +147,25 @@ export class BookingFormComponent implements OnInit {
   /** The worker the sidebar scope already chose, if any — the field is hidden then. */
   readonly scopedWorkerName = computed(() => this.auth.activeStaff()?.name ?? '');
 
+  /**
+   * Show the Worker field even though the sidebar is scoped.
+   *
+   * The field is normally hidden when the scope already says who, because asking twice is
+   * asking twice. That is only safe while the scope has ACTUALLY filled `staffId` in: if
+   * it has not, the form is unsaveable with "Pick a worker" and no control on screen to
+   * pick one. It is a sticky signal, not a plain `!staffId` check in the template, so the
+   * field does not vanish from under the pointer the instant a worker is chosen.
+   */
+  readonly needsWorkerField = signal(false);
+
+  /** Take the worker from the sidebar scope, and reveal the field if it gave us nothing.
+   *  Called from first load AND from reset(), which is where this went wrong: reset blanked
+   *  `staffId` without re-applying the scope, so "Create another" left the form stuck. */
+  private applyWorkerScope(): void {
+    this.staffId = this.auth.staffId() ?? '';
+    this.needsWorkerField.set(!this.staffId);
+  }
+
   readonly workerOptions = computed<SelectOption[]>(() =>
     this.workers.map(w => ({ value: w.id, label: w.name })));
   /** The kinds of work this org does (§25) — the same list the Work board offers. */
@@ -196,9 +215,9 @@ export class BookingFormComponent implements OnInit {
       this.depositMode = this.orgDefaults.depositAllowed ? 'deposit' : 'full';
 
       // Scoped to one worker → that IS the worker, so the field is pre-filled rather
-       // than asked for again. An edit or a clone still wins, since both set it from
-       // the source booking below.
-      if (this.auth.staffId()) this.staffId = this.auth.staffId()!;
+      // than asked for again. An edit or a clone still wins, since both set it from
+      // the source booking below.
+      this.applyWorkerScope();
 
       const id = this.route.snapshot.paramMap.get('id');
       // `?from=` is a CLONE, not an edit: it reuses this same form because the result is
@@ -219,6 +238,10 @@ export class BookingFormComponent implements OnInit {
       this.clientMode = 'quick'; this.contactName = b.contact_name; this.clientId = '';
     }
     this.staffId = b.staff_id;
+    // The booking's own worker beats the sidebar scope. When the two differ the field must
+    // be visible: hiding it would leave the note above claiming this job belongs to whoever
+    // the sidebar happens to be showing, which is not who is actually doing it.
+    this.needsWorkerField.set(!this.staffId || this.staffId !== this.auth.staffId());
     this.title = b.title;
     // An existing title is the owner's, whether they typed it or accepted a suggestion.
     // Without this, editing the location on a saved booking would silently rewrite it.
@@ -518,7 +541,7 @@ export class BookingFormComponent implements OnInit {
     this.clientMode = 'existing';
     this.clientId = '';
     this.contactName = '';
-    this.staffId = '';
+    this.applyWorkerScope();
     this.selectedSlots = [];
     this.prefillSlots = [];
     this.lineItems = [];

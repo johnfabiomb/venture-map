@@ -1,5 +1,6 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
@@ -11,7 +12,12 @@ import { LineItem, InvoiceInput, InvoiceStatus } from '@booking/core/interfaces/
 import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-items-editor.component';
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
-import { Client } from '@booking/core/interfaces/booking.interface';
+import { Client, Payment, PaymentMethod } from '@booking/core/interfaces/booking.interface';
+import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
+
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  card: 'Card', cash: 'Cash', revolut: 'Revolut', bank: 'Bank transfer', other: 'Other',
+};
 
 // The invoice editor. An invoice is the MONEY record: it may sit on a job in the
 // calendar, or stand completely alone (work billed with no time slot).
@@ -27,7 +33,7 @@ import { Client } from '@booking/core/interfaces/booking.interface';
 @Component({
   selector: 'app-invoice-edit',
   standalone: true,
-  imports: [FormsModule, RouterLink, LineItemsEditorComponent, ClientEditorComponent, SelectComponent, InfoHintComponent],
+  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe, LineItemsEditorComponent, ClientEditorComponent, SelectComponent, InfoHintComponent, PaymentDialogComponent],
   templateUrl: './invoice-edit.component.html',
   styleUrl: './invoice-edit.component.scss',
 })
@@ -114,6 +120,7 @@ export class InvoiceEditComponent implements OnInit {
     if (byInvoice)      await this.loadByInvoice(byInvoice);
     else if (byBooking) await this.loadByBooking(byBooking);
     else                this.startNew();
+    await this.refreshPayments();
 
     this.baseline = this.snapshot();
     this.loading.set(false);
@@ -181,6 +188,46 @@ export class InvoiceEditComponent implements OnInit {
 
   // ── Derived ─────────────────────────────────────────────────────────
   get total(): number { return this.items.reduce((s, i) => s + (Number(i.amount) || 0), 0); }
+
+  // ── Payments on THIS invoice ────────────────────────────────────────
+  // Recorded and removed at once, outside the form's Save: money that arrived is a fact,
+  // not an edit to the document. This is the only ledger a standalone invoice has.
+  readonly payments = signal<Payment[]>([]);
+  readonly payOpen = signal(false);
+  readonly paid = computed(() => this.payments()
+    .filter(p => p.status === 'completed').reduce((s, p) => s + Number(p.amount), 0));
+
+  async refreshPayments(): Promise<void> {
+    this.payments.set(this.invoiceId ? await this.data.getInvoicePayments(this.invoiceId) : []);
+  }
+
+  /** What is still owed, against the lines as they stand in the form; never below zero. */
+  get balance(): number { return Math.max(0, Math.round((this.total - this.paid()) * 100) / 100); }
+
+  methodLabel(m: string): string { return METHOD_LABEL[m as PaymentMethod] ?? m; }
+
+  async removePayment(p: Payment): Promise<void> {
+    if (p.stripe_payment_intent_id) {
+      this.toast.error('Card payments are managed in Stripe and can’t be removed here.');
+      return;
+    }
+    if (!(await this.confirm.ask({
+      title: 'Remove payment',
+      message: `Remove this €${p.amount} payment? This only fixes the record — it does not refund anyone.`,
+      confirmLabel: 'Remove', danger: true,
+    }))) return;
+    await this.data.deletePayment(p.id, p.booking_id ?? null);
+    await this.refreshPayments();
+    this.toast.info('Payment removed');
+  }
+
+  async unvoid(): Promise<void> {
+    if (!this.invoiceId) return;
+    const res = await this.data.setInvoiceVoid(this.invoiceId, false);
+    if (res.error) { this.toast.error(res.error); return; }
+    this.status = 'issued';
+    this.toast.success('Invoice is open again');
+  }
   get isStandalone(): boolean { return !this.jobId; }
   get selectedClientName(): string {
     return this.data.clients().find(c => c.id === this.clientId)?.name ?? '';

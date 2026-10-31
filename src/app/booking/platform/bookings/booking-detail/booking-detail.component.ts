@@ -154,7 +154,8 @@ export class BookingDetailComponent implements OnInit {
     this.sendKind.set(kind);
     this.sendOpen.set(true);
   }
-  /** Sending can ISSUE a draft, which gives it a number — so the list must re-read. */
+  /** Sending can ISSUE a draft, which gives it a number — so the list must re-read. So
+   *  does voiding, un-voiding or deleting one from its menu. */
   async onInvoiceSent(): Promise<void> {
     this.invoices.set(await this.data.listInvoicesForBooking(this.id));
   }
