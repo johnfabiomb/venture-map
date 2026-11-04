@@ -91,17 +91,30 @@
       </p>
 
       <div class="chart__bars">
-        @for (m of revenueByMonth(); track m.label) {
-          <div class="chart__col">
+        @for (m of revenueByMonth(); track m.key) {
+          <button type="button" class="chart__col"
+                  [class.chart__col--empty]="m.total <= 0"
+                  [disabled]="m.total <= 0"
+                  [attr.aria-label]="'Show what is behind ' + m.label"
+                  (click)="openBreakdown(m)">
             <div class="chart__amount">{{ m.total > 0 ? (m.total | currency:'EUR':'symbol':'1.0-0') : '' }}</div>
             <div class="chart__track">
               <div class="chart__bar" [style.height]="barHeight(m.total)"></div>
             </div>
             <div class="chart__label">{{ m.label }}</div>
-          </div>
+          </button>
         }
       </div>
+      <p class="chart__hint">Tap a month to see every invoice and charge behind it.</p>
     </section>
+
+    <app-earnings-breakdown
+      [(open)]="breakdownOpen"
+      [month]="openMonth()"
+      [basis]="basis()"
+      [orgId]="auth.orgId()"
+      [staffId]="who() || null"
+      [whoLabel]="whoLabel()" />
 
     <div class="grid">
       <!-- Upcoming bookings -->

@@ -1,0 +1,51 @@
+<div class="lf">
+  <div class="lf__period">
+    <span class="lf__label">Period</span>
+    <app-select class="lf__preset" size="sm" [options]="presetOptions" [(value)]="presetValue" />
+
+    @if (isCustom()) {
+      <input type="date" class="lf__date" [value]="period().from ?? ''"
+             (change)="setFrom($any($event.target).value)" aria-label="From" />
+      <span class="lf__to">to</span>
+      <input type="date" class="lf__date" [value]="period().to ?? ''"
+             (change)="setTo($any($event.target).value)" aria-label="To" />
+    }
+
+    @if (showFieldSwitch()) {
+      <span class="lf__by">by</span>
+      <app-select class="lf__field" size="sm" [options]="fieldOptions()" [(value)]="fieldValue" />
+    }
+
+    @if (anyActive()) {
+      <button type="button" class="lf__clear" (click)="clearAll()">Clear filters</button>
+    }
+  </div>
+
+  @for (g of groups(); track g.key) {
+    @if (g.options.length) {
+      <div class="lf__group">
+        <span class="lf__label">{{ g.label }}</span>
+        <div class="lf__chips">
+          @for (o of g.options; track o.value) {
+            <button type="button" class="lf__chip"
+                    [class.lf__chip--on]="isOn(g.key, o.value)"
+                    [attr.aria-pressed]="isOn(g.key, o.value)"
+                    (click)="toggle(g.key, o.value)">
+              {{ o.label }}
+              @if (o.count !== undefined) {
+                <span class="lf__count" [class.lf__count--alert]="o.alert && o.count > 0">{{ o.count }}</span>
+              }
+            </button>
+          }
+          @if (selected(g.key).length) {
+            <button type="button" class="lf__any" (click)="clearGroup(g.key)">Any</button>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (summary()) {
+    <p class="lf__summary">{{ summary() }}</p>
+  }
+</div>

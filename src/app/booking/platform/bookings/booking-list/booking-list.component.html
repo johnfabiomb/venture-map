@@ -67,20 +67,14 @@
       <a class="btn btn--primary" routerLink="/bookings/new">Create your first booking</a>
     </div>
   } @else {
-    <!-- Tabs + search -->
+    <!-- Search + the Deleted view, then the filter dimensions beneath -->
     <div class="toolbar">
-      <div class="tabs" role="tablist" data-tour="booking-tabs">
-        @for (group of tabGroups; track $index; let gi = $index) {
-          @if (gi > 0) { <span class="tabs__sep" aria-hidden="true"></span> }
-          @for (t of group; track t.key) {
-            <button class="tab" [class.tab--active]="tab() === t.key" (click)="setTab(t.key)" role="tab">
-              <span>{{ t.label }}</span>
-              @if (counts()[t.key]) {
-                <span class="tab__count" [class.tab__count--alert]="t.key === 'pending'">{{ counts()[t.key] }}</span>
-              }
-            </button>
-          }
-        }
+      <div class="toolbar__views">
+        <button class="tab" [class.tab--active]="!showDeleted()" (click)="closeDeleted()">Bookings</button>
+        <button class="tab" [class.tab--active]="showDeleted()" (click)="openDeleted()">
+          <span>Deleted</span>
+          @if (deletedRows().length) { <span class="tab__count">{{ deletedRows().length }}</span> }
+        </button>
       </div>
       <label class="search" data-tour="booking-search">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -91,13 +85,21 @@
       </label>
     </div>
 
+    @if (!showDeleted()) {
+      <app-list-filters data-tour="booking-tabs"
+                        [groups]="filterGroups()"
+                        [(state)]="filterState"
+                        [(period)]="period"
+                        [summary]="summary()" />
+    }
+
     @if (rowsLoading()) {
       <div class="loading"><div class="spinner"></div></div>
-    } @else if (tab() === 'deleted') {
+    } @else if (showDeleted()) {
       <!-- Must come BEFORE the empty-rows branch: rows() is always empty on this tab,
            because deleted bookings can't be read through booking_summary at all. -->
       @if (deletedRows().length === 0) {
-        <div class="empty-tab">{{ emptyText() }}</div>
+        <div class="empty-tab">Nothing deleted. Removed bookings appear here and can be brought back.</div>
       } @else {
         <div class="table-wrap">
           <table class="table">

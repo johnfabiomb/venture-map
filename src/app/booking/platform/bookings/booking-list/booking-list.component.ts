@@ -13,7 +13,13 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
 import { paginate } from '@booking/core/utils/pagination.util';
-import { BookingSummary, BookingTab, PaymentStatus } from '@booking/core/interfaces/booking.interface';
+import { BookingSummary, PaymentStatus } from '@booking/core/interfaces/booking.interface';
+import {
+  EMPTY_PERIOD, FilterGroup, FilterState, PeriodState, countsFor, isFilterEmpty,
+} from '@booking/core/interfaces/list-filter.interface';
+import { inPeriodAt, periodLabel } from '@booking/core/utils/period.util';
+import { filtersFromParams, filtersToParams } from '@booking/core/utils/list-filter-url.util';
+import { ListFiltersComponent } from '@booking/ui/list-filters/list-filters.component';
 import { InvoiceListRow, DeletedBooking } from '@booking/core/interfaces/invoice.interface';
 
 const PAYMENT_LABELS: Record<PaymentStatus, string> = {
@@ -38,30 +44,14 @@ const PAYMENT_CLASSES: Record<PaymentStatus, string> = {
   unpaid: 'badge--unpaid', partial: 'badge--partial', paid: 'badge--paid', external: 'badge--external',
 };
 
-// 'external' is intentionally not a selectable tab — those bookings still show under Upcoming/Past/All.
-// 'deleted' IS selectable and must be listed: this array is the allowlist the ?tab= param
-// is validated against, so leaving it out made clicking Deleted write the URL and then
-// bounce straight back to the persisted tab.
-const TAB_KEYS: BookingTab[] = ['upcoming', 'pending', 'unpaid', 'paid', 'past', 'cancelled', 'all', 'deleted'];
-const EMPTY_COUNTS: Record<BookingTab, number> =
-  { upcoming: 0, pending: 0, unpaid: 0, paid: 0, past: 0, external: 0, cancelled: 0, all: 0, deleted: 0 };
-
-const EMPTY_TEXT: Record<BookingTab, string> = {
-  upcoming: 'No upcoming bookings. Your schedule is clear.',
-  pending: 'No bookings waiting to be confirmed.',
-  unpaid: 'Nothing outstanding — every job is paid. 🎉',
-  paid: 'No fully-paid bookings yet.',
-  past: 'No past bookings.',
-  external: 'No imported calendar events. Use “Sync Calendar” to pull them in.',
-  cancelled: 'No cancelled bookings.',
-  all: 'No bookings match your search.',
-  deleted: 'Nothing deleted. Removed bookings appear here and can be brought back.',
-};
+// The dimensions the list can be narrowed by. Order is the order they render in,
+// and this array is also the allowlist the ?when=/?status=… params are read through.
+const GROUP_KEYS = ['when', 'status', 'pay', 'kind'] as const;
 
 @Component({
   selector: 'app-booking-list',
   standalone: true,
-  imports: [RouterLink, NgClass, DatePipe, CurrencyPipe, CdkMenuTrigger, CdkMenu, CdkMenuItem, FormsModule, ModalComponent, PaginatorComponent],
+  imports: [RouterLink, NgClass, DatePipe, CurrencyPipe, CdkMenuTrigger, CdkMenu, CdkMenuItem, FormsModule, ModalComponent, PaginatorComponent, ListFiltersComponent],
   templateUrl: './booking-list.component.html',
   styleUrl: './booking-list.component.scss',
 })
@@ -83,98 +73,174 @@ export class BookingListComponent {
   }
   goDetail(b: BookingSummary): void { this.router.navigate(['/bookings', b.id]); }
 
-  // ── Tabs (URL-driven) + per-tab server queries ───────────────────────
-  // Grouped by intent so the row reads logically: when → money/workflow → other → all.
-  readonly tabGroups: ReadonlyArray<ReadonlyArray<{ key: BookingTab; label: string }>> = [
-    [{ key: 'upcoming',  label: 'Upcoming' }, { key: 'past', label: 'Past' }],
-    [{ key: 'pending',   label: 'To confirm' }, { key: 'unpaid', label: 'Unpaid' }, { key: 'paid', label: 'Paid' }],
-    [{ key: 'cancelled', label: 'Cancelled' }, { key: 'all', label: 'All' }, { key: 'deleted', label: 'Deleted' }],
-  ];
-
-  /** Remember the last tab so returning from edit/detail lands you back where you were. */
-  private readonly TAB_STORE = 'jm.bookings.tab';
-  private readPersistedTab(): BookingTab {
-    try {
-      const t = localStorage.getItem(this.TAB_STORE) as BookingTab | null;
-      if (t && TAB_KEYS.includes(t)) return t;
-    } catch { /* SSR / storage blocked */ }
-    return 'upcoming';
-  }
-
-  /** The active tab lives in the URL (?tab=…) so it's shareable + survives reload/back;
-   *  with no param we fall back to the last tab the user was on (not always "Upcoming"). */
-  readonly tab = toSignal(
-    this.route.queryParamMap.pipe(map(p => {
-      const t = p.get('tab') as BookingTab | null;
-      return t && TAB_KEYS.includes(t) ? t : this.readPersistedTab();
-    })),
-    { initialValue: this.readPersistedTab() });
-
+  // ── Filters (URL-driven dimensions) ──────────────────────────────────
+  // A tab used to mix four unrelated questions into one row: WHEN a job is, WHAT state
+  // it is in, whether it is PAID, and what KIND it is. Picking one therefore silently
+  // answered the other three as "any", and two could never be combined. They are
+  // separate dimensions now: multi-select inside one, combined across them.
   readonly search = signal('');
   private readonly debouncedSearch = toSignal(
     toObservable(this.search).pipe(debounceTime(250)), { initialValue: '' });
 
-  // Rows + counts come fresh from the server — never filtered locally.
+  readonly filterState = signal<FilterState>({});
+  readonly period = signal<PeriodState>({ ...EMPTY_PERIOD, field: 'start_at' });
+
+  /** Deleted rows come from an RPC and carry a different shape, so this is a VIEW,
+   *  not a filter: it replaces the table rather than narrowing it. */
+  readonly showDeleted = signal(false);
+
   readonly rows = signal<BookingSummary[]>([]);
   readonly rowsLoading = signal(true);
-  readonly counts = signal<Record<BookingTab, number>>(EMPTY_COUNTS);
+  /** Captured per load rather than read in a computed, so "upcoming" cannot shift
+   *  under the reader while they are looking at the list. */
+  private readonly nowMs = signal(Date.now());
+
+  /** Everything the period allows. Counts are computed against THIS, so a chip's
+   *  number always describes the window on screen. */
+  readonly inWindow = computed(() =>
+    this.rows().filter(b => inPeriodAt(b.next_start_at ?? b.start_at, this.period())));
+
+  readonly visible = computed(() =>
+    this.inWindow().filter(b => this.passesAll(b, this.filterState())));
+
+  readonly filterGroups = computed<FilterGroup[]>(() => {
+    const st = this.filterState(), base = this.inWindow();
+    const build = (key: string, label: string, opts: ReadonlyArray<[string, string]>, alert = ''): FilterGroup => {
+      const counts = countsFor(base, opts.map(o => o[0]),
+        b => this.passesAll(b, st, key), (b, v) => this.optionMatches(b, key, v));
+      return {
+        key, label,
+        options: opts.map(([value, text]) => ({
+          value, label: text, count: counts[value] ?? 0, alert: value === alert,
+        })),
+      };
+    };
+    return [
+      build('when',   'When',    [['upcoming', 'Upcoming'], ['past', 'Past']]),
+      build('status', 'Status',  [['pending', 'To confirm'], ['booked', 'Confirmed'],
+                                  ['in_progress', 'In progress'], ['done', 'Done'],
+                                  ['cancelled', 'Cancelled'], ['expired', 'Expired']]),
+      build('pay',    'Payment', [['unpaid', 'Unpaid'], ['partial', 'Partial'], ['paid', 'Paid']], 'unpaid'),
+      build('kind',   'Kind',    [['external', 'From calendar']]),
+    ];
+  });
+
+  /** One sentence describing what is on screen, because a filtered list with no
+   *  statement of what it is filtered to reads as missing data. */
+  readonly summary = computed(() => {
+    const v = this.visible();
+    if (!v.length) return '';
+    const owed = v.reduce((n, b) => n + Math.max(0, (b.price_total ?? 0) - (b.total_paid ?? 0)), 0);
+    const total = v.reduce((n, b) => n + (b.price_total ?? 0), 0);
+    const money = (x: number) => `€${Math.round(x).toLocaleString('en')}`;
+    return `${v.length} booking${v.length === 1 ? '' : 's'} · ${money(total)} billed`
+         + (owed > 0.005 ? ` · ${money(owed)} still owed` : '')
+         + ` · ${periodLabel(this.period())}`;
+  });
+
+  readonly emptyText = computed(() =>
+    this.search().trim() ? 'No bookings match your search.'
+      : isFilterEmpty(this.filterState(), this.period())
+        ? 'No bookings yet.'
+        : 'No bookings match these filters. Loosen one, or clear them.');
+
+  private optionMatches(b: BookingSummary, group: string, value: string): boolean {
+    switch (group) {
+      case 'when':   return value === 'upcoming'
+        ? new Date(b.next_end_at ?? b.end_at).getTime() >= this.nowMs()
+        : new Date(b.next_end_at ?? b.end_at).getTime() <  this.nowMs();
+      case 'status': return b.status === value;
+      case 'pay':    return b.payment_status === value;
+      case 'kind':   return value === 'external' ? !!b.is_external : false;
+      default:       return true;
+    }
+  }
+
+  /** `skip` leaves one dimension out, which is what makes its own counts meaningful. */
+  private passesAll(b: BookingSummary, st: FilterState, skip?: string): boolean {
+    for (const key of GROUP_KEYS) {
+      if (key === skip) continue;
+      const sel = st[key] ?? [];
+      if (sel.length && !sel.some(v => this.optionMatches(b, key, v))) return false;
+    }
+    return true;
+  }
 
   constructor() {
-    // Arrived without an explicit tab (e.g. back from an edit)? Restore the last one into the URL.
-    if (!this.route.snapshot.queryParamMap.get('tab')) {
-      const restored = this.readPersistedTab();
-      if (restored !== 'upcoming') {
-        void this.router.navigate([], { queryParams: { tab: restored }, queryParamsHandling: 'merge', replaceUrl: true });
-      }
-    }
-    // Re-query whenever the tab (URL), the debounced search, or the WORKER SCOPE changes.
-    // The scope is read here and not just in scoped() because a query re-runs only when
-    // something asks it to — switching worker used to leave the rows on screen untouched.
+    // Seed from the URL, falling back to the last view used: returning from a booking
+    // should land where you left, which is what the old per-tab memory did.
+    const seeded = filtersFromParams(this.route.snapshot.queryParamMap, GROUP_KEYS, 'start_at');
+    const hasUrl = GROUP_KEYS.some(k => this.route.snapshot.queryParamMap.get(k))
+                || !!this.route.snapshot.queryParamMap.get('period');
+    const restored = hasUrl ? seeded : this.readPersisted() ?? seeded;
+    this.filterState.set(restored.state);
+    this.period.set(restored.period);
+    this.showDeleted.set(this.route.snapshot.queryParamMap.get('view') === 'deleted');
+
+    // Re-query when the WINDOW, the search or the worker scope changes. The dimensions
+    // are NOT here on purpose: they refine what is already loaded, so ticking a chip
+    // costs nothing.
     effect(() => {
-      const tab = this.tab();
+      const p = this.period();
       const q = this.debouncedSearch();
       this.auth.staffId();
       this.paged.reset();
-      void this.loadRows(tab, q);
-      // The Deleted tab is served by an RPC, not by loadRows — refresh it when opened so
-      // it reflects anything deleted since the page loaded.
-      if (tab === 'deleted') void this.loadDeleted();
+      void this.loadRows(p, q);
     });
-    // The badges and the Deleted tab are per-scope too, and this is also their first load.
-    onScopeChange(this.auth, () => {
-      void this.refreshCounts();
-      void this.loadDeleted();
+
+    // Mirror the state into the URL so a filtered view is shareable and survives a
+    // refresh. `replaceUrl` because ticking six chips should not mean six presses of
+    // the back button to leave the page.
+    effect(() => {
+      const params = filtersToParams(this.filterState(), this.period(), GROUP_KEYS);
+      params['view'] = this.showDeleted() ? 'deleted' : null;
+      this.persist();
+      void this.router.navigate([], {
+        queryParams: params, queryParamsHandling: 'merge', replaceUrl: true,
+      });
     });
+
+    onScopeChange(this.auth, () => { void this.loadDeleted(); });
   }
 
   /** Drop the worker filter and show the whole organisation. The effect watching
-   *  `auth.staffId()` reloads the rows, counts and Deleted tab by itself. */
+   *  `auth.staffId()` reloads the rows and the Deleted view by itself. */
   showEveryone(): void {
     this.auth.setActiveStaff(null);
   }
 
-  /** Navigate to a tab — pushes ?tab=… so it's a real, linkable URL, and remembers it. */
-  setTab(tab: BookingTab): void {
-    try { localStorage.setItem(this.TAB_STORE, tab); } catch { /* storage blocked */ }
-    this.router.navigate([], { queryParams: { tab }, queryParamsHandling: 'merge' });
+  openDeleted(): void { this.showDeleted.set(true); void this.loadDeleted(); }
+  closeDeleted(): void { this.showDeleted.set(false); }
+
+  // ── Remembering the last view ───────────────────────────────────────────
+  private readonly VIEW_STORE = 'jm.bookings.view';
+  private persist(): void {
+    try {
+      localStorage.setItem(this.VIEW_STORE,
+        JSON.stringify({ state: this.filterState(), period: this.period() }));
+    } catch { /* storage blocked */ }
+  }
+  private readPersisted(): { state: FilterState; period: PeriodState } | null {
+    try {
+      const raw = localStorage.getItem(this.VIEW_STORE);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as { state: FilterState; period: PeriodState };
+      // A stored shape from an older build must never be trusted into the UI.
+      if (!v?.state || !v?.period?.preset) return null;
+      return v;
+    } catch { return null; }
   }
 
   // ── Paging ──────────────────────────────────────────────────────────────
-  // Rows arrive per-tab from the server already; this pages what came back. The
-  // paginator only sees page/pageCount/total, so moving to a server range later is a
-  // change to this helper alone.
-  readonly paged = paginate(this.rows);
+  // Pages what the filters left. The paginator only sees page/pageCount/total, so
+  // moving to a server range later is a change to this helper alone.
+  readonly paged = paginate(this.visible);
 
-  private async loadRows(tab: BookingTab, search: string): Promise<void> {
+  private async loadRows(period: PeriodState, search: string): Promise<void> {
     this.rowsLoading.set(true);
-    this.rows.set(await this.data.queryBookings(tab, search));
+    this.nowMs.set(Date.now());
+    this.rows.set(await this.data.queryBookingsInPeriod(period, search));
     this.rowsLoading.set(false);
-  }
-  private async refreshCounts(): Promise<void> {
-    const c = await this.data.bookingTabCounts();
-    // bookingTabCounts runs HEAD counts against booking_summary, which cannot see deleted
-    // rows at all — so that one count is filled from the restore RPC's own list.
-    this.counts.set({ ...c, deleted: this.deletedRows().length });
   }
 
   // ── Deleted / restore ───────────────────────────────────────────────────
@@ -184,7 +250,6 @@ export class BookingListComponent {
 
   async loadDeleted(): Promise<void> {
     this.deletedRows.set(await this.data.listDeletedBookings());
-    this.counts.update(c => ({ ...c, deleted: this.deletedRows().length }));
   }
 
   async restoreBooking(d: DeletedBooking): Promise<void> {
@@ -213,7 +278,7 @@ export class BookingListComponent {
   }
   /** After a mutation, re-pull the current tab's rows + the counts (stay fresh, no local edits). */
   private async refresh(): Promise<void> {
-    await Promise.all([this.loadRows(this.tab(), this.debouncedSearch()), this.refreshCounts()]);
+    await Promise.all([this.loadRows(this.period(), this.debouncedSearch()), this.loadDeleted()]);
   }
 
   // Both key off the block that matters NOW. start_at/end_at span the whole booking, so a
@@ -243,7 +308,6 @@ export class BookingListComponent {
     return up.length ? up[0].id : null;
   });
 
-  emptyText(): string { return EMPTY_TEXT[this.tab()]; }
 
   /** Post-production stage for a job, or '' when no work covers it. */
   workLabel(b: BookingSummary): string {

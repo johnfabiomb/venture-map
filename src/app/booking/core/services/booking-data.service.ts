@@ -2,13 +2,15 @@ import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { bookingsDb } from '@booking/core/db/supabase.bookings';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
 import { onScopeChange } from '@booking/core/utils/scope-reload.util';
-import { BookingSummary, BookingSlot, BookingTab, Client, EditableBooking, Payment, PaymentMethod, PaymentTarget, WorkerBusy } from '@booking/core/interfaces/booking.interface';
+import { BookingSummary, BookingSlot, BookingTab, Client, ClientSummary, EditableBooking, Payment, PaymentMethod, PaymentTarget, WorkerBusy } from '@booking/core/interfaces/booking.interface';
 import { LineItem, InvoiceListRow, EditableInvoice, InvoiceInput, InvoiceSend, GoogleConnection, DeletedBooking, DeletedInvoice, RestoreResult } from '@booking/core/interfaces/invoice.interface';
 import { CalendarBusy } from '@booking/core/interfaces/availability.interface';
 import { Expense, ExpenseInput, ExpenseRow, BillOutcome } from '@booking/core/interfaces/expense.interface';
 import { Profit } from '@booking/core/interfaces/profit.interface';
 import { Delivery, DeliveryLink } from '@booking/core/interfaces/delivery.interface';
-import { Earnings } from '@booking/core/interfaces/earnings.interface';
+import { Earnings, EarningsBasis, EarningsDetail } from '@booking/core/interfaces/earnings.interface';
+import { PeriodState } from '@booking/core/interfaces/list-filter.interface';
+import { widen } from '@booking/core/utils/period.util';
 import { subscribeToChanges, RealtimeHandle } from '@booking/core/utils/realtime.util';
 
 // Scoped to PlatformShellComponent — provided there, not root.
@@ -880,6 +882,21 @@ export class BookingDataService implements OnDestroy {
     return (data as Earnings) ?? null;
   }
 
+  /**
+   * The documents behind ONE month of the dashboard chart (§34).
+   * Separate from `getEarnings` on purpose: the chart needs six cheap buckets, and
+   * this needs every row of one of them, so loading the rows up front would pay for
+   * five months nobody opened.
+   */
+  async getEarningsDetail(orgId: string, month: string, basis: EarningsBasis,
+                          staffId: string | null = null): Promise<EarningsDetail | null> {
+    const { data, error } = await bookingsDb.rpc('get_earnings_detail', {
+      p_org: orgId, p_month: month, p_basis: basis, p_staff: staffId,
+    });
+    if (error) { console.error('[BookingData] getEarningsDetail:', error); return null; }
+    return (data as EarningsDetail) ?? null;
+  }
+
   // ── Invoice overrides (edit an invoice WITHOUT touching the booking) ─────
   /**
    * Persist a customised invoice for a booking (line items / notes / date).
@@ -1142,6 +1159,38 @@ export class BookingDataService implements OnDestroy {
     return (data ?? []) as BookingSummary[];
   }
 
+  /**
+   * Rows for one PERIOD, with the status dimensions deliberately NOT applied.
+   *
+   * The list used to run one server query per tab, which worked while a tab was a
+   * single question. It cannot answer "pending AND unpaid", because the dimensions
+   * combine, and costing one round trip per chip per keystroke would be worse than
+   * useless. So the server bounds the data (org, worker scope, period, search) and
+   * the page refines it, which also makes every chip's count free.
+   *
+   * The window is WIDENED by a day: `start_at` is an instant in UTC while a period is
+   * a window of local days, and the exact test runs in the browser, which is the only
+   * place that knows the reader's timezone.
+   */
+  async queryBookingsInPeriod(period: PeriodState, search = ''): Promise<BookingSummary[]> {
+    const org = this.auth.orgId();
+    if (!org) return [];
+    let q = this.scoped(bookingsDb.from('booking_summary').select('*').eq('org_id', org))
+      .order('next_start_at', { ascending: false });
+
+    const { from, to } = widen(period);
+    if (from) q = q.gte('start_at', from);
+    if (to)   q = q.lte('start_at', `${to}T23:59:59.999Z`);
+
+    // PostgREST `or` uses commas/parens as syntax — strip them from the user term.
+    const s = search.trim().replace(/[,()]/g, ' ').trim();
+    if (s) q = q.or(`booking_ref.ilike.%${s}%,client_name.ilike.%${s}%,title.ilike.%${s}%`);
+
+    const { data, error } = await q;
+    if (error) { console.error('[BookingData] queryBookingsInPeriod:', error); return []; }
+    return (data ?? []) as BookingSummary[];
+  }
+
   /** Per-tab counts (for the tab badges) — one HEAD count query per tab, in parallel. */
   async bookingTabCounts(): Promise<Record<BookingTab, number>> {
     // `deleted` is present but always 0 here: these are HEAD counts against
@@ -1160,6 +1209,20 @@ export class BookingDataService implements OnDestroy {
     const counts = { ...empty };
     tabs.forEach((tab, i) => { counts[tab] = results[i].count ?? 0; });
     return counts;
+  }
+
+  /**
+   * Clients with their job count and what they owe, from `client_summary` (§35).
+   * Org-wide on purpose, like the plain client list: a client record belongs to the
+   * organisation, not to whoever happened to shoot for them.
+   */
+  async getClientSummary(): Promise<ClientSummary[]> {
+    const org = this.auth.orgId();
+    if (!org) return [];
+    const { data, error } = await bookingsDb.from('client_summary')
+      .select('*').eq('org_id', org).order('name');
+    if (error) { console.error('[BookingData] getClientSummary:', error); return []; }
+    return (data ?? []) as ClientSummary[];
   }
 
   private async fetchClients(): Promise<void> {

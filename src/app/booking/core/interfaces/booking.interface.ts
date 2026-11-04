@@ -149,3 +149,22 @@ export interface Client {
   notes: string | null;
   created_at: string;
 }
+
+/**
+ * A client plus what they are WORTH and whether they owe anything, from the
+ * `client_summary` view (§35).
+ *
+ * The money arrives computed: a component must never re-derive what is owed, or the
+ * Clients page and the Invoices page start disagreeing about the same client.
+ */
+export interface ClientSummary extends Client {
+  org_id: string;
+  jobs: number;
+  last_job_at: string | null;
+  billed: number;
+  paid: number;
+  outstanding: number;
+  overdue: number;
+  /** Has enough on file (email + billing address) to actually send an invoice. */
+  billable: boolean;
+}

@@ -2,7 +2,7 @@
   <div class="page__head">
     <div>
       <h1 class="page__title">Clients</h1>
-      <p class="page__sub">Everyone you've worked with</p>
+      <p class="page__sub">Everyone you've worked with, and what they owe</p>
     </div>
     <div class="head-actions">
       <button class="btn btn--primary" (click)="openNew()">
@@ -12,7 +12,9 @@
     </div>
   </div>
 
-  @if (data.clients().length === 0) {
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else if (rows().length === 0) {
     <div class="empty">
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="18" cy="18" r="8"/>
@@ -21,32 +23,57 @@
       <p>No clients yet. Add one, or they'll appear here after your first booking.</p>
     </div>
   } @else {
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>VAT</th><th>Since</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (c of paged.items(); track c.id) {
-            <tr class="row" (click)="openEdit(c)">
-              <td class="cell--client" data-label="Name">{{ c.name }}</td>
-              <td data-label="Email">{{ c.email ?? '—' }}</td>
-              <td data-label="Phone">{{ c.phone ?? '—' }}</td>
-              <td data-label="Company">{{ c.company ?? '—' }}</td>
-              <td data-label="VAT">{{ c.vat_number ?? '—' }}</td>
-              <td class="cell--date" data-label="Since">{{ c.created_at | date:'d MMM yy' }}</td>
-              <td class="cell--edit" data-label=""><span class="link">Edit</span></td>
+    <app-list-filters [groups]="filterGroups()"
+                      [(state)]="filterState"
+                      [(period)]="period"
+                      [dateFields]="dateFields"
+                      [summary]="summary()" />
+
+    @if (visible().length === 0) {
+      <p class="muted">{{ emptyText() }}</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Company</th><th>Jobs</th><th>Last job</th>
+              <th>Billed</th><th>Owed</th><th>Contact</th><th></th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
-                   [total]="paged.total()" (pageChange)="paged.setPage($event)" />
+          </thead>
+          <tbody>
+            @for (c of paged.items(); track c.id) {
+              <tr class="row" (click)="openEdit(c)">
+                <td class="cell--client" data-label="Name">{{ c.name }}</td>
+                <td data-label="Company">{{ c.company ?? '—' }}</td>
+                <td class="cell--num" data-label="Jobs">{{ c.jobs || '—' }}</td>
+                <td class="cell--date" data-label="Last job">
+                  {{ c.last_job_at ? (c.last_job_at | date:'d MMM yy') : '—' }}
+                </td>
+                <td class="cell--num" data-label="Billed">
+                  {{ c.billed ? (c.billed | currency:'EUR':'symbol':'1.0-0') : '—' }}
+                </td>
+                <td class="cell--num" data-label="Owed">
+                  @if (c.outstanding > 0.005) {
+                    <span class="owed" [class.owed--late]="c.overdue > 0.005">
+                      {{ c.outstanding | currency:'EUR':'symbol':'1.0-0' }}
+                    </span>
+                  } @else { — }
+                </td>
+                <td data-label="Contact">
+                  @if (c.billable) { {{ c.email }} }
+                  @else { <span class="muted-cell">Missing details</span> }
+                </td>
+                <td class="cell--edit" data-label=""><span class="link">Edit</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-paginator [page]="paged.page()" [pageCount]="paged.pageCount()"
+                     [total]="paged.total()" (pageChange)="paged.setPage($event)" />
+    }
   }
 </div>
 
 <!-- Add / edit client (shared modal) -->
-<app-client-editor [(open)]="editorOpen" [client]="editClient()" />
+<app-client-editor [(open)]="editorOpen" [client]="editClient()" (saved)="onSaved()" />

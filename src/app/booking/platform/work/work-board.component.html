@@ -28,6 +28,12 @@
   @if (loading()) {
     <p class="muted">Loading…</p>
   } @else {
+    <app-list-filters [groups]="filterGroups()"
+                      [(state)]="filterState"
+                      [(period)]="period"
+                      [dateFields]="dateFields"
+                      [summary]="summary()" />
+
     <div class="board" cdkDropListGroup>
       @for (col of columns(); track col.key) {
         <div class="col" [class.col--backlog]="col.key === 'backlog'">

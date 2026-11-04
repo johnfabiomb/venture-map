@@ -213,3 +213,27 @@
   color: #92400e;
   .attn-line__cta { color: #92400e; }
 }
+
+/* The month columns are buttons now (the chart drills into §34), so the browser's
+   button chrome has to be undone: without this they render as grey boxes. */
+.chart__col {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+
+  &:hover:not(:disabled) { background: var(--color-bg-light); }
+  &:disabled { cursor: default; }
+  &--empty:hover { background: none; }
+}
+
+.chart__hint {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-light);
+}

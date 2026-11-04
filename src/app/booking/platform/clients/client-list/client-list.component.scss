@@ -76,3 +76,14 @@
   svg { width: 48px; height: 48px; opacity: .35; }
   p   { font-size: 14px; margin: 0; max-width: 300px; }
 }
+
+.cell--num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+// Owed money is the thing this page exists to surface, so it is weighted. Red is kept
+// for OVERDUE alone: if everything unpaid were red, nothing would stand out.
+.owed {
+  font-weight: 700;
+  color: #92400e;
+  &--late { color: #dc2626; }
+}
+.muted-cell { color: var(--color-text-light, #9ca3af); }

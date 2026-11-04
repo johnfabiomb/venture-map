@@ -4351,3 +4351,202 @@ CREATE TRIGGER bookings_void_unpaid_invoices AFTER UPDATE OF status ON public.bo
   FOR EACH ROW WHEN (NEW.status IN ('cancelled','expired') AND OLD.status IS DISTINCT FROM NEW.status)
   EXECUTE FUNCTION public.void_unpaid_invoices_on_cancel();
 
+
+
+-- ── 34. get_earnings_detail — WHAT IS BEHIND A MONTH ───────────────────────
+-- §15h answers "how much"; a bar on the dashboard was therefore a number with no way
+-- to ask where it came from. This answers "which documents", for exactly one month of
+-- exactly one basis.
+--
+-- ⚠ Its filters MIRROR get_earnings line for line (issued, not deleted, org, optional
+-- worker; cash joined through the invoice and bucketed in the ORG'S timezone). That is
+-- the whole contract: `total` here must equal that month's bar, or the drill-down is
+-- telling a different story from the chart it opened. Change one, change both.
+CREATE OR REPLACE FUNCTION public.get_earnings_detail(
+  p_org   uuid,
+  p_month text,                        -- 'YYYY-MM'
+  p_basis text DEFAULT 'work',         -- 'work' (by service date) | 'cash' (by payment date)
+  p_staff uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $f$
+DECLARE
+  v_tz    text;
+  v_start date;
+  v_end   date;
+  v_rows  jsonb;
+BEGIN
+  IF NOT (public.is_org_admin(p_org) OR public.is_platform_admin()) THEN
+    RAISE EXCEPTION 'forbidden' USING errcode = '42501';
+  END IF;
+  IF p_basis NOT IN ('work','cash') THEN
+    RAISE EXCEPTION 'bad_basis' USING errcode = '22023';
+  END IF;
+  IF p_month !~ '^\d{4}-\d{2}$' THEN
+    RAISE EXCEPTION 'bad_month' USING errcode = '22023';
+  END IF;
+
+  SELECT timezone INTO v_tz FROM organizations WHERE id = p_org;
+  v_tz   := COALESCE(v_tz, 'UTC');
+  v_start := to_date(p_month || '-01', 'YYYY-MM-DD');
+  v_end   := (v_start + interval '1 month')::date - 1;
+
+  IF p_basis = 'work' THEN
+    -- One row per INVOICE, carrying its lines, because the lines are what the
+    -- amount is made of: "why is October 6,220" is answered by the charges, not
+    -- by a list of totals.
+    SELECT COALESCE(jsonb_agg(r ORDER BY (r->>'service_date') DESC, r->>'invoice_number'), '[]'::jsonb)
+      INTO v_rows
+      FROM (
+        SELECT jsonb_build_object(
+                 'invoice_id',     i.id,
+                 'invoice_number', CASE WHEN i.number_seq IS NULL THEN NULL
+                                        ELSE COALESCE(UPPER(NULLIF(o.invoice_details->>'invoice_prefix','')), 'INV')
+                                             || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0') END,
+                 'title',          i.title,
+                 'client_name',    COALESCE(cl.name, i.contact_name, bcl.name, b.contact_name),
+                 'staff_name',     st.name,
+                 'service_date',   i.service_date,
+                 'booking_id',     b.id,
+                 'booking_ref',    b.booking_ref,
+                 'amount',         gross.amount_gross,
+                 'paid',           paid.amount_paid,
+                 'balance',        GREATEST(0, gross.amount_gross - paid.amount_paid),
+                 'expenses',       COALESCE(i.amount_expenses, 0),
+                 'lines',          COALESCE(lines.arr, '[]'::jsonb)
+               ) AS r
+          FROM invoices i
+          LEFT JOIN LATERAL (
+            SELECT COALESCE(SUM(l.amount), 0) AS amount_gross FROM invoice_lines l
+             WHERE l.invoice_id = i.id AND l.deleted_at IS NULL) gross ON true
+          LEFT JOIN LATERAL (
+            SELECT COALESCE(SUM(p.amount), 0) AS amount_paid FROM payments p
+             WHERE p.invoice_id = i.id AND p.status = 'completed' AND p.deleted_at IS NULL) paid ON true
+          LEFT JOIN LATERAL (
+            SELECT jsonb_agg(jsonb_build_object(
+                     'description', l.description, 'amount', l.amount,
+                     'hours', l.hours, 'service_name', sl.name) ORDER BY l.sort, l.created_at) AS arr
+              FROM invoice_lines l
+              LEFT JOIN services sl ON sl.id = l.service_id
+             WHERE l.invoice_id = i.id AND l.deleted_at IS NULL) lines ON true
+          LEFT JOIN organizations o   ON o.id   = i.org_id
+          LEFT JOIN bookings      b   ON b.id   = i.booking_id AND b.deleted_at IS NULL
+          LEFT JOIN clients       cl  ON cl.id  = i.client_id  AND cl.deleted_at IS NULL
+          LEFT JOIN clients       bcl ON bcl.id = b.client_id  AND bcl.deleted_at IS NULL
+          LEFT JOIN staff         st  ON st.id  = i.staff_id   AND st.deleted_at IS NULL
+         WHERE i.org_id = p_org
+           AND i.deleted_at IS NULL
+           AND i.status = 'issued'
+           AND (p_staff IS NULL OR i.staff_id = p_staff)
+           AND i.service_date BETWEEN v_start AND v_end
+      ) t;
+  ELSE
+    -- One row per PAYMENT. `paid_at` falls back to created_at exactly as §15h does,
+    -- and the date shown is the one it was BUCKETED by, so a payment cannot appear
+    -- under a month its own displayed date contradicts.
+    SELECT COALESCE(jsonb_agg(r ORDER BY (r->>'paid_on') DESC), '[]'::jsonb)
+      INTO v_rows
+      FROM (
+        SELECT jsonb_build_object(
+                 'payment_id',     p.id,
+                 'amount',         p.amount,
+                 'method',         p.method,
+                 'type',           p.type,
+                 'note',           p.note,
+                 'paid_on',        ((COALESCE(p.paid_at, p.created_at) AT TIME ZONE v_tz))::date,
+                 'invoice_id',     i.id,
+                 'invoice_number', CASE WHEN i.number_seq IS NULL THEN NULL
+                                        ELSE COALESCE(UPPER(NULLIF(o.invoice_details->>'invoice_prefix','')), 'INV')
+                                             || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0') END,
+                 'title',          i.title,
+                 'client_name',    COALESCE(cl.name, i.contact_name, bcl.name, b.contact_name),
+                 'staff_name',     st.name,
+                 'booking_id',     b.id,
+                 'booking_ref',    b.booking_ref
+               ) AS r
+          FROM payments p
+          JOIN invoices i ON i.id = p.invoice_id
+          LEFT JOIN organizations o   ON o.id   = i.org_id
+          LEFT JOIN bookings      b   ON b.id   = i.booking_id AND b.deleted_at IS NULL
+          LEFT JOIN clients       cl  ON cl.id  = i.client_id  AND cl.deleted_at IS NULL
+          LEFT JOIN clients       bcl ON bcl.id = b.client_id  AND bcl.deleted_at IS NULL
+          LEFT JOIN staff         st  ON st.id  = i.staff_id   AND st.deleted_at IS NULL
+         WHERE i.org_id = p_org
+           AND p.status = 'completed'
+           AND p.deleted_at IS NULL
+           AND i.deleted_at IS NULL
+           AND i.status = 'issued'
+           AND (p_staff IS NULL OR i.staff_id = p_staff)
+           AND ((COALESCE(p.paid_at, p.created_at) AT TIME ZONE v_tz))::date BETWEEN v_start AND v_end
+      ) t;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'basis', p_basis,
+    'month', p_month,
+    'count', jsonb_array_length(v_rows),
+    -- Summed from the SAME rows that are listed, so the heading can never disagree
+    -- with the list under it.
+    'total', COALESCE((SELECT SUM((e->>'amount')::numeric) FROM jsonb_array_elements(v_rows) e), 0),
+    'rows',  v_rows
+  );
+END $f$;
+REVOKE ALL ON FUNCTION public.get_earnings_detail(uuid, text, text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_earnings_detail(uuid, text, text, uuid) TO authenticated;
+
+
+-- ── 35. client_summary — the CRM read model ────────────────────────────────
+-- The Clients page had nothing to filter on: a `clients` row is a name and an address,
+-- so "who still owes me" and "who have I not worked with this year" could not be asked
+-- there at all. Those answers live in invoices and bookings, and the money rule is that
+-- they are computed ONCE, in SQL.
+--
+-- Shaped like invoice_list (§15g): it drives FROM the entity and LEFT JOINs outward, so
+-- a client with no work keeps their row with zeroes rather than vanishing. Like that
+-- view it runs with the owner's rights and therefore carries its OWN org check and its
+-- own `deleted_at` filters.
+CREATE OR REPLACE VIEW public.client_summary AS
+SELECT
+  c.id, c.org_id, c.name, c.email, c.phone, c.company, c.vat_number,
+  c.billing_address, c.notes, c.created_at,
+  COALESCE(j.jobs, 0)                                    AS jobs,
+  j.last_job_at,
+  COALESCE(m.billed, 0)                                  AS billed,
+  COALESCE(m.paid, 0)                                    AS paid,
+  -- Floored PER INVOICE inside `m`, never on the client total: an overpayment on one
+  -- invoice must not cancel out what is still owed on another.
+  COALESCE(m.outstanding, 0)                             AS outstanding,
+  COALESCE(m.overdue, 0)                                 AS overdue,
+  -- "Can I actually invoice this client" in one flag, which is what the billing
+  -- details are FOR. A name alone cannot be put on a document a company will pay.
+  (c.email IS NOT NULL AND btrim(c.email) <> ''
+   AND c.billing_address IS NOT NULL AND btrim(c.billing_address) <> '') AS billable
+FROM public.clients c
+LEFT JOIN LATERAL (
+  SELECT count(*) AS jobs, MAX(b.start_at) AS last_job_at
+    FROM public.bookings b
+   WHERE b.client_id = c.id AND b.deleted_at IS NULL
+     AND b.status IN ('booked', 'in_progress', 'done')) j ON true
+LEFT JOIN LATERAL (
+  SELECT SUM(g.gross)                                   AS billed,
+         SUM(g.paid)                                    AS paid,
+         SUM(GREATEST(0, g.gross - g.paid))             AS outstanding,
+         SUM(CASE WHEN g.is_overdue THEN GREATEST(0, g.gross - g.paid) ELSE 0 END) AS overdue
+    FROM (
+      SELECT
+        COALESCE((SELECT SUM(l.amount) FROM public.invoice_lines l
+                   WHERE l.invoice_id = i.id AND l.deleted_at IS NULL), 0) AS gross,
+        COALESCE((SELECT SUM(p.amount) FROM public.payments p
+                   WHERE p.invoice_id = i.id AND p.status = 'completed'
+                     AND p.deleted_at IS NULL), 0)                         AS paid,
+        (i.due_date IS NOT NULL AND i.due_date < current_date)             AS is_overdue
+        FROM public.invoices i
+       WHERE i.client_id = c.id AND i.deleted_at IS NULL
+         -- Issued only, exactly as get_earnings counts it: a draft was never sent and
+         -- a void invoice was withdrawn (§33), so neither is money anyone owes.
+         AND i.status = 'issued'
+    ) g) m ON true
+WHERE (public.is_org_admin(c.org_id) OR public.is_platform_admin())
+  AND c.deleted_at IS NULL;
+GRANT SELECT ON public.client_summary TO authenticated;

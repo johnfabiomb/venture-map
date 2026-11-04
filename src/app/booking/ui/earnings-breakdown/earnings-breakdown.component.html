@@ -1,0 +1,76 @@
+<app-modal [(open)]="open" [title]="heading() + ' · ' + monthLabel()">
+  @if (loading()) {
+    <p class="eb__state">Loading…</p>
+  } @else if (!detail() || !rows().length) {
+    <p class="eb__state">Nothing in {{ monthLabel() }}.</p>
+  } @else {
+    <div class="eb__sum">
+      <span class="eb__sum-amount">{{ detail()!.total | currency:'EUR':'symbol':'1.2-2' }}</span>
+      <span class="eb__sum-note">
+        {{ detail()!.count }}
+        {{ basis() === 'cash' ? (detail()!.count === 1 ? 'payment' : 'payments')
+                              : (detail()!.count === 1 ? 'invoice' : 'invoices') }}
+        · {{ whoLabel() }}
+        · {{ basis() === 'cash' ? 'by the date the money arrived' : 'by the date the work happened' }}
+      </span>
+    </div>
+
+    <ul class="eb__list">
+      @for (r of rows(); track rowKey(r)) {
+        <li class="eb__row" [class.eb__row--open]="isOpen(r)">
+          <div class="eb__main" (click)="toggle(r)">
+            <div class="eb__who">
+              <span class="eb__client">{{ r.client_name || 'No client' }}</span>
+              <span class="eb__title">{{ r.title || 'Untitled' }}</span>
+            </div>
+
+            <div class="eb__meta">
+              @if (basis() === 'cash') {
+                <span>{{ r.paid_on | date:'d MMM' }}</span>
+                @if (r.method) { <span class="eb__chip">{{ r.method }}</span> }
+              } @else {
+                <span>{{ r.service_date | date:'d MMM' }}</span>
+                @if (r.balance && r.balance > 0.005) {
+                  <span class="eb__chip eb__chip--owed">{{ r.balance | currency:'EUR':'symbol':'1.0-0' }} owed</span>
+                }
+              }
+              @if (r.staff_name) { <span class="eb__chip">{{ r.staff_name }}</span> }
+            </div>
+
+            <div class="eb__amount">{{ r.amount | currency:'EUR':'symbol':'1.2-2' }}</div>
+          </div>
+
+          <div class="eb__links">
+            @if (r.invoice_number) {
+              <button type="button" class="eb__link" (click)="openInvoice(r)">{{ r.invoice_number }}</button>
+            } @else {
+              <span class="eb__link eb__link--dead">Draft, no number</span>
+            }
+            @if (r.booking_ref) {
+              <button type="button" class="eb__link" (click)="openBooking(r, $event)">{{ r.booking_ref }}</button>
+            } @else {
+              <span class="eb__link eb__link--dead">No booking</span>
+            }
+            @if (r.lines?.length) {
+              <span class="eb__charges">{{ isOpen(r) ? 'Hide' : 'Show' }} {{ r.lines!.length }} {{ r.lines!.length === 1 ? 'charge' : 'charges' }}</span>
+            }
+          </div>
+
+          @if (isOpen(r) && r.lines?.length) {
+            <ul class="eb__lines">
+              @for (l of r.lines!; track $index) {
+                <li class="eb__line">
+                  <span class="eb__line-desc">
+                    {{ l.description || l.service_name || 'Charge' }}
+                    @if (l.hours) { <em class="eb__line-hours">{{ l.hours }}h</em> }
+                  </span>
+                  <span class="eb__line-amount">{{ l.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ul>
+  }
+</app-modal>

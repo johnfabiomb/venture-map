@@ -8,8 +8,6 @@
          need a way to create your first one. -->
     <div class="head-tools">
       @if (invoices().length > 0) {
-        <app-select class="year-select" [value]="year()" (changed)="setYear($event)"
-                    [options]="yearOptions()" [searchable]="false" />
         <button class="btn btn--ghost" (click)="exportCsv()">Export CSV</button>
       }
       <a class="btn btn--primary" routerLink="/bookings/invoices/new" data-tour="inv-new">New invoice</a>
@@ -29,7 +27,7 @@
          this page could answer "what did I keep". That lives on the P&L and per job.
          Overdue replaces it: a question an invoice list genuinely can answer. -->
     <div class="summary" data-tour="inv-summary">
-      <div class="summary__card"><span class="summary__label">Invoices</span><span class="summary__val">{{ counts().all }}</span></div>
+      <div class="summary__card"><span class="summary__label">Invoices</span><span class="summary__val">{{ inWindow().length }}</span></div>
       <div class="summary__card"><span class="summary__label">Billed (gross)</span><span class="summary__val">{{ totalBilled() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Collected</span><span class="summary__val summary__val--ok">{{ totalPaid() | currency:currency():'symbol':'1.0-2' }}</span></div>
       <div class="summary__card"><span class="summary__label">Outstanding</span><span class="summary__val summary__val--due">{{ outstanding() | currency:currency():'symbol':'1.0-2' }}</span></div>
@@ -39,17 +37,25 @@
       </div>
     </div>
 
-    <!-- Status tabs -->
+    <!-- Deleted is a VIEW (its rows come from an RPC and have another shape); the four
+         dimensions below are what replaced the old single-select status tabs. -->
     <div class="tabs" role="tablist">
-      @for (t of tabs; track t.key) {
-        <button class="tab" [class.tab--active]="tab() === t.key" (click)="setTab(t.key)" role="tab">
-          <span>{{ t.label }}</span>
-          @if (counts()[t.key]) { <span class="tab__count">{{ counts()[t.key] }}</span> }
-        </button>
-      }
+      <button class="tab" [class.tab--active]="!showDeleted()" (click)="closeDeleted()">Invoices</button>
+      <button class="tab" [class.tab--active]="showDeleted()" (click)="openDeleted()">
+        <span>Deleted</span>
+        @if (deleted().length) { <span class="tab__count">{{ deleted().length }}</span> }
+      </button>
     </div>
 
-    @if (tab() === 'deleted') {
+    @if (!showDeleted()) {
+      <app-list-filters [groups]="filterGroups()"
+                        [(state)]="filterState"
+                        [(period)]="period"
+                        [dateFields]="dateFields"
+                        [summary]="summary()" />
+    }
+
+    @if (showDeleted()) {
       <!-- Its own table: these rows come from an RPC (hide_deleted blocks a normal read)
            and carry a different shape, so forcing them through the live table would mean
            null-checking every cell. -->
@@ -82,8 +88,8 @@
         <app-paginator [page]="pagedDeleted.page()" [pageCount]="pagedDeleted.pageCount()"
                        [total]="pagedDeleted.total()" (pageChange)="pagedDeleted.setPage($event)" />
       }
-    } @else if (filtered().length === 0) {
-      <p class="muted">No invoices match this filter.</p>
+    } @else if (visible().length === 0) {
+      <p class="muted">{{ emptyText() }}</p>
     } @else {
       <!-- Table — real <table> so it uses the shared table-cards mixin (cards on mobile). -->
       <div class="table-wrap">

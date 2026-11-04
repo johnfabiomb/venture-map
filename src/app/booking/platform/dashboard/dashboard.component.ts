@@ -9,18 +9,22 @@ import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { BookingSummary } from '@booking/core/interfaces/booking.interface';
 import { Earnings, EarningsBasis } from '@booking/core/interfaces/earnings.interface';
 import { Profit } from '@booking/core/interfaces/profit.interface';
+import { EarningsBreakdownComponent } from '@booking/ui/earnings-breakdown/earnings-breakdown.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, CurrencyPipe, DatePipe],
+  imports: [RouterLink, CurrencyPipe, DatePipe, EarningsBreakdownComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent implements OnInit {
   readonly data = inject(BookingDataService);
   private readonly admin = inject(BookingAdminService);
-  private readonly auth = inject(BookingsAuthService);
+  /** Public because the template reads `auth.orgId()` for the chart breakdown.
+   *  Angular templates cannot access private members, and plain `tsc` does not
+   *  check templates: only `ng build` catches it. */
+  readonly auth = inject(BookingsAuthService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
 
@@ -114,10 +118,22 @@ export class DashboardComponent implements OnInit {
     return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(ref.getFullYear(), ref.getMonth() - (5 - i), 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return { label: d.toLocaleDateString('en', { month: 'short' }), total: map.get(key) ?? 0 };
+      return { key, label: d.toLocaleDateString('en', { month: 'short' }), total: map.get(key) ?? 0 };
     });
   });
   readonly maxMonth = computed(() => Math.max(1, ...this.revenueByMonth().map(m => m.total)));
+
+  // ── Chart drill-down ──────────────────────────────────────────────
+  /** Which month is open, as 'YYYY-MM'. The breakdown loads itself from this. */
+  readonly openMonth = signal<string | null>(null);
+  readonly breakdownOpen = signal(false);
+
+  /** A month with nothing in it has nothing to show, so it is not clickable. */
+  openBreakdown(month: { key: string; total: number }): void {
+    if (month.total <= 0) return;
+    this.openMonth.set(month.key);
+    this.breakdownOpen.set(true);
+  }
 
   /** Per-worker split, shown only when there's more than one worker to compare. */
   readonly byWorker = computed(() => this.earnings()?.by_worker ?? []);

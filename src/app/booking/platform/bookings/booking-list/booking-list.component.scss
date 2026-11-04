@@ -353,3 +353,12 @@
 // while the edit is still owed, so one can never stand in for the other.
 .badge--work      { background: #e0e7ff; color: #4338ca; margin-left: 4px; }
 .badge--work-done { background: #dcfce7; color: #16a34a; margin-left: 4px; }
+
+// The Bookings / Deleted switch. Reuses .tab so it reads as the same control the tabs
+// were, which is deliberate: Deleted is still a VIEW, it is the four dimensions below
+// that replaced the old per-question tabs.
+.toolbar__views {
+  display: flex; align-items: center; gap: 2px;
+  background: $bg; border: 1px solid $border; border-radius: $radius-lg; padding: 4px;
+  flex: 0 0 auto;
+}

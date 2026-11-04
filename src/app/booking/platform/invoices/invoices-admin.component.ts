@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe, CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -8,6 +8,11 @@ import { onScopeChange } from '@booking/core/utils/scope-reload.util';
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { InvoiceListRow, DeletedInvoice } from '@booking/core/interfaces/invoice.interface';
+import {
+  EMPTY_PERIOD, FilterGroup, FilterState, PeriodState, countsFor, isFilterEmpty,
+} from '@booking/core/interfaces/list-filter.interface';
+import { inPeriod, periodLabel } from '@booking/core/utils/period.util';
+import { ListFiltersComponent } from '@booking/ui/list-filters/list-filters.component';
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
@@ -23,7 +28,9 @@ type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
  *  unpaid or partial. Kept out of PaymentStatus so the two can never be conflated. */
 /** `deleted` is a different KIND of tab again: its rows come from an RPC (the hide_deleted
  *  policy blocks a normal read) and carry a different shape, so it renders its own table. */
-type InvoiceTab = 'all' | PaymentStatus | 'overdue' | 'deleted';
+// The dimensions the list can be narrowed by. Order is render order, and this array
+// is the allowlist the query params are read through.
+const GROUP_KEYS = ['pay', 'flag', 'status', 'link'] as const;
 // Keyed on PaymentStatus, NOT on the tab union: statusLabel() renders a row's payment
 // status, and no row's payment status is ever "overdue".
 const STATUS_LABEL: Record<PaymentStatus, string> = {
@@ -40,7 +47,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent, PaymentDialogComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent, PaymentDialogComponent, ListFiltersComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })
@@ -111,95 +118,126 @@ export class InvoicesAdminComponent implements OnInit {
     this.sendOpen.set(true);
   }
 
-  // Year filter (for VAT periods). 'all' or a 4-digit year string.
-  readonly year = signal<string>('all');
+  // ── Filters (dimensions) ─────────────────────────────────────────────
+  // The year dropdown only ever answered "which VAT period", and the tabs answered one
+  // of three different questions at a time (payment, invoice state, overdue). Both are
+  // dimensions now, so "unpaid AND overdue in Q3" is sayable.
+  readonly filterState = signal<FilterState>({});
+  /** Defaults to the service date: "what work happened in October" is the question
+   *  asked far more often than "what did I issue in October". The switch is on the
+   *  control because for VAT it is the issue date that matters, and guessing wrong
+   *  silently reports the wrong period. */
+  readonly period = signal<PeriodState>({ ...EMPTY_PERIOD, field: 'service_date' });
 
-  /** An invoice's year: its own service date, falling back to its number's year. */
-  private rowYear(r: InvoiceListRow): string {
-    if (r.service_date) return r.service_date.slice(0, 4);
-    return r.number_year ? String(r.number_year) : '';
+  readonly dateFields = [
+    { value: 'service_date', label: 'service date' },
+    { value: 'issue_date',   label: 'issue date' },
+  ];
+
+  /** Deleted rows come from an RPC with a different shape, so this is a VIEW. */
+  readonly showDeleted = signal(false);
+
+  private rowDate(r: InvoiceListRow): string | null {
+    // Falls back to the other date rather than dropping out of every window: an invoice
+    // with no service date is still a real document that was issued on a day.
+    return this.period().field === 'issue_date'
+      ? (r.issue_date ?? r.service_date)
+      : (r.service_date ?? r.issue_date);
   }
 
-  readonly years = computed(() => {
-    const ys = new Set<string>();
-    for (const r of this.invoices()) { const y = this.rowYear(r); if (y) ys.add(y); }
-    return [...ys].sort((a, b) => b.localeCompare(a));
-  });
+  /** Everything the period allows: the KPI block and every chip count read from this. */
+  readonly inWindow = computed(() =>
+    this.invoices().filter(r => inPeriod(this.rowDate(r), this.period())));
 
-  /** Invoices in the selected year (period scope — drives the summary + counts). */
-  readonly yearScoped = computed(() => {
-    const y = this.year();
-    return y === 'all' ? this.invoices() : this.invoices().filter(r => this.rowYear(r) === y);
-  });
+  readonly visible = computed(() =>
+    this.inWindow().filter(r => this.passesAll(r, this.filterState())));
 
-  // Payment status tabs.
-  readonly tabs: ReadonlyArray<{ key: InvoiceTab; label: string }> = [
-    { key: 'all',     label: 'All' },
-    { key: 'unpaid',  label: 'Unpaid' },
-    { key: 'overdue', label: 'Overdue' },
-    { key: 'partial', label: 'Partially paid' },
-    { key: 'paid',    label: 'Paid' },
-    { key: 'void',    label: 'Void' },
-    { key: 'deleted', label: 'Deleted' },
-  ];
-  readonly tab = signal<InvoiceTab>('all');
-
-  readonly counts = computed<Record<InvoiceTab, number>>(() => {
-    const c: Record<InvoiceTab, number> = {
-      all: 0, unpaid: 0, partial: 0, paid: 0, void: 0, overdue: 0,
-      // Counted from its own list, not from yearScoped — deleted rows never appear there.
-      deleted: this.deleted().length,
-    };
-    for (const r of this.yearScoped()) {
-      c.all++;
-      c[r.payment_status]++;
-      // Counted on its own: overdue is not a payment status, so the indexed increment
-      // above can never produce it.
-      if (r.is_overdue) c.overdue++;
+  private optionMatches(r: InvoiceListRow, group: string, value: string): boolean {
+    switch (group) {
+      case 'status': return r.status === value;
+      case 'pay':    return r.payment_status === value;
+      // Overdue CUTS ACROSS payment status rather than being one, which is why it is
+      // its own dimension and not another payment chip.
+      case 'flag':   return value === 'overdue' ? !!r.is_overdue : false;
+      case 'link':   return value === 'linked' ? !!r.has_booking : !r.has_booking;
+      default:       return true;
     }
-    return c;
+  }
+
+  private passesAll(r: InvoiceListRow, st: FilterState, skip?: string): boolean {
+    for (const key of GROUP_KEYS) {
+      if (key === skip) continue;
+      const sel = st[key] ?? [];
+      if (sel.length && !sel.some(v => this.optionMatches(r, key, v))) return false;
+    }
+    return true;
+  }
+
+  readonly filterGroups = computed<FilterGroup[]>(() => {
+    const st = this.filterState(), base = this.inWindow();
+    const build = (key: string, label: string, opts: ReadonlyArray<[string, string]>, alert = ''): FilterGroup => {
+      const counts = countsFor(base, opts.map(o => o[0]),
+        r => this.passesAll(r, st, key), (r, v) => this.optionMatches(r, key, v));
+      return {
+        key, label,
+        options: opts.map(([value, text]) => ({
+          value, label: text, count: counts[value] ?? 0, alert: value === alert,
+        })),
+      };
+    };
+    return [
+      build('pay',    'Payment', [['unpaid', 'Unpaid'], ['partial', 'Partially paid'], ['paid', 'Paid']], 'unpaid'),
+      build('flag',   'Flags',   [['overdue', 'Overdue']], 'overdue'),
+      build('status', 'State',   [['draft', 'Draft'], ['issued', 'Issued'], ['void', 'Void']]),
+      build('link',   'Job',     [['linked', 'Has a booking'], ['standalone', 'Standalone']]),
+    ];
   });
 
-  /** Visible rows: year + tab, newest invoice number first. */
-  readonly filtered = computed(() => {
-    const t = this.tab();
-    // Deleted rows are a different shape and render in their own table; this list stays
-    // strictly the live ones so nothing downstream has to null-check.
-    if (t === 'deleted') return [];
-    if (t === 'all') return this.yearScoped();
-    // Overdue needs its own arm — it cuts across payment status rather than being one,
-    // so comparing it to `payment_status` would always match nothing.
-    if (t === 'overdue') return this.yearScoped().filter(r => r.is_overdue);
-    return this.yearScoped().filter(r => r.payment_status === t);
+  readonly summary = computed(() => {
+    const v = this.visible();
+    if (!v.length) return '';
+    const money = (x: number) => `€${Math.round(x).toLocaleString('en')}`;
+    const owed = v.reduce((s, r) => s + r.balance_due, 0);
+    const late = v.reduce((s, r) => s + (r.is_overdue ? r.balance_due : 0), 0);
+    return `${v.length} invoice${v.length === 1 ? '' : 's'} · ${money(v.reduce((s, r) => s + r.amount_gross, 0))} billed`
+         + (owed > 0.005 ? ` · ${money(owed)} outstanding` : '')
+         + (late > 0.005 ? ` · ${money(late)} overdue` : '')
+         + ` · ${periodLabel(this.period())} by ${this.period().field === 'issue_date' ? 'issue date' : 'service date'}`;
   });
 
-  // Paging. `filtered` already reflects the year + tab, so switching either changes the
-  // set and must return to page one — hence reset() in setTab/setYear below.
-  readonly paged = paginate(this.filtered);
+  readonly emptyText = computed(() =>
+    isFilterEmpty(this.filterState(), this.period())
+      ? 'No invoices yet.'
+      : 'No invoices match these filters. Loosen one, or clear them.');
+
+  openDeleted(): void { this.showDeleted.set(true); }
+  closeDeleted(): void { this.showDeleted.set(false); }
+
+  // Paging. `visible` already reflects the period and every dimension, so changing a
+  // filter changes the set; the effect below returns to page one.
+  readonly paged = paginate(this.visible);
   readonly pagedDeleted = paginate(this.deleted);
 
-  readonly yearOptions = computed<SelectOption[]>(() => [
-    { value: 'all', label: 'All years' },
-    ...this.years().map(y => ({ value: y, label: y })),
-  ]);
-
-  setTab(t: InvoiceTab): void { this.tab.set(t); this.paged.reset(); }
-  setYear(y: string): void { this.year.set(y); this.paged.reset(); }
-
-  // Summary reflects the whole period (year), independent of the active tab.
-  readonly totalBilled = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_gross, 0));
+  // The KPI block reflects the whole PERIOD, deliberately independent of the chips:
+  // it answers "how did this month go", while the filter bar's own summary line
+  // describes the narrower set actually listed.
+  readonly totalBilled = computed(() => this.inWindow().reduce((s, r) => s + r.amount_gross, 0));
   // Kept because invoice_list still exposes amount_net; no longer surfaced on this page.
   // See the comment on the summary block in the template for why.
-  readonly totalNet    = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_net, 0));
+  readonly totalNet    = computed(() => this.inWindow().reduce((s, r) => s + r.amount_net, 0));
   /** Money that is late, not merely unpaid — the balance on invoices past their due date. */
   readonly overdueTotal = computed(() =>
-    this.yearScoped().reduce((s, r) => s + (r.is_overdue ? r.balance_due : 0), 0));
-  readonly totalPaid   = computed(() => this.yearScoped().reduce((s, r) => s + r.amount_paid, 0));
+    this.inWindow().reduce((s, r) => s + (r.is_overdue ? r.balance_due : 0), 0));
+  readonly totalPaid   = computed(() => this.inWindow().reduce((s, r) => s + r.amount_paid, 0));
   // Summed PER INVOICE (already floored at zero in SQL): one client's overpayment must
   // never cancel out what another client still owes.
-  readonly outstanding = computed(() => this.yearScoped().reduce((s, r) => s + r.balance_due, 0));
+  readonly outstanding = computed(() => this.inWindow().reduce((s, r) => s + r.balance_due, 0));
 
   constructor() {
+    // Any change to the window or the chips changes the set, so a stale page number
+    // would show an empty table on a list that has rows.
+    effect(() => { this.filterState(); this.period(); this.paged.reset(); });
+
     // Invoices carry a staff_id and queryInvoices() is scoped, so the list and the
     // Deleted tab both have to re-pull when the worker being viewed changes. This is also
     // the page's FIRST load — ngOnInit only resolves auth.
@@ -262,7 +300,7 @@ export class InvoicesAdminComponent implements OnInit {
   /** Download the visible list as CSV for the accountant. */
   exportCsv(): void {
     const rows = [['Invoice', 'Date', 'Client', 'Worker', 'Service', 'Gross', 'Net', 'Paid', 'Balance', 'Status']];
-    for (const r of this.filtered()) {
+    for (const r of this.visible()) {
       rows.push([
         r.invoice_number ?? '',
         (r.service_date ?? '').slice(0, 10),

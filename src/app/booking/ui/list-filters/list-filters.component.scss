@@ -1,0 +1,119 @@
+@use '../../platform/admin.shared' as *;
+
+:host { display: block; }
+
+.lf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  background: $bg;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+}
+
+.lf__period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+// Fixed column so the dimension rows line up under each other and read as a table of
+// questions rather than a wall of chips.
+.lf__label {
+  flex: 0 0 62px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $text-2;
+}
+
+// app-select draws its own trigger: a call site gives it sizing ONLY.
+.lf__preset { min-width: 150px; }
+.lf__field  { min-width: 140px; }
+
+.lf__date {
+  padding: 5px 9px;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  background: $card;
+  font-family: $font;
+  font-size: 13px;
+  color: $text;
+}
+.lf__to, .lf__by { font-size: 12px; color: $text-2; }
+
+.lf__clear {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: $font;
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-2;
+  cursor: pointer;
+  text-decoration: underline;
+  &:hover { color: $text; }
+}
+
+.lf__group { display: flex; align-items: flex-start; gap: 8px; }
+.lf__chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+
+.lf__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid $border;
+  border-radius: 999px;
+  background: $card;
+  font-family: $font;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text-2;
+  cursor: pointer;
+  transition: all $transition;
+
+  &:hover { color: $text; border-color: $text-3; }
+  &--on {
+    background: $accent-dim;
+    border-color: $accent;
+    color: $text;
+  }
+}
+
+.lf__count {
+  min-width: 17px; height: 17px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  background: $border;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: $text-2;
+
+  .lf__chip--on & { background: $card; color: $text; }
+  &--alert { background: #fee2e2; color: #dc2626; }
+}
+
+.lf__any {
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-family: $font;
+  font-size: 11.5px;
+  color: $text-3;
+  cursor: pointer;
+  text-decoration: underline;
+  &:hover { color: $text-2; }
+}
+
+.lf__summary {
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid $border;
+  font-size: 12.5px;
+  color: $text-2;
+}
+
+@media (max-width: 760px) {
+  .lf__group { flex-direction: column; gap: 5px; }
+  .lf__label { flex: none; }
+  .lf__clear { margin-left: 0; }
+}
