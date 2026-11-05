@@ -389,6 +389,23 @@ export class BookingDataService implements OnDestroy {
     return { error: key ? why[key] : error.message };
   }
 
+  /**
+   * Issue a draft: it takes the next number in the org's series and becomes a document
+   * the client can be sent and can pay. Rules in `set_invoice_issued` (§36). There is
+   * deliberately no reverse: an invoice issued by mistake is voided, keeping its number.
+   */
+  async setInvoiceIssued(invoiceId: string): Promise<{ number?: string | null; error?: string }> {
+    const { data, error } = await bookingsDb.rpc('set_invoice_issued', { p_invoice: invoiceId });
+    if (!error) return { number: (data as { invoice_number?: string | null })?.invoice_number ?? null };
+    const why: Record<string, string> = {
+      no_lines: 'Add at least one charge before issuing it.',
+      already_issued: 'This invoice is already issued.',
+      is_void: 'This invoice is void: un-void it instead.',
+    };
+    const key = Object.keys(why).find(k => error.message.includes(k));
+    return { error: key ? why[key] : error.message };
+  }
+
   /** Delete a DRAFT invoice (never issued, so no number goes missing). Restorable from Invoices → Deleted. */
   async deleteDraftInvoice(invoiceId: string): Promise<{ ok?: boolean; error?: string }> {
     const { error } = await bookingsDb.rpc('soft_delete', { p_table: 'invoices', p_id: invoiceId });

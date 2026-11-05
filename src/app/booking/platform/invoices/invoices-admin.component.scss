@@ -57,6 +57,9 @@
   &--unpaid  { background: #fee2e2; color: #dc2626; }
   // Withdrawn: owes nothing, so it must read as neither a debt nor money in.
   &--void    { background: var(--color-bg-muted); color: var(--color-text-muted); text-decoration: line-through; }
+  // Not a bill yet: quiet, and NOT struck through, because unlike a void one it is still
+  // going somewhere.
+  &--draft   { background: var(--color-bg-muted); color: var(--color-text-muted); }
   // Sits NEXT TO the payment badge rather than replacing it, so a third pale pill would
   // just blur into the other two. Solid fill, in the same amber as the overdue Due cell.
   &--overdue { background: #b45309; color: #fff; margin-left: 6px; }

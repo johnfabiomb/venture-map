@@ -132,7 +132,8 @@
                         [class.badge--paid]="r.payment_status === 'paid'"
                         [class.badge--partial]="r.payment_status === 'partial'"
                         [class.badge--unpaid]="r.payment_status === 'unpaid'"
-                        [class.badge--void]="r.payment_status === 'void'">{{ statusLabel(r) }}</span>
+                        [class.badge--void]="r.payment_status === 'void'"
+                        [class.badge--draft]="r.payment_status === 'draft'">{{ statusLabel(r) }}</span>
                   <!-- Shown ALONGSIDE the payment status, not instead of it: overdue cuts
                        across unpaid/partial rather than replacing either. -->
                   @if (r.is_overdue) {

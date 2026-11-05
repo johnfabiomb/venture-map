@@ -25,9 +25,21 @@
 
     @if (status === 'void') {
       <!-- A void invoice owes nothing and cannot be paid; say so before anyone edits it. -->
-      <div class="void-note">
+      <div class="state-note">
         <span><b>This invoice is void.</b> It owes nothing, is not counted as earnings, and the client cannot pay it.</span>
         <button type="button" class="btn btn--ghost" (click)="unvoid()">Un-void</button>
+      </div>
+    }
+
+    @if (status === 'draft' && !isNew()) {
+      <!-- The state nobody could get out of: a draft has no number, so it is not earnings,
+           is owed by nobody, and cannot be sent or paid. Say what it is and offer the way out. -->
+      <div class="state-note">
+        <span><b>This is a draft.</b> It has no number yet, so it cannot be sent or paid and counts as
+          nothing you are owed. Issuing it takes the next number in your series.</span>
+        <button type="button" class="btn btn--primary" [disabled]="issuing() || saving()" (click)="issue()">
+          {{ issuing() ? 'Issuing…' : 'Issue invoice' }}
+        </button>
       </div>
     }
 

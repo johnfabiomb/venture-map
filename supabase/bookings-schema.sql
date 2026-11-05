@@ -1409,10 +1409,16 @@ SELECT
   -- Floored at zero PER INVOICE: one client's overpayment must never cancel out
   -- another client's debt. A VOID invoice owes nothing (§33): it was withdrawn, so it
   -- must not count as outstanding anywhere, nor be chased.
-  CASE WHEN i.status = 'void' THEN 0
+  -- A DRAFT owes nothing either, for a different reason than a void one: it has no
+  -- number and the client has never been handed it, so it is not a bill yet. It used to
+  -- read 'unpaid' with a full balance, which the Invoices page summed into Outstanding
+  -- while get_earnings and client_summary (both 'issued' only) ignored it. The same
+  -- money was therefore owed on two pages and not owed on two others.
+  CASE WHEN i.status IN ('void', 'draft') THEN 0
        ELSE GREATEST(0, gross.amount_gross - paid.amount_paid) END AS balance_due,
   CASE
     WHEN i.status = 'void'                              THEN 'void'
+    WHEN i.status = 'draft'                             THEN 'draft'
     WHEN gross.amount_gross > 0
      AND paid.amount_paid >= gross.amount_gross - 0.005 THEN 'paid'
     WHEN paid.amount_paid > 0                           THEN 'partial'
@@ -4550,3 +4556,66 @@ LEFT JOIN LATERAL (
 WHERE (public.is_org_admin(c.org_id) OR public.is_platform_admin())
   AND c.deleted_at IS NULL;
 GRANT SELECT ON public.client_summary TO authenticated;
+
+
+-- ── 36. ISSUING A DRAFT ────────────────────────────────────────────────────
+-- `+ Add` on a booking creates a DRAFT deliberately: an extra fee is written before it
+-- is sent, and save_invoice has always numbered an invoice the moment its status reads
+-- 'issued'. Nothing in the app ever set it. A draft could be edited, emailed or deleted
+-- and never become a document, so the series simply skipped it: live on BK-2026-157,
+-- whose EUR 180 supplementary fee sat unnumbered and unbillable.
+--
+-- Numbering is NOT reimplemented here. This dates the document and delegates to
+-- save_invoice, which owns the series (year from the issue date, next_invoice_seq, due
+-- date materialised once). A second numbering writer is exactly how two parallel series
+-- start, which is the thing §15d exists to prevent.
+--
+-- Not symmetrical with set_invoice_void on purpose: un-issuing does not exist. Once a
+-- number is handed out the document is in the series, and taking it back would leave a
+-- hole. An invoice issued by mistake is VOIDED, which keeps the number and says so.
+CREATE OR REPLACE FUNCTION public.set_invoice_issued(p_invoice uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $f$
+DECLARE
+  v      public.invoices%ROWTYPE;
+  v_date date;
+  v_num  text;
+BEGIN
+  SELECT * INTO v FROM invoices WHERE id = p_invoice AND deleted_at IS NULL;
+  IF NOT FOUND THEN RAISE EXCEPTION 'invoice_not_found' USING errcode = 'P0002'; END IF;
+  IF NOT is_org_admin(v.org_id) THEN RAISE EXCEPTION 'not_allowed' USING errcode = '42501'; END IF;
+
+  -- A void invoice already holds a number: it comes back by being un-voided, never by
+  -- being issued again, which would consume a second one.
+  IF v.status = 'void'   THEN RAISE EXCEPTION 'is_void'        USING errcode = '22023'; END IF;
+  IF v.status = 'issued' THEN RAISE EXCEPTION 'already_issued' USING errcode = '22023'; END IF;
+
+  -- An empty document is not an invoice. This checks for LINES rather than for an
+  -- amount: a zero total is legitimate (goodwill, a fully discounted job), a zero
+  -- CHARGES invoice is a blank page with a number on it.
+  IF NOT EXISTS (SELECT 1 FROM invoice_lines l WHERE l.invoice_id = v.id) THEN
+    RAISE EXCEPTION 'no_lines' USING errcode = '22023';
+  END IF;
+
+  -- Issuing IS the act that dates the document, so a draft that never carried a date
+  -- takes today's. One set by hand survives, and the number's year follows it.
+  v_date := COALESCE(v.issue_date, current_date);
+
+  PERFORM public.save_invoice(
+    v.org_id,
+    jsonb_build_object('id', v.id::text, 'status', 'issued', 'issue_date', v_date::text),
+    NULL);                                  -- NULL lines: leave the charges alone
+
+  -- Formatted the same way invoice_list formats it, so the toast cannot name the
+  -- invoice differently from the row the owner is looking at.
+  SELECT CASE WHEN i.number_seq IS NULL THEN NULL
+              ELSE COALESCE(UPPER(NULLIF(o.invoice_details->>'invoice_prefix','')), 'INV')
+                   || '-' || i.number_year || '-' || LPAD(i.number_seq::text, 3, '0')
+         END
+    INTO v_num
+    FROM invoices i JOIN organizations o ON o.id = i.org_id
+   WHERE i.id = v.id;
+
+  RETURN jsonb_build_object('id', v.id, 'invoice_number', v_num, 'issue_date', v_date);
+END $f$;
+REVOKE ALL ON FUNCTION public.set_invoice_issued(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.set_invoice_issued(uuid) TO authenticated;

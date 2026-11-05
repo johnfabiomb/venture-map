@@ -48,7 +48,8 @@
 .card__h { margin: 0 0 4px; }
 
 // A void invoice says so before anyone edits it.
-.void-note {
+// The banner that says what state this invoice is in and offers the way out of it.
+.state-note {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-md);
   background: var(--color-bg-muted); color: var(--color-text-secondary); font-size: 13px;

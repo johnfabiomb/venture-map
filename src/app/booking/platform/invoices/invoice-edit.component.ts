@@ -65,6 +65,7 @@ export class InvoiceEditComponent implements OnInit {
   readonly jobOptions = signal<JobOption[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly issuing = signal(false);
   readonly notFound = signal(false);
   readonly isNew = signal(false);
   readonly clientEditorOpen = signal(false);
@@ -289,9 +290,14 @@ export class InvoiceEditComponent implements OnInit {
     if (this.isDirty()) { e.preventDefault(); e.returnValue = ''; }
   }
 
-  async save(): Promise<void> {
+  /**
+   * `stay` keeps the editor open and `silent` keeps its toast quiet: both are for the
+   * Issue flow, which saves what is on screen and then speaks for itself. Returns
+   * whether the write actually happened, so a caller can stop if it did not.
+   */
+  async save(opts: { stay?: boolean; silent?: boolean } = {}): Promise<boolean> {
     const org = this.auth.orgId();
-    if (!org || !this.canSave) return;
+    if (!org || !this.canSave) return false;
     this.saving.set(true);
     try {
       const items: LineItem[] = this.items.map(i => ({
@@ -316,7 +322,7 @@ export class InvoiceEditComponent implements OnInit {
         status:       this.status,
       };
       const res = await this.data.saveInvoiceRecord(org, invoice, items);
-      if (res.error || !res.id) { this.toast.error('Could not save the invoice.'); return; }
+      if (res.error || !res.id) { this.toast.error('Could not save the invoice.'); return false; }
       this.invoiceId = res.id;
 
       // A booking-linked invoice keeps its booking's total (and calendar event) in step.
@@ -335,9 +341,39 @@ export class InvoiceEditComponent implements OnInit {
       }
 
       this.baseline = this.snapshot();
-      this.toast.success(this.isNew() ? 'Invoice created' : 'Invoice saved');
-      this.router.navigate(this.returnCommands());
+      if (!opts.silent) this.toast.success(this.isNew() ? 'Invoice created' : 'Invoice saved');
+      if (!opts.stay) this.router.navigate(this.returnCommands());
+      return true;
     } finally { this.saving.set(false); }
+  }
+
+  /**
+   * Turn this draft into a document. One way: the number cannot be handed back without
+   * leaving a hole in the series, so a mistake is voided rather than un-issued (§36).
+   */
+  async issue(): Promise<void> {
+    if (!this.invoiceId || this.issuing() || this.saving()) return;
+    if (!(await this.confirm.ask({
+      title: 'Issue this invoice',
+      message: 'It takes the next number in your series and can then be sent and paid. '
+             + 'This cannot be undone: an invoice issued by mistake is voided, which keeps its number.',
+      confirmLabel: 'Issue invoice',
+    }))) return;
+    this.issuing.set(true);
+    try {
+      // Issue what is ON SCREEN. The RPC works on the stored row, so an unsaved charge
+      // would otherwise be numbered in its old form and only reach the document later.
+      if (this.isDirty() && !(await this.save({ stay: true, silent: true }))) return;
+      const res = await this.data.setInvoiceIssued(this.invoiceId);
+      if (res.error) { this.toast.error(res.error); return; }
+      this.status = 'issued';
+      if (res.number) this.invoiceNumber = res.number;
+      // The server dates it and derives the due date from the org's terms; a blank due
+      // date on this form already means "automatic", so there is nothing to fill in.
+      if (!this.issueDate) this.issueDate = new Date().toLocaleDateString('sv-SE');
+      this.baseline = this.snapshot();
+      this.toast.success(res.number ? `Issued as ${res.number}` : 'Invoice issued');
+    } finally { this.issuing.set(false); }
   }
 
   /** Only meaningful for a booking-linked invoice: revert the lines to the booking. */

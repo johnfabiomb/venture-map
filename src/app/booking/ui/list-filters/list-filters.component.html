@@ -1,48 +1,118 @@
 <div class="lf">
-  <div class="lf__period">
-    <span class="lf__label">Period</span>
-    <app-select class="lf__preset" size="sm" [options]="presetOptions" [(value)]="presetValue" />
+  <!-- Period: one button for the whole "when" question, because the preset, the custom
+       dates and WHICH date they apply to are three parts of one answer. -->
+  <button type="button" class="lf__btn" #periodTrigger
+          [class.lf__btn--on]="periodOn()"
+          [class.lf__btn--open]="openKey() === PERIOD_KEY"
+          [attr.aria-expanded]="openKey() === PERIOD_KEY" aria-haspopup="true"
+          (click)="toggleMenu(PERIOD_KEY)">
+    <svg class="lf__icon" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+      <rect x="3" y="4.5" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M3 8.5h14M7 2.8v3.2M13 2.8v3.2" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <span class="lf__btn-text" [class.lf__btn-val]="periodOn()">{{ periodText() }}</span>
+    <svg class="lf__chev" viewBox="0 0 20 20" width="13" height="13" aria-hidden="true">
+      <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
 
-    @if (isCustom()) {
-      <input type="date" class="lf__date" [value]="period().from ?? ''"
-             (change)="setFrom($any($event.target).value)" aria-label="From" />
-      <span class="lf__to">to</span>
-      <input type="date" class="lf__date" [value]="period().to ?? ''"
-             (change)="setTo($any($event.target).value)" aria-label="To" />
-    }
+  <ng-template cdkConnectedOverlay
+               [cdkConnectedOverlayOrigin]="periodTrigger"
+               [cdkConnectedOverlayOpen]="openKey() === PERIOD_KEY"
+               [cdkConnectedOverlayPositions]="positions"
+               [cdkConnectedOverlayViewportMargin]="8"
+               (overlayOutsideClick)="closeMenu()"
+               (detach)="closeMenu()">
+    <div class="lf__panel lf__panel--period">
+      <div class="lf__opts" role="listbox">
+        @for (p of presets; track p.value) {
+          <button type="button" class="lf__opt" role="option"
+                  [attr.aria-selected]="period().preset === p.value"
+                  (click)="pickPreset(p.value)">
+            <span class="lf__box lf__box--one" [class.lf__box--on]="period().preset === p.value">✓</span>
+            <span class="lf__opt-label">{{ p.label }}</span>
+          </button>
+        }
+      </div>
 
-    @if (showFieldSwitch()) {
-      <span class="lf__by">by</span>
-      <app-select class="lf__field" size="sm" [options]="fieldOptions()" [(value)]="fieldValue" />
-    }
+      @if (isCustom()) {
+        <div class="lf__dates">
+          <input type="date" class="lf__date" [value]="period().from ?? ''"
+                 (change)="setFrom($any($event.target).value)" aria-label="From" />
+          <span class="lf__to">to</span>
+          <input type="date" class="lf__date" [value]="period().to ?? ''"
+                 (change)="setTo($any($event.target).value)" aria-label="To" />
+        </div>
+      }
 
-    @if (anyActive()) {
-      <button type="button" class="lf__clear" (click)="clearAll()">Clear filters</button>
-    }
-  </div>
+      @if (showFieldSwitch()) {
+        <div class="lf__foot">
+          <span class="lf__foot-label">Applies to</span>
+          <div class="lf__seg">
+            @for (f of dateFields(); track f.value) {
+              <button type="button" class="lf__seg-btn"
+                      [class.lf__seg-btn--on]="period().field === f.value"
+                      (click)="setField(f.value)">{{ f.label }}</button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </ng-template>
 
   @for (g of groups(); track g.key) {
     @if (g.options.length) {
-      <div class="lf__group">
-        <span class="lf__label">{{ g.label }}</span>
-        <div class="lf__chips">
-          @for (o of g.options; track o.value) {
-            <button type="button" class="lf__chip"
-                    [class.lf__chip--on]="isOn(g.key, o.value)"
-                    [attr.aria-pressed]="isOn(g.key, o.value)"
-                    (click)="toggle(g.key, o.value)">
-              {{ o.label }}
-              @if (o.count !== undefined) {
-                <span class="lf__count" [class.lf__count--alert]="o.alert && o.count > 0">{{ o.count }}</span>
-              }
-            </button>
-          }
-          @if (selected(g.key).length) {
-            <button type="button" class="lf__any" (click)="clearGroup(g.key)">Any</button>
-          }
+      <button type="button" class="lf__btn" #trigger
+              [class.lf__btn--on]="selected(g.key).length > 0"
+              [class.lf__btn--open]="openKey() === g.key"
+              [attr.aria-expanded]="openKey() === g.key" aria-haspopup="true"
+              (click)="toggleMenu(g.key)">
+        <span class="lf__btn-text">{{ g.label }}@if (valueLabel(g); as v) {<span class="lf__btn-val">: {{ v }}</span>}</span>
+        @if (alertCount(g); as alert) {
+          <span class="lf__alert" [title]="alertTitle(g)">{{ alert }}</span>
+        }
+        <svg class="lf__chev" viewBox="0 0 20 20" width="13" height="13" aria-hidden="true">
+          <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <ng-template cdkConnectedOverlay
+                   [cdkConnectedOverlayOrigin]="trigger"
+                   [cdkConnectedOverlayOpen]="openKey() === g.key"
+                   [cdkConnectedOverlayPositions]="positions"
+                   [cdkConnectedOverlayViewportMargin]="8"
+                   (overlayOutsideClick)="closeMenu()"
+                   (detach)="closeMenu()">
+        <div class="lf__panel">
+          <div class="lf__panel-head">
+            <span class="lf__panel-title">{{ g.label }}</span>
+            @if (selected(g.key).length) {
+              <button type="button" class="lf__link" (click)="clearGroup(g.key)">Clear</button>
+            }
+          </div>
+          <div class="lf__opts" role="listbox" aria-multiselectable="true">
+            @for (o of g.options; track o.value) {
+              <button type="button" class="lf__opt" role="option"
+                      [attr.aria-selected]="isOn(g.key, o.value)"
+                      (click)="toggle(g.key, o.value)">
+                <span class="lf__box" [class.lf__box--on]="isOn(g.key, o.value)">✓</span>
+                <span class="lf__opt-label">{{ o.label }}</span>
+                @if (o.count !== undefined) {
+                  <span class="lf__count" [class.lf__count--alert]="o.alert && o.count > 0">{{ o.count }}</span>
+                }
+              </button>
+            }
+          </div>
         </div>
-      </div>
+      </ng-template>
     }
+  }
+
+  @if (anyActive()) {
+    <button type="button" class="lf__link lf__clear" (click)="clearAll()">Clear all</button>
   }
 
   @if (summary()) {

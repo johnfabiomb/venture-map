@@ -16,14 +16,15 @@ import { ListFiltersComponent } from '@booking/ui/list-filters/list-filters.comp
 import { InvoiceSendComponent } from '@booking/ui/invoice-send/invoice-send.component';
 import { ExpenseDialogComponent } from '@booking/ui/expense-dialog/expense-dialog.component';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
-import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
 import { InvoiceActionsComponent } from '@booking/ui/invoice-actions/invoice-actions.component';
 import { PaginatorComponent } from '@booking/ui/paginator/paginator.component';
 import { paginate } from '@booking/core/utils/pagination.util';
 import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
 
-/** What a row's money actually is. */
-type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'void';
+/** What a row's money actually is. Derived from the row rather than retyped: the two
+ *  had already drifted once, and a local copy of a SQL union silently goes stale the
+ *  next time the view learns a state (it just did: 'draft'). */
+type PaymentStatus = InvoiceListRow['payment_status'];
 /** `overdue` is a CROSS-CUTTING tab, not a payment status — an overdue invoice is also
  *  unpaid or partial. Kept out of PaymentStatus so the two can never be conflated. */
 /** `deleted` is a different KIND of tab again: its rows come from an RPC (the hide_deleted
@@ -34,7 +35,7 @@ const GROUP_KEYS = ['pay', 'flag', 'status', 'link'] as const;
 // Keyed on PaymentStatus, NOT on the tab union: statusLabel() renders a row's payment
 // status, and no row's payment status is ever "overdue".
 const STATUS_LABEL: Record<PaymentStatus, string> = {
-  unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', void: 'Void',
+  unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', void: 'Void', draft: 'Draft',
 };
 
 // The accounting view, read from the `invoice_list` view — the invoice IS the money
@@ -47,7 +48,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
 @Component({
   selector: 'app-invoices-admin',
   standalone: true,
-  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, SelectComponent, InvoiceActionsComponent, PaymentDialogComponent, ListFiltersComponent],
+  imports: [DatePipe, CurrencyPipe, RouterLink, InvoiceSendComponent, ExpenseDialogComponent, PaginatorComponent, InvoiceActionsComponent, PaymentDialogComponent, ListFiltersComponent],
   templateUrl: './invoices-admin.component.html',
   styleUrl: './invoices-admin.component.scss',
 })

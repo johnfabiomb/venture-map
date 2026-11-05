@@ -65,14 +65,15 @@ export const TOURS: Record<string, Tour> = {
   },
 
   bookings: {
-    key: 'bookings', label: 'Bookings', version: 2,
+    key: 'bookings', label: 'Bookings', version: 3,
     steps: [
       { title: 'Your jobs',
-        text: 'Everything booked, past and future. Each tab is a different question: what is coming up, what is waiting on you, what is still unpaid.' },
-      { target: '[data-tour="booking-tabs"]', title: 'Tabs are filters',
-        text: 'They count what is in them, and each one fetches fresh — so a number here is the real number, not a stale cache.' },
+        text: 'Everything booked, past and future, in one list you narrow down rather than a set of tabs you switch between.' },
+      { target: '[data-tour="booking-tabs"]', title: 'Filter by anything, together',
+        text: 'Each button is a separate question: when, what state, paid or not, what kind. Tick as many answers as you like inside one, and they stack across the others, so "unpaid jobs from last month" is two taps. Open one to see how many rows each answer would give you.',
+        since: 3 },
       { target: '[data-tour="booking-search"]', title: 'Search',
-        text: 'Searches reference, client and title across the whole tab, not just the rows on this page.' },
+        text: 'Searches reference, client and title across everything, not just the rows on this page.' },
       { target: '[data-tour="new-booking"]', title: 'Create a job',
         text: 'The form sets up the whole job at once: the time, the charges, the invoice and — if you mark a time block for it — the post-production ticket.',
         since: 2 },

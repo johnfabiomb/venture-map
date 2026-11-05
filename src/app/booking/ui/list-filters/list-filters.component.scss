@@ -2,48 +2,66 @@
 
 :host { display: block; }
 
+// One row. Everything a dimension can be narrowed to lives behind its own button, so
+// the height of this bar does not grow with the number of questions a page can ask.
 .lf {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  margin-bottom: 16px;
   background: $bg;
   border: 1px solid $border;
   border-radius: $radius-lg;
 }
 
-.lf__period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-// Fixed column so the dimension rows line up under each other and read as a table of
-// questions rather than a wall of chips.
-.lf__label {
-  flex: 0 0 62px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: $text-2;
-}
-
-// app-select draws its own trigger: a call site gives it sizing ONLY.
-.lf__preset { min-width: 150px; }
-.lf__field  { min-width: 140px; }
-
-.lf__date {
-  padding: 5px 9px;
+.lf__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  height: 31px;
+  padding: 0 9px;
   border: 1px solid $border;
   border-radius: $radius-md;
   background: $card;
   font-family: $font;
-  font-size: 13px;
-  color: $text;
-}
-.lf__to, .lf__by { font-size: 12px; color: $text-2; }
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text-2;
+  cursor: pointer;
+  transition: border-color $transition, color $transition, background $transition;
 
-.lf__clear {
-  margin-left: auto;
-  padding: 0;
+  &:hover { color: $text; border-color: $text-3; }
+  &--on { background: $accent-dim; border-color: $accent; }
+  &--open { border-color: $accent; }
+}
+
+.lf__btn-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lf__btn-val { color: $text; font-weight: 700; }
+.lf__icon { flex: none; color: $text-3; .lf__btn--on & { color: $text-2; } }
+.lf__chev { flex: none; color: $text-3; }
+
+// The one number worth seeing before anything is opened. Red because every current use
+// is money nobody has: unpaid, overdue.
+.lf__alert {
+  flex: none;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #fee2e2;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.lf__link {
+  padding: 0 4px;
   border: none;
   background: none;
   font-family: $font;
@@ -54,66 +72,156 @@
   text-decoration: underline;
   &:hover { color: $text; }
 }
+.lf__clear { margin-left: 2px; }
 
-.lf__group { display: flex; align-items: flex-start; gap: 8px; }
-.lf__chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
-
-.lf__chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px;
-  border: 1px solid $border;
-  border-radius: 999px;
-  background: $card;
-  font-family: $font;
+.lf__summary {
+  margin: 0 0 0 auto;
+  padding-left: 12px;
   font-size: 12.5px;
-  font-weight: 600;
   color: $text-2;
-  cursor: pointer;
-  transition: all $transition;
+}
 
-  &:hover { color: $text; border-color: $text-3; }
-  &--on {
-    background: $accent-dim;
-    border-color: $accent;
-    color: $text;
-  }
+/* ---- the menus ---------------------------------------------------------------- */
+
+.lf__panel {
+  min-width: 212px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 6px;
+  background: $card;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+}
+.lf__panel--period { min-width: 232px; }
+
+.lf__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 8px 6px;
+}
+.lf__panel-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $text-3;
+}
+
+.lf__opts { display: flex; flex-direction: column; }
+
+.lf__opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: $radius-sm;
+  background: none;
+  font-family: $font;
+  font-size: 13px;
+  color: $text;
+  text-align: left;
+  cursor: pointer;
+  &:hover { background: $bg; }
+}
+.lf__opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.lf__box {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid $border;
+  border-radius: 4px;
+  background: $card;
+  font-size: 9.5px;
+  line-height: 1;
+  color: transparent;          // the tick is always there, so ticking never reflows the row
+  transition: background $transition, border-color $transition;
+
+  &--one { border-radius: 50%; }   // the period is a pick-one, and must not look multi
+  &--on { background: $accent; border-color: $accent; color: #fff; }
 }
 
 .lf__count {
-  min-width: 17px; height: 17px; padding: 0 5px;
-  display: inline-flex; align-items: center; justify-content: center;
+  flex: none;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 9px;
-  background: $border;
+  background: $bg;
   font-size: 10.5px;
   font-weight: 700;
   color: $text-2;
-
-  .lf__chip--on & { background: $card; color: $text; }
   &--alert { background: #fee2e2; color: #dc2626; }
 }
 
-.lf__any {
-  padding: 0 4px;
+.lf__dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  margin-top: 4px;
+  border-top: 1px solid $border;
+}
+.lf__date {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  background: $card;
+  font-family: $font;
+  font-size: 12.5px;
+  color: $text;
+}
+.lf__to { font-size: 12px; color: $text-2; }
+
+.lf__foot {
+  padding: 8px;
+  margin-top: 4px;
+  border-top: 1px solid $border;
+}
+.lf__foot-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $text-3;
+}
+.lf__seg {
+  display: flex;
+  padding: 2px;
+  border-radius: $radius-md;
+  background: $bg;
+}
+.lf__seg-btn {
+  flex: 1;
+  padding: 5px 8px;
   border: none;
+  border-radius: $radius-sm;
   background: none;
   font-family: $font;
-  font-size: 11.5px;
-  color: $text-3;
-  cursor: pointer;
-  text-decoration: underline;
-  &:hover { color: $text-2; }
-}
-
-.lf__summary {
-  margin: 2px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid $border;
-  font-size: 12.5px;
+  font-size: 12px;
+  font-weight: 600;
   color: $text-2;
+  cursor: pointer;
+  &--on { background: $card; color: $text; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1); }
 }
 
 @media (max-width: 760px) {
-  .lf__group { flex-direction: column; gap: 5px; }
-  .lf__label { flex: none; }
-  .lf__clear { margin-left: 0; }
+  // The summary earns a line of its own rather than squeezing the buttons off screen.
+  .lf__summary { margin-left: 0; padding-left: 0; flex-basis: 100%; }
+  .lf__btn { max-width: 100%; }
 }

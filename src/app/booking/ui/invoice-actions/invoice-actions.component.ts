@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import { BookingDataService } from '@booking/core/services/booking-data.service';
@@ -33,12 +33,20 @@ import { InvoiceEmailKind } from '@booking/core/utils/invoice-email.util';
     </button>
     <ng-template #menu>
       <div class="ia__menu" cdkMenu>
-        <button class="ia__item" cdkMenuItem (click)="send.emit('invoice')">Send by email…</button>
-        <!-- Chasing only makes sense while something is actually owed. -->
-        @if (invoice().balance_due > 0) {
-          <button class="ia__item" cdkMenuItem (click)="send.emit('reminder')">Send reminder…</button>
+        <!-- A draft is not a document yet: no number, never handed over, and the public
+             page cannot take payment on it. So nothing that puts it in front of a client
+             is offered until it is issued, which is the action that stands in their
+             place. Sending one was how an unnumbered "Draft" reached a client. -->
+        @if (isDraft()) {
+          <button class="ia__item" cdkMenuItem (click)="issue()">Issue invoice…</button>
+        } @else {
+          <button class="ia__item" cdkMenuItem (click)="send.emit('invoice')">Send by email…</button>
+          <!-- Chasing only makes sense while something is actually owed. -->
+          @if (invoice().balance_due > 0) {
+            <button class="ia__item" cdkMenuItem (click)="send.emit('reminder')">Send reminder…</button>
+          }
+          <button class="ia__item" cdkMenuItem (click)="copyShareLink()">Copy share link</button>
         }
-        <button class="ia__item" cdkMenuItem (click)="copyShareLink()">Copy share link</button>
         <button class="ia__item" cdkMenuItem (click)="openPrintable()">View / print</button>
         <a class="ia__item" cdkMenuItem [routerLink]="editLink()">Edit invoice</a>
         <!-- The booking page has its own payment button and IS the booking, so both stay
@@ -103,6 +111,27 @@ export class InvoiceActionsComponent {
   readonly recordPayment = output<void>();
   /** Voided, un-voided or deleted here: the host reloads its list. */
   readonly changed = output<void>();
+
+  readonly isDraft = computed(() => this.invoice().status === 'draft');
+
+  /**
+   * Issuing is ONE WAY: the number it consumes cannot be handed back without leaving a
+   * hole in the series, so an invoice issued by mistake is voided instead. That is why
+   * it asks first, unlike the other non-destructive actions here.
+   */
+  async issue(): Promise<void> {
+    const r = this.invoice();
+    if (!(await this.confirm.ask({
+      title: 'Issue this invoice',
+      message: 'It takes the next number in your series, dated today, and can then be sent and paid. '
+             + 'This cannot be undone: an invoice issued by mistake is voided, which keeps its number.',
+      confirmLabel: 'Issue invoice',
+    }))) return;
+    const res = await this.data.setInvoiceIssued(r.id);
+    if (res.error) { this.toast.error(res.error); return; }
+    this.toast.success(res.number ? `Issued as ${res.number}` : 'Invoice issued');
+    this.changed.emit();
+  }
 
   /**
    * Mirrors set_invoice_void, so the menu never offers what the server refuses: issued,
