@@ -1,7 +1,8 @@
 <div class="items">
   @for (item of items(); track $index) {
     <div class="item">
-      <textarea class="item__desc" rows="1" placeholder="Description"
+      <textarea class="item__desc" rows="1" appAutosize appBulletList
+                placeholder="What this charge covers"
                 [ngModel]="item.description" (ngModelChange)="setDescription($index, $event)"></textarea>
       <input class="item__amount" type="number" min="0" step="1" inputmode="decimal"
              [ngModel]="item.amount" (ngModelChange)="setAmount($index, $event)" />

@@ -4,6 +4,7 @@ import { BookingAdminService, AdminService } from '@booking/core/services/bookin
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ConfirmService } from '@booking/ui/confirm/confirm.service';
 import { BookingsAuthService } from '@booking/core/services/bookings-auth.service';
+import { AutosizeDirective } from '@booking/ui/textarea/autosize.directive';
 
 interface ServiceForm {
   id?: string;
@@ -25,7 +26,7 @@ const blankForm = (): ServiceForm => ({
 @Component({
   selector: 'app-services-admin',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, AutosizeDirective],
   templateUrl: './services-admin.component.html',
   styleUrl: './services-admin.component.scss',
 })

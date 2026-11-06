@@ -344,7 +344,7 @@
             </div>
             <label class="field">
               <span>Details <em>optional</em></span>
-              <textarea rows="2" [(ngModel)]="workDescription" name="workDescription"
+              <textarea rows="2" appAutosize [(ngModel)]="workDescription" name="workDescription"
                         placeholder="The brief, what the client asked for, anything you'd forget"></textarea>
             </label>
           </div>
@@ -393,7 +393,7 @@
 
         <div class="field">
           <div class="field__top"><label for="bf-notes">Internal notes <span class="opt">optional</span></label></div>
-          <textarea id="bf-notes" [(ngModel)]="notes" name="notes" rows="2"
+          <textarea id="bf-notes" appAutosize [(ngModel)]="notes" name="notes" rows="2"
                     placeholder="Anything to remember about this job — never shown to the client"></textarea>
         </div>
       </section>

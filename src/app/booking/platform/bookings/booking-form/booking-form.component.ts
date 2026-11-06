@@ -14,11 +14,12 @@ import { LineItemsEditorComponent } from '@booking/ui/line-items-editor/line-ite
 import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.component';
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
+import { AutosizeDirective } from '@booking/ui/textarea/autosize.directive';
 
 @Component({
   selector: 'app-booking-form',
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent, InfoHintComponent, SelectComponent],
+  imports: [FormsModule, RouterLink, CurrencyPipe, AvailabilityPickerComponent, LineItemsEditorComponent, ClientEditorComponent, InfoHintComponent, SelectComponent, AutosizeDirective],
   templateUrl: './booking-form.component.html',
   styleUrl: './booking-form.component.scss',
 })

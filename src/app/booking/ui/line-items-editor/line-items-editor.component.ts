@@ -4,18 +4,23 @@ import { CurrencyPipe } from '@angular/common';
 import { LineItem, ServiceOption } from '@booking/core/interfaces/invoice.interface';
 import { servicePrice } from '@booking/core/interfaces/org.interface';
 import { SelectComponent, SelectOption } from '@booking/ui/select/select.component';
+import { AutosizeDirective } from '@booking/ui/textarea/autosize.directive';
+import { BulletListDirective } from '@booking/ui/textarea/bullet-list.directive';
 
 /**
  * Reusable invoice line-items editor. Adding a line is guided: pick one of your
  * services (then how many hours → description + price pre-filled) or a free
  * "Custom charge". Service lines remember `serviceId`/`hours` so the booking form
  * can derive the calendar duration. Two-way bound via `[(items)]`.
+ *
+ * A description is a LIST as often as it is a line ("- One round of revisions"), so the
+ * box grows with what is written in it and Enter carries a bullet on.
  */
 @Component({
   selector: 'app-line-items-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, CurrencyPipe, SelectComponent],
+  imports: [FormsModule, CurrencyPipe, SelectComponent, AutosizeDirective, BulletListDirective],
   templateUrl: './line-items-editor.component.html',
   styleUrl: './line-items-editor.component.scss',
 })

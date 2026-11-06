@@ -29,7 +29,10 @@
   min-width: 0; box-sizing: border-box; width: 100%;
   &:focus { outline: none; border-color: $accent; }
 }
-.item__desc { resize: vertical; min-height: 40px; }
+// Height is the directive's job (appAutosize), so the drag handle is gone: it only ever
+// fought the next keystroke. The cap is there so pasting a page of text cannot push the
+// total off screen; past it the box scrolls.
+.item__desc { resize: none; min-height: 40px; max-height: 240px; overflow-y: auto; }
 .item__amount { text-align: right; }
 .item__remove {
   width: 30px; height: 40px; padding: 0; background: none; border: none; cursor: pointer;

@@ -630,6 +630,9 @@ button span {
 .field textarea {
   resize: vertical;
 }
+.field textarea[appAutosize] {
+  resize: none;
+}
 .field input[type=file] {
   border: none;
   padding: 6px 0;

@@ -100,8 +100,27 @@ export class BookingListComponent {
   readonly inWindow = computed(() =>
     this.rows().filter(b => inPeriodAt(b.next_start_at ?? b.start_at, this.period())));
 
-  readonly visible = computed(() =>
-    this.inWindow().filter(b => this.passesAll(b, this.filterState())));
+  /**
+   * What is still to come first, soonest first; then what has happened, most recent first.
+   * Both halves run AWAY FROM NOW, because now is where the reader is standing.
+   *
+   * Sorted by date alone (the server returns `next_start_at` descending) the job furthest
+   * into the future sits at the top: a 2027 wedding above tonight's shoot, with NEXT at the
+   * bottom of the list. That buries the one row the page is usually opened for, and it gets
+   * worse the further ahead anything is booked. `filter` has already copied the array, so
+   * sorting here cannot reorder the signal underneath it.
+   */
+  readonly visible = computed(() => {
+    const st = this.filterState();
+    // One definition of "still to come", shared with the When filter, so a row cannot
+    // answer Upcoming and then be sorted as though it were past.
+    const toCome = (b: BookingSummary) => this.optionMatches(b, 'when', 'upcoming');
+    return this.inWindow().filter(b => this.passesAll(b, st)).sort((a, b) => {
+      const ua = toCome(a), ub = toCome(b);
+      if (ua !== ub) return ua ? -1 : 1;
+      return ua ? this.startMs(a) - this.startMs(b) : this.startMs(b) - this.startMs(a);
+    });
+  });
 
   readonly filterGroups = computed<FilterGroup[]>(() => {
     const st = this.filterState(), base = this.inWindow();

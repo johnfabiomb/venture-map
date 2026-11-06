@@ -15,11 +15,11 @@
   </div>
   <div class="field">
     <label>Billing address</label>
-    <textarea [(ngModel)]="draft.billing_address" name="addr" rows="2" placeholder="Street, city, country"></textarea>
+    <textarea appAutosize [(ngModel)]="draft.billing_address" name="addr" rows="2" placeholder="Street, city, country"></textarea>
   </div>
   <div class="field">
     <label>Notes <span class="opt">(internal)</span></label>
-    <textarea [(ngModel)]="draft.notes" name="notes" rows="2" placeholder="Anything worth remembering"></textarea>
+    <textarea appAutosize [(ngModel)]="draft.notes" name="notes" rows="2" placeholder="Anything worth remembering"></textarea>
   </div>
 
   <div class="actions">

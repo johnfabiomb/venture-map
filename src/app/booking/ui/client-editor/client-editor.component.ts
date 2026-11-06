@@ -5,6 +5,7 @@ import { BookingsAuthService } from '@booking/core/services/bookings-auth.servic
 import { ToastService } from '@booking/ui/toast/toast.service';
 import { ModalComponent } from '@booking/ui/modal/modal.component';
 import { Client } from '@booking/core/interfaces/booking.interface';
+import { AutosizeDirective } from '@booking/ui/textarea/autosize.directive';
 
 interface ClientDraft {
   id?: string; name: string; email: string; phone: string;
@@ -21,7 +22,7 @@ const EMPTY: ClientDraft = { name: '', email: '', phone: '', company: '', vat_nu
   selector: 'app-client-editor',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ModalComponent],
+  imports: [FormsModule, ModalComponent, AutosizeDirective],
   templateUrl: './client-editor.component.html',
   styleUrl: './client-editor.component.scss',
 })

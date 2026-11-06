@@ -14,6 +14,7 @@ import { ClientEditorComponent } from '@booking/ui/client-editor/client-editor.c
 import { InfoHintComponent } from '@booking/ui/info-hint/info-hint.component';
 import { Client, Payment, PaymentMethod } from '@booking/core/interfaces/booking.interface';
 import { PaymentDialogComponent } from '@booking/ui/payment-dialog/payment-dialog.component';
+import { AutosizeDirective } from '@booking/ui/textarea/autosize.directive';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: 'Card', cash: 'Cash', revolut: 'Revolut', bank: 'Bank transfer', other: 'Other',
@@ -33,7 +34,7 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 @Component({
   selector: 'app-invoice-edit',
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe, LineItemsEditorComponent, ClientEditorComponent, SelectComponent, InfoHintComponent, PaymentDialogComponent],
+  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe, LineItemsEditorComponent, ClientEditorComponent, SelectComponent, InfoHintComponent, PaymentDialogComponent, AutosizeDirective],
   templateUrl: './invoice-edit.component.html',
   styleUrl: './invoice-edit.component.scss',
 })

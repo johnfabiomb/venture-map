@@ -720,6 +720,9 @@ button, button span {
     &:focus { outline: none; border-color: #F4A922; }
   }
   textarea { resize: vertical; }
+  // An autosized textarea owns its own height (`ui/textarea/autosize.directive.ts`), so the
+  // drag handle is taken away: it only ever fought the next keystroke.
+  textarea[appAutosize] { resize: none; }
   input[type='file'] { border: none; padding: 6px 0; font-size: 13px; }
 
   /* Below 16px iOS zooms in when a field takes focus and never zooms back out. */
